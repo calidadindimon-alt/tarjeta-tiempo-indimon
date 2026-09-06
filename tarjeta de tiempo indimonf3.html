@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SSTA - Tarjeta de Tiempo Digital</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        input, select, datalist { font-size: 16px !important; }
+        .blur-text { filter: blur(6px); transition: filter 0.3s ease; user-select: none; }
+        .blur-text.revealed { filter: blur(0); }
+        .tab-content { display: none; animation: fadeIn 0.2s ease-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .btn-touch { transition: all 0.15s ease; }
+        .btn-touch:active { transform: scale(0.97); }
+        .btn-touch:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .pin-input { letter-spacing: 0.5em; text-align: center; font-weight: 800; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col relative">
+
+    <header class="bg-slate-900 text-white p-4 sticky top-0 z-40 shadow-md">
+        <div class="max-w-5xl mx-auto w-full flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i class="ph-bold ph-hard-hat text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm md:text-base font-bold leading-tight">INDIMON S.A.S.</h1>
+                    <p class="text-[11px] text-slate-400 font-medium" id="header-date">Cargando fecha...</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3 items-center">
+                <span id="conn-badge" class="text-[10px] font-bold bg-amber-900/50 text-amber-400 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 border border-amber-800">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> Conectando...
+                </span>
+
+                <nav class="hidden md:flex gap-1 bg-slate-800 p-1 rounded-lg">
+                    <button class="nav-tab active bg-slate-700 text-white px-4 py-2 rounded-md text-xs font-semibold transition-all" data-target="tab-colaborador">
+                        <i class="ph-bold ph-user mr-1"></i> Mi Tarjeta
+                    </button>
+                    <button class="nav-tab text-slate-400 hover:text-white px-4 py-2 rounded-md text-xs font-semibold transition-all" data-target="tab-admin">
+                        <i class="ph-bold ph-shield-check mr-1"></i> Admin SSTA
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-5xl mx-auto p-4 pb-24 md:pb-8">
+
+        <section id="tab-colaborador" class="tab-content active">
+
+            <div id="view-identidad" class="max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mt-4 md:mt-10">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                        <i class="ph-fill ph-identification-card text-3xl text-blue-600"></i>
+                    </div>
+                    <h2 class="text-xl md:text-2xl font-bold text-slate-800">Control de Tiempo</h2>
+                    <p class="text-sm text-slate-500 mt-1">Busca tu nombre para acceder a tu tarjeta</p>
+                </div>
+
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Nombre del Colaborador</label>
+                        <input type="text" id="login-nombre" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-slate-900 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium" placeholder="Ej: CARLOS ANDRES...">
+                        <datalist id="lista-empleados"></datalist>
+                        <datalist id="lista-clientes"></datalist>
+                        <datalist id="lista-obras"></datalist>
+                        <datalist id="lista-supervisores"></datalist>
+                    </div>
+                    <button id="btn-login" class="btn-touch w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-500/20">
+                        Ingresar <i class="ph-bold ph-arrow-right"></i>
+                    </button>
+                    <p class="text-[11px] text-center text-slate-400">Tu identidad se protege con un PIN personal. Si es tu primer ingreso, podrás crear uno.</p>
+                </div>
+            </div>
+
+            <div id="view-tarjeta" class="hidden flex-col gap-4 max-w-lg mx-auto mt-2">
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+
+                    <div class="flex justify-between items-start mb-5">
+                        <div class="pr-4">
+                            <h2 id="ui-user-name" class="text-lg md:text-xl font-bold text-slate-800 leading-tight">Nombre</h2>
+                            <p id="ui-user-cargo" class="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded inline-block mt-1.5 border border-blue-100">Cargo</p>
+                        </div>
+                        <button id="btn-logout" class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-rose-100 hover:text-rose-600 transition-colors" title="Cerrar Sesión">
+                            <i class="ph-bold ph-sign-out text-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                <i class="ph-bold ph-wallet"></i> Tu Salario Base (Mensual)
+                            </label>
+                            <button id="btn-toggle-eye" class="text-slate-400 hover:text-blue-600 transition-colors p-1"><i class="ph-bold ph-eye-closed text-lg"></i></button>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                                <input type="number" id="input-sueldo" class="w-full bg-white border border-slate-300 text-slate-900 rounded-lg py-2.5 pl-7 pr-3 focus:ring-2 focus:ring-blue-500 font-bold money-val blur-text" placeholder="Ej: 1300000">
+                            </div>
+                            <button id="btn-save-sueldo" class="bg-slate-800 hover:bg-slate-900 text-white px-4 rounded-lg font-semibold text-sm transition-colors shadow-sm">Guardar</button>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-4">
+                            <div class="bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                                <p class="text-[9px] font-bold text-slate-400 uppercase leading-tight mb-1">Extras Acumuladas Mes</p>
+                                <div class="flex items-end gap-1">
+                                    <span id="ui-horas-mes" class="font-mono font-bold text-indigo-600 text-sm">0h</span>
+                                </div>
+                                <p id="ui-pago-extras" class="text-xs font-bold text-emerald-600 money-val blur-text mt-0.5">+$0</p>
+                            </div>
+                            <div class="bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                                <p class="text-[9px] font-bold text-slate-400 uppercase leading-tight mb-1">Proyección Nómina</p>
+                                <p id="ui-deducciones" class="text-[10px] font-semibold text-rose-500 money-val blur-text">-8% Seg.Social</p>
+                                <p id="ui-total-neto" class="text-sm font-bold text-slate-800 money-val blur-text mt-0.5">$0</p>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-3 leading-relaxed"><i class="ph-bold ph-info"></i> Estimado informativo. No reemplaza la liquidación oficial de nómina; verifícalo con tu asesor contable/laboral.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
+                        <i class="ph-fill ph-clock-user text-blue-500"></i> Registro Diario
+                    </h3>
+
+                    <div id="panel-selectores" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">1. Cliente</label>
+                            <input type="text" id="sel-cliente" list="lista-clientes" class="w-full bg-white border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm" placeholder="Ej: INDIMON">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">2. Obra / Proyecto</label>
+                            <input type="text" id="sel-obra" list="lista-obras" class="w-full bg-white border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm" placeholder="Ej: MYKW">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">3. Autoriza</label>
+                            <input type="text" id="sel-autoriza" list="lista-supervisores" class="w-full bg-white border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm" placeholder="Ej: JLAF">
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div id="state-1-entrada" class="hidden">
+                            <button id="btn-punch-in" disabled class="btn-touch w-full bg-emerald-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-emerald-600 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all text-lg">
+                                <i class="ph-bold ph-sign-in text-2xl"></i> Registrar Entrada
+                            </button>
+                            <p class="text-[10px] text-center text-slate-400 mt-2 font-medium">Completa Cliente, Obra y Autoriza para habilitar.</p>
+                        </div>
+
+                        <div id="state-2-turno" class="hidden space-y-4">
+                            <div class="bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-200 flex justify-between items-center text-sm font-medium shadow-sm">
+                                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> En Turno desde:</span>
+                                <span id="display-hora-entrada" class="font-bold font-mono text-emerald-900 bg-white px-2 py-0.5 rounded shadow-sm border border-emerald-100">--:--</span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <button id="btn-punch-lunch-in" class="btn-touch bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-xs">
+                                    <i class="ph-bold ph-coffee text-xl"></i> Iniciar Almuerzo
+                                </button>
+                                <button id="btn-punch-out" class="btn-touch bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-xs">
+                                    <i class="ph-bold ph-sign-out text-xl"></i> Fin de Jornada
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="state-3-almuerzo" class="hidden space-y-4">
+                            <div class="bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200 flex flex-col items-center justify-center text-sm font-medium shadow-sm">
+                                <i class="ph-fill ph-hamburger text-3xl mb-2 text-amber-500 animate-bounce"></i>
+                                <span>Pausa de almuerzo iniciada a las <span id="display-hora-almuerzo" class="font-bold font-mono bg-white px-1.5 py-0.5 rounded border border-amber-100">--:--</span></span>
+                            </div>
+                            <button id="btn-punch-lunch-out" class="btn-touch w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all text-lg">
+                                <i class="ph-bold ph-play text-2xl"></i> Retomar Trabajo
+                            </button>
+                        </div>
+
+                        <div id="state-4-completado" class="hidden">
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 text-center shadow-inner">
+                                <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-emerald-200">
+                                    <i class="ph-bold ph-check text-3xl"></i>
+                                </div>
+                                <h4 class="font-bold text-slate-800 text-lg">Jornada Finalizada</h4>
+                                <p class="text-xs text-slate-500 mt-1">Tus horas han sido guardadas y liquidadas.</p>
+
+                                <div class="flex justify-center gap-2 mt-4 pt-4 border-t border-slate-200 flex-wrap">
+                                    <div class="bg-white px-3 py-2 rounded-lg border border-slate-100 shadow-sm flex-1">
+                                        <span class="block text-[9px] font-bold text-slate-400 uppercase">Ordinarias</span>
+                                        <span id="ui-res-ord" class="font-mono font-bold text-slate-700">0h</span>
+                                    </div>
+                                    <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 shadow-sm flex-1">
+                                        <span class="block text-[9px] font-bold text-amber-600 uppercase">Ext. Diurnas</span>
+                                        <span id="ui-res-diurnas" class="font-mono font-bold text-amber-700">0h</span>
+                                    </div>
+                                    <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 shadow-sm flex-1">
+                                        <span class="block text-[9px] font-bold text-indigo-600 uppercase">Ext. Noct</span>
+                                        <span id="ui-res-nocturnas" class="font-mono font-bold text-indigo-700">0h</span>
+                                    </div>
+                                    <div class="bg-violet-50 px-3 py-2 rounded-lg border border-violet-100 shadow-sm flex-1">
+                                        <span class="block text-[9px] font-bold text-violet-600 uppercase">Rec. Noct.</span>
+                                        <span id="ui-res-recnoct" class="font-mono font-bold text-violet-700">0h</span>
+                                    </div>
+                                </div>
+                                <p id="ui-res-dominical" class="hidden mt-3 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg py-1.5"><i class="ph-bold ph-star"></i> Día Dominical / Festivo (+90% recargo)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-admin" class="tab-content">
+
+            <div id="admin-login-view" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mt-4 md:mt-10">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="ph-fill ph-lock-key text-3xl text-slate-500"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-800">Acceso SSTA</h2>
+                    <p class="text-xs text-slate-500 mt-1">Solo personal autorizado</p>
+                </div>
+                <input type="email" id="admin-email" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-center font-semibold focus:ring-2 focus:ring-slate-500 outline-none" placeholder="correo@indimon.com" autocomplete="username">
+                <input type="password" id="admin-pass" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-4 text-center tracking-widest font-bold focus:ring-2 focus:ring-slate-500 outline-none" placeholder="Contraseña" autocomplete="current-password">
+                <button id="btn-admin-login" class="btn-touch w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-md">Ingresar</button>
+                <p class="text-[10px] text-center text-slate-400 mt-4">Las cuentas de administrador se crean desde Firebase Authentication.</p>
+            </div>
+
+            <div id="admin-panel-view" class="hidden flex-col gap-4">
+
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center flex-wrap gap-3">
+                    <div>
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                            <i class="ph-fill ph-database text-blue-500 text-xl"></i> Consolidado de Tiempos
+                        </h2>
+                        <p class="text-xs text-slate-500">Datos en vivo desde Firebase (todos los dispositivos).</p>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button id="btn-export-excel" class="btn-touch bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors border border-emerald-200">
+                            <i class="ph-bold ph-file-xls"></i> Exportar a Excel
+                        </button>
+                        <button id="btn-admin-logout" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors">
+                            <i class="ph-bold ph-sign-out"></i> Salir
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50/50 p-4 rounded-2xl shadow-sm border border-blue-100 mb-2">
+                    <h3 class="font-bold text-blue-900 mb-3 flex items-center gap-2 text-sm">
+                        <i class="ph-fill ph-users-three text-blue-600 text-lg"></i> Empleados y Catálogos
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="btn-import-empleados" class="btn-touch bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-cloud-arrow-up"></i> Importar plantilla inicial de empleados</button>
+                        <button id="btn-add-cliente" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Cliente</button>
+                        <button id="btn-add-obra" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Obra</button>
+                        <button id="btn-add-supervisor" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Supervisor</button>
+                        <button id="btn-add-festivo" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Festivo (AAAA-MM-DD)</button>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50/50 p-4 rounded-2xl shadow-sm border border-blue-100 mb-2">
+                    <h3 class="font-bold text-blue-900 mb-3 flex items-center gap-2 text-sm">
+                        <i class="ph-fill ph-calendar-plus text-blue-600 text-lg"></i> Cargar Días Anteriores (Admin)
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha</label>
+                            <input type="date" id="manual-fecha" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
+                            <select id="manual-empleado" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"></select>
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
+                            <input type="text" id="manual-cliente" list="lista-clientes" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: INDIMON">
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
+                            <input type="text" id="manual-obra" list="lista-obras" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: MYKW">
+                        </div>
+                        <div class="col-span-2 md:col-span-2">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Autoriza (Modificable)</label>
+                            <input type="text" id="manual-autoriza" list="lista-supervisores" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: JLAF">
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Entrada (24h)</label>
+                            <input type="time" id="manual-entrada" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Salida (24h)</label>
+                            <input type="time" id="manual-salida" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+                    <button id="btn-save-manual" class="btn-touch w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-xl shadow-sm text-sm transition-all">Guardar Registro Pasado</button>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[900px]">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider border-b border-slate-200">
+                                    <th class="p-4 font-bold">Fecha / GPS</th>
+                                    <th class="p-4 font-bold">Colaborador</th>
+                                    <th class="p-4 font-bold">Cliente, Obra & Auth</th>
+                                    <th class="p-4 font-bold text-center">Horario Militar (24h)</th>
+                                    <th class="p-4 font-bold text-center">Liquidación</th>
+                                    <th class="p-4 font-bold text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-table-body" class="divide-y divide-slate-100 text-sm">
+                                <tr><td colspan="6" class="text-center py-10 text-slate-400 font-medium">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="text-center mt-6 mb-8">
+                    <button id="btn-reset-db" class="text-xs text-rose-500 hover:text-rose-700 font-semibold underline p-2">Borrar TODOS los registros de tiempo en la nube</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around p-2 pb-safe z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
+        <button class="nav-tab flex-1 flex flex-col items-center py-2 text-blue-600 active" data-target="tab-colaborador">
+            <i class="ph-fill ph-user-circle text-2xl mb-1 transition-transform"></i>
+            <span class="text-[10px] font-bold">Mi Tarjeta</span>
+        </button>
+        <button class="nav-tab flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-slate-600" data-target="tab-admin">
+            <i class="ph-fill ph-shield-check text-2xl mb-1 transition-transform"></i>
+            <span class="text-[10px] font-bold">Admin</span>
+        </button>
+    </nav>
+
+    <div id="custom-alert" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-200 px-4">
+        <div id="custom-alert-box" class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-200">
+            <i id="ca-icon" class="ph-fill ph-info text-5xl mb-4 text-blue-500 mx-auto block text-center"></i>
+            <h3 id="ca-title" class="text-xl font-bold text-center text-slate-800 mb-2">Título</h3>
+            <p id="ca-msg" class="text-sm text-center text-slate-500 mb-6 font-medium leading-relaxed">Mensaje</p>
+            <button id="btn-close-alert" class="btn-touch w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl transition-colors text-sm">Entendido</button>
+        </div>
+    </div>
+
+    <div id="custom-confirm" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-200 px-4">
+        <div id="custom-confirm-box" class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-200">
+            <i class="ph-fill ph-warning-circle text-5xl mb-4 text-rose-500 mx-auto block text-center"></i>
+            <h3 id="cc-title" class="text-xl font-bold text-center text-slate-800 mb-2">Título</h3>
+            <p id="cc-msg" class="text-sm text-center text-slate-500 mb-6 font-medium leading-relaxed">Mensaje</p>
+            <div class="flex gap-3">
+                <button id="btn-cc-cancel" class="btn-touch flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors text-sm">Cancelar</button>
+                <button id="btn-cc-confirm" class="btn-touch flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 rounded-xl transition-colors text-sm">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de PIN para colaboradores (crear o ingresar) -->
+    <div id="modal-pin" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-200 px-4">
+        <div id="modal-pin-box" class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-200">
+            <div class="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                <i class="ph-fill ph-shield-star text-2xl text-blue-600"></i>
+            </div>
+            <h3 id="pin-title" class="text-lg font-bold text-center text-slate-800 mb-1">Ingresa tu PIN</h3>
+            <p id="pin-subtitle" class="text-xs text-center text-slate-500 mb-5">Protege tu tarjeta de tiempo.</p>
+
+            <input type="password" id="pin-input-1" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="pin-input w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••">
+            <input type="password" id="pin-input-2" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="pin-input hidden w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Confirma tu PIN">
+
+            <button id="btn-pin-confirm" class="btn-touch w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md mb-2">Continuar</button>
+            <button id="btn-pin-cancel" class="btn-touch w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-3 rounded-xl text-sm">Cancelar</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+        import {
+            getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+            signOut, onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+        import {
+            getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup,
+            getDocs, query, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion
+        } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+        // =====================================================================================
+        //  CONFIGURACIÓN DE FIREBASE
+        //  1. Crea un proyecto en https://console.firebase.google.com
+        //  2. Agrega una "Web App" (</>) y pega aquí su configuración.
+        //  3. Habilita Authentication > Sign-in method > Correo electrónico/contraseña.
+        //  4. Crea una base de datos Firestore (modo producción) y publica las reglas
+        //     incluidas en firestore.rules
+        //  5. Crea al menos un usuario administrador en Authentication y agrega su UID
+        //     como documento en la colección "admins" (ver README.md).
+        // =====================================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-HeNd2lmAEC_sX1AKI1S1xCllNptHOek",
+            authDomain: "tarjeta-de-tiempo-indimon.firebaseapp.com",
+            projectId: "tarjeta-de-tiempo-indimon",
+            storageBucket: "tarjeta-de-tiempo-indimon.firebasestorage.app",
+            messagingSenderId: "549469628930",
+            appId: "1:549469628930:web:5a9cf53d8987ad3cb2151b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Los empleados no usan un correo real: se les asigna uno técnico ligado a su cédula
+        // únicamente para poder usar Firebase Authentication con PIN como contraseña.
+        const AUTH_EMAIL_DOMAIN = "@indimon-tiempo.app";
+        const cedulaToAuthEmail = (cedula) => `emp${cedula}${AUTH_EMAIL_DOMAIN}`;
+
+        // ------------------------------- Datos semilla (solo para importación manual) -------------------------------
+        const LISTA_EMPLEADOS_INICIAL = [
+            { cedula: "1002653996", nombre: "ALEJANDRO BURITICA LONDOÑO", cargo: "ANALISTA ADMINISTRATIVO EN OBRA" },
+            { cedula: "80159301", nombre: "ALEJANDRO PINZON DIAZ", cargo: "DIRECTOR DE PROYECTOS" },
+            { cedula: "1054990463", nombre: "ALVARO JAVIER LOPEZ BECERRA", cargo: "AYUDANTE TECNICO" },
+            { cedula: "28542792", nombre: "ANA DOREEN BOHORQUEZ GONZALEZ", cargo: "DIRECTOR DPTO GH & SSTA" },
+            { cedula: "33703605", nombre: "ANDREA YULIETH OSPINA SOLANO", cargo: "SUPERVISOR SSTA" },
+            { cedula: "1022411689", nombre: "BRAYAN JOEL PEÑA POVEDA", cargo: "TECNICO ELECTRICISTA" },
+            { cedula: "1024486872", nombre: "CAMILO ANDRES DUARTE RODRIGUEZ", cargo: "AYUDANTE TECNICO" },
+            { cedula: "1018455016", nombre: "CARLOS ANDRES RIOS CASTILLO", cargo: "SUPERVISOR SSTA" },
+            { cedula: "1077150622", nombre: "CARLOS FERNANDO BERMUDEZ CARDENAS", cargo: "ARMADOR TUBERO 1A" },
+            { cedula: "1054989963", nombre: "CARLOS MARIO DUQUE RAMIREZ", cargo: "MECANICO PAILERO" },
+            { cedula: "94487420", nombre: "CESAR AUGUSTO HENAO MUÑOZ", cargo: "SUPERVISOR DE OBRA" },
+            { cedula: "1024533474", nombre: "CRISTIAN CAMILO PARDO HERNANDEZ", cargo: "SOLDADOR 1A" },
+            { cedula: "1054993969", nombre: "CRISTIAN ANDRES URREA TORRES", cargo: "AYUDANTE TECNICO" },
+            { cedula: "1016060311", nombre: "DIANA VALERIA BUITRAGO BOHORQUEZ", cargo: "ANALISTA DE GESTION HUMANA" },
+            { cedula: "1007830242", nombre: "DIEGO ANDRES GARCIA PALLARES", cargo: "PAILERO 2" },
+            { cedula: "39765659", nombre: "DORIS AMANDA CRUZ ROMERO", cargo: "AUX. SERVICIOS GENERALES" },
+            { cedula: "80893981", nombre: "EDWIN GERARDO BENITEZ PUENTES", cargo: "ARMADOR TUBERO 1A" },
+            { cedula: "1051673623", nombre: "EVER JOSE BELEÑO CARDONA", cargo: "AYUDANTE DE OFICIOS VARIOS" },
+            { cedula: "1016052853", nombre: "FRANKLIN LEONARDO MARIÑO RAMIREZ", cargo: "SOLDADOR 1A" },
+            { cedula: "1002576150", nombre: "IVAN ANDRES BEDOYA RAMIREZ", cargo: "SOLDADOR 2" },
+            { cedula: "1016059608", nombre: "JAVIER IVAN ACUÑA CALDERON", cargo: "COORDINADOR DE PRODUCCION" },
+            { cedula: "1016029643", nombre: "JEFFERSON LEONARDO AREVALO FANDIÑO", cargo: "SUPERVISOR DE OBRA" },
+            { cedula: "14749940", nombre: "JHON FREDDY SALAZAR OTERO", cargo: "AYUDANTE DE OFICIOS VARIOS" },
+            { cedula: "80722364", nombre: "JHON ALEXANDER VIASUS LOPEZ", cargo: "INSPECTOR DE CALIDAD" },
+            { cedula: "79901320", nombre: "JOVANNY ANDRES RAMIREZ SANCHEZ", cargo: "CONDUCTOR" },
+            { cedula: "1002999980", nombre: "JUAN SEBASTIAN LOPEZ LOPEZ", cargo: "AYUDANTE DE OFICIOS VARIOS" },
+            { cedula: "1014977882", nombre: "JUAN FELIPE ÑUSTES PINZON", cargo: "ASISTENTE DE COMPRAS Y LOGISTICA" },
+            { cedula: "1033808055", nombre: "KARINA SALAZAR HENAO", cargo: "APRENDIZ SENA" },
+            { cedula: "1003642528", nombre: "KEVIN ESTEBAN PEÑALOZA GONZALEZ", cargo: "MECANICO PAILERO" },
+            { cedula: "14678645", nombre: "LEONARDO CARDONA RODRIGUEZ", cargo: "AYUDANTE TECNICO" },
+            { cedula: "1082477606", nombre: "LUILLIS FUENTES FUENTES", cargo: "ARMADOR TUBERO 1A" },
+            { cedula: "1072194172", nombre: "LUIS ALEJANDRO AGUILAR ARIZA", cargo: "SOLDADOR 1A" },
+            { cedula: "1043671669", nombre: "LUIS ENRIQUE GARCIA HURTADO", cargo: "APRENDIZ SENA" },
+            { cedula: "10489686", nombre: "MARIO ANDRES CAICEDO MULATO", cargo: "ARMADOR TUBERO 1A" },
+            { cedula: "1006117209", nombre: "NATALY DIAZ RAMIREZ", cargo: "ASISTENTE ADMINISTRATIVO" },
+            { cedula: "19446571", nombre: "PEDRO IRENARCO BUITRAGO BUITRAGO", cargo: "ALMACENISTA" },
+            { cedula: "1026263751", nombre: "RUBEL DANIENZO OTALORA HEREDIA", cargo: "SUPERVISOR DE OBRA" },
+            { cedula: "65748729", nombre: "SANDRA PATRICIA BOHORQUEZ GONZALEZ", cargo: "GERENTE GENERAL" },
+            { cedula: "1073328381", nombre: "SEBASTIAN ENCISO CASTRO", cargo: "PAILERO 2" },
+            { cedula: "1059444105", nombre: "WILLINTONG LERMA VALLECILLA", cargo: "SOLDADOR 1A" },
+            { cedula: "79855798", nombre: "WILMER GUSTAVO GUTIERREZ PINILLA", cargo: "APRENDIZ SENA" },
+            { cedula: "93152938", nombre: "WILSON ALFONSO CAYCEDO DUARTE", cargo: "SOLDADOR ARMADOR" },
+            { cedula: "2231551", nombre: "WILTON EVELIO ROMERO SANCHEZ", cargo: "MECANICO PAILERO" }
+        ];
+        const CATALOGOS_INICIALES = {
+            clientes: ["INDIMON S.A.S.", "EXTERNO"],
+            obras: ["MYKW", "BODEGA", "POSTOBON"],
+            supervisores: ["JLAF", "S. BOHORQUEZ", "A. PINZON", "C. RIOS"],
+            festivos: []
+        };
+
+        // ------------------------------- Normativa laboral (Colombia, vigente 2026) -------------------------------
+        // Fuente: Ley 2101 de 2021 (jornada 42h desde 15-jul-2026, divisor mensual 210) y
+        // Ley 2466 de 2025 (jornada nocturna desde las 7:00 p.m., recargo dominical 90%).
+        // IMPORTANTE: esta calculadora es una ayuda operativa, no reemplaza la validación de
+        // un contador o abogado laboral, especialmente en casos de festivos, turnos rotativos
+        // o jornadas flexibles pactadas.
+        const LEY = {
+            FACTOR_MENSUAL: 210,
+            HORA_INICIO_NOCTURNA: 19.0,   // 7:00 p.m.
+            HORA_FIN_NOCTURNA: 30.0,      // 6:00 a.m. del día siguiente, en escala continua
+            JORNADA_ORDINARIA_DIARIA: 8,
+            RECARGO_NOCTURNO_ORDINARIO: 0.35,
+            RECARGO_EXTRA_DIURNA: 0.25,
+            RECARGO_EXTRA_NOCTURNA: 0.75,
+            RECARGO_DOMINICAL_FESTIVO: 0.90,
+            DEDUCCIONES: 0.08
+        };
+
+        let currentUserId = null;
+        let currentUserProfile = null;
+        let currentEmployeeIsNew = false;
+        let catalogosCache = { clientes: [], obras: [], supervisores: [], festivos: [] };
+        let unsubAdminTable = null;
+
+        // ===================================== Utilidades de UI (alertas/confirmaciones) =====================================
+        const UI = {
+            formatCOP: (num) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(num || 0),
+
+            showAlert: (title, msg, type = 'info') => {
+                const m = document.getElementById('custom-alert');
+                const b = document.getElementById('custom-alert-box');
+                const i = document.getElementById('ca-icon');
+                document.getElementById('ca-title').textContent = title;
+                document.getElementById('ca-msg').textContent = msg;
+
+                i.className = type === 'error' ? "ph-fill ph-warning-circle text-5xl mb-4 text-rose-500 mx-auto block text-center" :
+                              type === 'success' ? "ph-fill ph-check-circle text-5xl mb-4 text-emerald-500 mx-auto block text-center" :
+                              "ph-fill ph-info text-5xl mb-4 text-blue-500 mx-auto block text-center";
+
+                m.classList.remove('hidden'); m.classList.add('flex');
+                setTimeout(() => { m.classList.remove('opacity-0'); b.classList.remove('scale-95'); }, 10);
+            },
+
+            closeAlert: () => {
+                const m = document.getElementById('custom-alert');
+                const b = document.getElementById('custom-alert-box');
+                m.classList.add('opacity-0'); b.classList.add('scale-95');
+                setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
+            },
+
+            showConfirm: (title, msg, onConfirm) => {
+                const m = document.getElementById('custom-confirm');
+                const b = document.getElementById('custom-confirm-box');
+                document.getElementById('cc-title').textContent = title;
+                document.getElementById('cc-msg').textContent = msg;
+
+                const btnConfirm = document.getElementById('btn-cc-confirm');
+                const btnCancel = document.getElementById('btn-cc-cancel');
+
+                const cleanup = () => {
+                    m.classList.add('opacity-0'); b.classList.add('scale-95');
+                    setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
+                    btnConfirm.removeEventListener('click', handleConfirm);
+                    btnCancel.removeEventListener('click', cleanup);
+                };
+
+                const handleConfirm = () => { cleanup(); if(onConfirm) onConfirm(); };
+                btnConfirm.addEventListener('click', handleConfirm);
+                btnCancel.addEventListener('click', cleanup);
+
+                m.classList.remove('hidden'); m.classList.add('flex');
+                setTimeout(() => { m.classList.remove('opacity-0'); b.classList.remove('scale-95'); }, 10);
+            },
+
+            // Pide un texto simple al usuario mediante el modal de PIN (reutilizado como input genérico)
+            showPrompt: (title, subtitle, placeholder) => {
+                return new Promise((resolve) => {
+                    const m = document.getElementById('modal-pin');
+                    const b = document.getElementById('modal-pin-box');
+                    const in1 = document.getElementById('pin-input-1');
+                    const in2 = document.getElementById('pin-input-2');
+                    document.getElementById('pin-title').textContent = title;
+                    document.getElementById('pin-subtitle').textContent = subtitle;
+                    in1.type = 'text'; in1.classList.remove('pin-input'); in1.value = '';
+                    in1.placeholder = placeholder; in1.maxLength = 60;
+                    in2.classList.add('hidden');
+
+                    const btnOk = document.getElementById('btn-pin-confirm');
+                    const btnCancel = document.getElementById('btn-pin-cancel');
+
+                    const cleanup = (val) => {
+                        m.classList.add('opacity-0'); b.classList.add('scale-95');
+                        setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
+                        btnOk.removeEventListener('click', onOk);
+                        btnCancel.removeEventListener('click', onCancel);
+                        in1.type = 'password'; in1.classList.add('pin-input'); in1.maxLength = 6;
+                        resolve(val);
+                    };
+                    const onOk = () => cleanup(in1.value.trim());
+                    const onCancel = () => cleanup(null);
+                    btnOk.addEventListener('click', onOk);
+                    btnCancel.addEventListener('click', onCancel);
+
+                    m.classList.remove('hidden'); m.classList.add('flex');
+                    setTimeout(() => { m.classList.remove('opacity-0'); b.classList.remove('scale-95'); in1.focus(); }, 10);
+                });
+            },
+
+            switchTab: (targetId) => {
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById(targetId).classList.add('active');
+
+                document.querySelectorAll('.nav-tab').forEach(btn => {
+                    if (btn.dataset.target === targetId) {
+                        btn.classList.add('active', 'text-blue-600');
+                        btn.classList.remove('text-slate-400');
+                        if (btn.classList.contains('bg-slate-700') || btn.classList.contains('bg-transparent')) {
+                            btn.classList.remove('bg-transparent', 'text-slate-400');
+                            btn.classList.add('bg-slate-700', 'text-white');
+                        }
+                    } else {
+                        btn.classList.remove('active', 'text-blue-600', 'bg-slate-700', 'text-white');
+                        btn.classList.add('text-slate-400');
+                        if (btn.parentElement.tagName === 'NAV' && window.innerWidth >= 768) {
+                            btn.classList.add('bg-transparent');
+                        }
+                    }
+                });
+            }
+        };
+
+        setInterval(() => {
+            const n = new Date();
+            document.getElementById('header-date').textContent = n.toLocaleDateString('es-CO', { weekday: 'short', month: 'short', day: 'numeric' }) + " - " + n.toLocaleTimeString('es-CO', { hour12: false, hour: '2-digit', minute:'2-digit' });
+        }, 1000);
+
+        document.getElementById('btn-close-alert').addEventListener('click', UI.closeAlert);
+        document.querySelectorAll('.nav-tab').forEach(b => b.addEventListener('click', (e) => UI.switchTab(e.currentTarget.dataset.target)));
+
+        // ===================================== Conexión / catálogos =====================================
+        function setConnBadge(state) {
+            const el = document.getElementById('conn-badge');
+            if (state === 'ok') {
+                el.className = "text-[10px] font-bold bg-emerald-900/50 text-emerald-400 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 border border-emerald-800";
+                el.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span> En línea';
+            } else if (state === 'error') {
+                el.className = "text-[10px] font-bold bg-rose-900/50 text-rose-400 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 border border-rose-800";
+                el.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span> Sin conexión a Firebase';
+            }
+        }
+
+        const getTodayStr = () => new Date().toLocaleDateString('en-CA');
+
+        async function cargarCatalogos() {
+            try {
+                const ref = doc(db, 'catalogos', 'listas');
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    catalogosCache = { ...CATALOGOS_INICIALES, ...snap.data() };
+                } else {
+                    await setDoc(ref, CATALOGOS_INICIALES);
+                    catalogosCache = { ...CATALOGOS_INICIALES };
+                }
+            } catch (e) {
+                console.error("Error cargando catálogos:", e);
+                catalogosCache = { ...CATALOGOS_INICIALES };
+            }
+            const popDatalist = (id, arr) => {
+                const d = document.getElementById(id);
+                d.innerHTML = ''; (arr || []).forEach(item => d.appendChild(new Option(item, item)));
+            };
+            popDatalist('lista-clientes', catalogosCache.clientes);
+            popDatalist('lista-obras', catalogosCache.obras);
+            popDatalist('lista-supervisores', catalogosCache.supervisores);
+        }
+
+        async function cargarListaEmpleadosDatalist() {
+            const dl = document.getElementById('lista-empleados');
+            dl.innerHTML = '';
+            const snap = await getDocs(collection(db, 'empleados_publico'));
+            snap.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.data().nombre;
+                dl.appendChild(opt);
+            });
+            return snap;
+        }
+
+        async function initApp() {
+            await cargarCatalogos();
+            await cargarListaEmpleadosDatalist();
+
+            let fecha = document.getElementById('manual-fecha');
+            if (fecha) {
+                let ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
+                fecha.value = ayer.toLocaleDateString('en-CA');
+            }
+        }
+
+        onAuthStateChanged(auth, () => { setConnBadge('ok'); });
+        setTimeout(() => { if (document.getElementById('conn-badge').textContent.includes('Conectando')) setConnBadge('ok'); }, 3000);
+
+        window.addEventListener('DOMContentLoaded', initApp);
+
+        // ===================================== Cálculo de nómina / jornada =====================================
+        function timeStrToFloat(t) {
+            if (!t) return 0;
+            const [h, m] = t.split(':');
+            return parseInt(h, 10) + (parseInt(m, 10) / 60);
+        }
+
+        const overlap = (aStart, aEnd, bStart, bEnd) => Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
+
+        function esDominicalOFestivo(fechaStr) {
+            const [y, m, d] = fechaStr.split('-').map(Number);
+            const dow = new Date(y, m - 1, d).getDay(); // 0 = domingo
+            if (dow === 0) return true;
+            return (catalogosCache.festivos || []).includes(fechaStr);
+        }
+
+        // Calcula ordinarias, extra diurna, extra nocturna y recargo nocturno ordinario (35%)
+        // siguiendo el orden cronológico real del turno (entrada -> almuerzo -> salida).
+        function calcularJornadaDiaria(reg) {
+            if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false };
+
+            let hIn = timeStrToFloat(reg.entrada);
+            let hOut = timeStrToFloat(reg.salida);
+            if (hOut < hIn) hOut += 24;
+
+            // Intervalos efectivamente trabajados (se resta el almuerzo si existe, o 1h por defecto si la jornada > 5h)
+            let intervals = [];
+            if (reg.almuerzo_inicio && reg.almuerzo_fin) {
+                let aIn = timeStrToFloat(reg.almuerzo_inicio);
+                let aOut = timeStrToFloat(reg.almuerzo_fin);
+                if (aOut < aIn) aOut += 24;
+                if (aIn < hIn) aIn += 24;
+                if (aOut < hIn) aOut += 24;
+                intervals.push([hIn, Math.min(aIn, hOut)]);
+                if (aOut < hOut) intervals.push([aOut, hOut]);
+            } else if ((hOut - hIn) > 5) {
+                // Sin registro explícito de almuerzo: se asume 1h de descanso a mitad de jornada (comportamiento heredado)
+                let mid = hIn + (hOut - hIn) / 2;
+                intervals.push([hIn, mid - 0.5]);
+                intervals.push([mid + 0.5, hOut]);
+            } else {
+                intervals.push([hIn, hOut]);
+            }
+            intervals = intervals.filter(([s, e]) => e > s);
+
+            let efectivas = intervals.reduce((acc, [s, e]) => acc + (e - s), 0);
+            if (efectivas < 0) efectivas = 0;
+
+            const ord = Math.min(LEY.JORNADA_ORDINARIA_DIARIA, efectivas);
+            const extras = Math.max(0, efectivas - LEY.JORNADA_ORDINARIA_DIARIA);
+
+            // Punto en el tiempo donde terminan las horas ordinarias y empiezan las extra
+            let accum = 0;
+            let ordinaryEndPoint = hOut;
+            for (const [s, e] of intervals) {
+                const len = e - s;
+                if (accum + len >= ord) { ordinaryEndPoint = s + (ord - accum); break; }
+                accum += len;
+            }
+
+            let extD = 0, extN = 0, recNoct = 0;
+            for (const [s, e] of intervals) {
+                const ordPartEnd = Math.min(e, ordinaryEndPoint);
+                if (ordPartEnd > s) {
+                    // Porción ordinaria de este intervalo -> puede generar recargo nocturno ordinario (35%)
+                    recNoct += overlap(s, ordPartEnd, LEY.HORA_INICIO_NOCTURNA, LEY.HORA_FIN_NOCTURNA);
+                }
+                const extraPartStart = Math.max(s, ordinaryEndPoint);
+                if (e > extraPartStart) {
+                    const nocturnaExtra = overlap(extraPartStart, e, LEY.HORA_INICIO_NOCTURNA, LEY.HORA_FIN_NOCTURNA);
+                    extN += nocturnaExtra;
+                    extD += (e - extraPartStart) - nocturnaExtra;
+                }
+            }
+
+            return {
+                ord: Number(ord.toFixed(2)),
+                extD: Number(extD.toFixed(2)),
+                extN: Number(extN.toFixed(2)),
+                recNoct: Number(recNoct.toFixed(2)),
+                dominical: esDominicalOFestivo(reg.fecha)
+            };
+        }
+
+        function calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras) {
+            const valorHora = base / LEY.FACTOR_MENSUAL;
+            let pago = 0;
+            pago += totalExtD * valorHora * (1 + LEY.RECARGO_EXTRA_DIURNA);
+            pago += totalExtN * valorHora * (1 + LEY.RECARGO_EXTRA_NOCTURNA);
+            pago += totalRecNoct * valorHora * LEY.RECARGO_NOCTURNO_ORDINARIO;
+            pago += totalDomHoras * valorHora * LEY.RECARGO_DOMINICAL_FESTIVO;
+            return pago;
+        }
+
+        async function calculateMonthlyAccumulated() {
+            if (!currentUserId) return;
+            const base = currentUserProfile.sueldo_base;
+            const currentMonthPrefix = getTodayStr().substring(0, 7);
+
+            let totalExtD = 0, totalExtN = 0, totalRecNoct = 0, totalDomHoras = 0;
+
+            const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
+            snap.forEach(d => {
+                const reg = d.data();
+                if (reg.fecha && reg.fecha.startsWith(currentMonthPrefix) && reg.estado === 'completado') {
+                    totalExtD += (reg.horas_extras_diurnas || 0);
+                    totalExtN += (reg.horas_extras_nocturnas || 0);
+                    totalRecNoct += (reg.horas_recargo_nocturno || 0);
+                    if (reg.es_dominical_festivo) totalDomHoras += (reg.horas_ordinarias || 0);
+                }
+            });
+
+            const pagoExtras = calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras);
+            const deducciones = base * LEY.DEDUCCIONES;
+            const netoEstimado = (base + pagoExtras) - deducciones;
+
+            document.getElementById('ui-horas-mes').textContent = `${(totalExtD + totalExtN).toFixed(1)}h`;
+            document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
+            document.getElementById('ui-deducciones').textContent = "-" + UI.formatCOP(deducciones) + " (Seg.Social)";
+            document.getElementById('ui-total-neto').textContent = UI.formatCOP(netoEstimado);
+        }
+
+        // ===================================== Login de colaborador (con PIN) =====================================
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            const nomInput = document.getElementById('login-nombre').value.trim().toUpperCase();
+            if (!nomInput) return UI.showAlert("Atención", "Por favor ingresa tu nombre.");
+
+            const btn = document.getElementById('btn-login');
+            btn.disabled = true;
+            try {
+                const snap = await getDocs(collection(db, 'empleados_publico'));
+                let foundDoc = null;
+                snap.forEach(d => { if (d.data().nombre === nomInput) foundDoc = d; });
+
+                if (!foundDoc) {
+                    return UI.showAlert("Usuario No Encontrado", "Selecciona tu nombre de la lista desplegable.", "error");
+                }
+
+                const cedula = foundDoc.id;
+                const esNuevo = !foundDoc.data().authUid;
+
+                const pin = await pedirPin(esNuevo);
+                if (pin === null) return; // cancelado
+
+                const email = cedulaToAuthEmail(cedula);
+                if (esNuevo) {
+                    const cred = await createUserWithEmailAndPassword(auth, email, pin);
+                    await updateDoc(doc(db, 'empleados', cedula), { authUid: cred.user.uid });
+                    await updateDoc(doc(db, 'empleados_publico', cedula), { authUid: cred.user.uid });
+                } else {
+                    await signInWithEmailAndPassword(auth, email, pin);
+                }
+
+                // Ya autenticado, ahora sí podemos leer el perfil completo (privado) del empleado
+                const fullSnap = await getDoc(doc(db, 'empleados', cedula));
+                const perfil = { cedula, ...fullSnap.data() };
+
+                currentUserId = cedula;
+                currentUserProfile = perfil;
+
+                document.getElementById('view-identidad').classList.add('hidden');
+                document.getElementById('view-tarjeta').classList.remove('hidden');
+                document.getElementById('view-tarjeta').classList.add('flex');
+
+                document.getElementById('ui-user-name').textContent = perfil.nombre;
+                document.getElementById('ui-user-cargo').textContent = perfil.cargo;
+                document.getElementById('input-sueldo').value = perfil.sueldo_base || '';
+
+                document.querySelectorAll('.money-val').forEach(el => el.classList.add('blur-text'));
+                document.querySelector('#btn-toggle-eye i').className = "ph-bold ph-eye-closed text-lg";
+
+                await checkTodayState();
+                await calculateMonthlyAccumulated();
+
+            } catch (e) {
+                console.error(e);
+                if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') {
+                    UI.showAlert("PIN Incorrecto", "El PIN ingresado no coincide con tu registro.", "error");
+                } else if (e.code === 'auth/email-already-in-use') {
+                    UI.showAlert("Error", "Ya existe un PIN registrado para este usuario. Si lo olvidaste, pide a un administrador que lo restablezca.", "error");
+                } else {
+                    UI.showAlert("Error de Conexión", "No se pudo validar tu identidad. Verifica tu conexión a internet.", "error");
+                }
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        function pedirPin(esNuevo) {
+            return new Promise((resolve) => {
+                const m = document.getElementById('modal-pin');
+                const b = document.getElementById('modal-pin-box');
+                const in1 = document.getElementById('pin-input-1');
+                const in2 = document.getElementById('pin-input-2');
+                in1.type = 'password'; in1.classList.add('pin-input'); in1.maxLength = 6;
+                in1.value = ''; in2.value = '';
+                document.getElementById('pin-title').textContent = esNuevo ? "Crea tu PIN" : "Ingresa tu PIN";
+                document.getElementById('pin-subtitle').textContent = esNuevo
+                    ? "Es tu primer ingreso. Elige un PIN de 6 dígitos que usarás cada vez."
+                    : "Ingresa el PIN de 6 dígitos que creaste la primera vez.";
+                in1.placeholder = "••••••";
+                if (esNuevo) { in2.classList.remove('hidden'); in2.placeholder = "Confirma tu PIN"; }
+                else { in2.classList.add('hidden'); }
+
+                const btnOk = document.getElementById('btn-pin-confirm');
+                const btnCancel = document.getElementById('btn-pin-cancel');
+
+                const cleanup = (val) => {
+                    m.classList.add('opacity-0'); b.classList.add('scale-95');
+                    setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
+                    btnOk.removeEventListener('click', onOk);
+                    btnCancel.removeEventListener('click', onCancel);
+                    resolve(val);
+                };
+                const onOk = () => {
+                    const p1 = in1.value.trim();
+                    if (!/^\d{6}$/.test(p1)) return UI.showAlert("PIN inválido", "El PIN debe tener exactamente 6 dígitos numéricos.", "error");
+                    if (esNuevo) {
+                        const p2 = in2.value.trim();
+                        if (p1 !== p2) return UI.showAlert("No coincide", "Los dos PIN ingresados no son iguales.", "error");
+                    }
+                    cleanup(p1);
+                };
+                const onCancel = () => cleanup(null);
+                btnOk.addEventListener('click', onOk);
+                btnCancel.addEventListener('click', onCancel);
+
+                m.classList.remove('hidden'); m.classList.add('flex');
+                setTimeout(() => { m.classList.remove('opacity-0'); b.classList.remove('scale-95'); in1.focus(); }, 10);
+            });
+        }
+
+        document.getElementById('btn-logout').addEventListener('click', async () => {
+            await signOut(auth).catch(() => {});
+            document.getElementById('view-identidad').classList.remove('hidden');
+            document.getElementById('view-tarjeta').classList.add('hidden');
+            document.getElementById('view-tarjeta').classList.remove('flex');
+            document.getElementById('login-nombre').value = '';
+            currentUserId = null; currentUserProfile = null;
+        });
+
+        document.getElementById('btn-toggle-eye').addEventListener('click', () => {
+            document.querySelectorAll('.money-val').forEach(el => el.classList.toggle('blur-text'));
+            const i = document.querySelector('#btn-toggle-eye i');
+            i.className = i.classList.contains('ph-eye-closed') ? "ph-bold ph-eye text-lg" : "ph-bold ph-eye-closed text-lg";
+        });
+
+        document.getElementById('btn-save-sueldo').addEventListener('click', async () => {
+            const val = Number(document.getElementById('input-sueldo').value);
+            if (val < 1000000) return UI.showAlert("Error", "Ingresa un salario válido.", "error");
+
+            currentUserProfile.sueldo_base = val;
+            await updateDoc(doc(db, 'empleados', currentUserId), { sueldo_base: val });
+
+            await calculateMonthlyAccumulated();
+            UI.showAlert("Guardado", "Tu salario base ha sido actualizado.", "success");
+        });
+
+        // ===================================== Registro diario (entrada/almuerzo/salida) =====================================
+        async function checkTodayState() {
+            const t = getTodayStr();
+            const snap = await getDoc(doc(db, 'empleados', currentUserId, 'registros', t));
+            const data = snap.exists() ? snap.data() : null;
+
+            if (!data) return setPunchUI('entrada');
+            if (data.estado === 'completado') return setPunchUI('completado', data);
+            if (data.almuerzo_inicio && !data.almuerzo_fin) return setPunchUI('almuerzo', data);
+            return setPunchUI('turno', data);
+        }
+
+        const validarSelectores = () => {
+            const hasCliente = document.getElementById('sel-cliente').value.trim() !== "";
+            const hasObra = document.getElementById('sel-obra').value.trim() !== "";
+            const hasAuth = document.getElementById('sel-autoriza').value.trim() !== "";
+            document.getElementById('btn-punch-in').disabled = !(hasCliente && hasObra && hasAuth);
+        };
+        document.getElementById('sel-cliente').addEventListener('input', validarSelectores);
+        document.getElementById('sel-obra').addEventListener('input', validarSelectores);
+        document.getElementById('sel-autoriza').addEventListener('input', validarSelectores);
+
+        function getSafeGPS() {
+            return new Promise((resolve) => {
+                if (window.location.protocol === 'file:') {
+                    UI.showAlert("Aviso", "El GPS está bloqueado porque abriste el archivo desde tu PC local (ruta file:///). La hora se registrará sin ubicación.", "info");
+                    return resolve(null);
+                }
+                if (!navigator.geolocation) return resolve(null);
+
+                let isResolved = false;
+                const timer = setTimeout(() => { if (!isResolved) { isResolved = true; resolve(null); } }, 4000);
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { if (!isResolved) { isResolved = true; clearTimeout(timer); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); } },
+                    () => { if (!isResolved) { isResolved = true; clearTimeout(timer); resolve(null); } },
+                    { enableHighAccuracy: false, timeout: 3500 }
+                );
+            });
+        }
+
+        async function registrarEvento(action) {
+            const btn = document.activeElement;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Procesando...';
+            btn.disabled = true;
+
+            try {
+                const tStr = getTodayStr();
+                const tTime = new Date().toLocaleTimeString('es-CO', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                const ref = doc(db, 'empleados', currentUserId, 'registros', tStr);
+                const snap = await getDoc(ref);
+
+                let data = snap.exists() ? snap.data() : {
+                    fecha: tStr, empleado_nombre: currentUserProfile.nombre, cedula: currentUserId,
+                    cliente: document.getElementById('sel-cliente').value.trim(),
+                    obra: document.getElementById('sel-obra').value.trim(),
+                    autoriza: document.getElementById('sel-autoriza').value.trim()
+                };
+
+                let loc = null;
+                if (action === 'in' || action === 'out') { loc = await getSafeGPS(); }
+
+                if (action === 'in') { data.entrada = tTime; data.loc_entrada = loc; data.estado = 'activo'; }
+                else if (action === 'lunch_in') { data.almuerzo_inicio = tTime; }
+                else if (action === 'lunch_out') { data.almuerzo_fin = tTime; }
+                else if (action === 'out') {
+                    data.salida = tTime; data.loc_salida = loc; data.estado = 'completado';
+                    const calc = calcularJornadaDiaria(data);
+                    data.horas_ordinarias = calc.ord;
+                    data.horas_extras_diurnas = calc.extD;
+                    data.horas_extras_nocturnas = calc.extN;
+                    data.horas_recargo_nocturno = calc.recNoct;
+                    data.es_dominical_festivo = calc.dominical;
+                }
+
+                await setDoc(ref, data);
+
+                btn.innerHTML = originalHTML; btn.disabled = false;
+                await checkTodayState();
+                await calculateMonthlyAccumulated();
+
+                if (action === 'out') {
+                    UI.showAlert("Jornada Finalizada", "Tus horas de hoy han sido guardadas. Cerrando sesión...", "success");
+                    setTimeout(() => document.getElementById('btn-logout').click(), 3000);
+                }
+            } catch (e) {
+                console.error(e);
+                btn.innerHTML = originalHTML; btn.disabled = false;
+                UI.showAlert("Error", "No se pudo guardar el registro. Verifica tu conexión a internet e intenta de nuevo.", "error");
+            }
+        }
+
+        document.getElementById('btn-punch-in').addEventListener('click', () => registrarEvento('in'));
+        document.getElementById('btn-punch-lunch-in').addEventListener('click', () => registrarEvento('lunch_in'));
+        document.getElementById('btn-punch-lunch-out').addEventListener('click', () => registrarEvento('lunch_out'));
+        document.getElementById('btn-punch-out').addEventListener('click', () => registrarEvento('out'));
+
+        function setPunchUI(state, data = null) {
+            const s1 = document.getElementById('state-1-entrada');
+            const s2 = document.getElementById('state-2-turno');
+            const s3 = document.getElementById('state-3-almuerzo');
+            const s4 = document.getElementById('state-4-completado');
+            const selects = document.getElementById('panel-selectores');
+            const sc = document.getElementById('sel-cliente');
+            const so = document.getElementById('sel-obra');
+            const sa = document.getElementById('sel-autoriza');
+
+            [s1, s2, s3, s4].forEach(e => e.classList.add('hidden'));
+
+            if (data) {
+                if (data.cliente) sc.value = data.cliente;
+                if (data.obra) so.value = data.obra;
+                if (data.autoriza) sa.value = data.autoriza;
+            } else {
+                sc.value = ''; so.value = ''; sa.value = '';
+            }
+
+            if (state === 'entrada') {
+                s1.classList.remove('hidden'); selects.classList.remove('hidden');
+                sc.disabled = false; so.disabled = false; sa.disabled = false;
+                validarSelectores();
+            } else if (state === 'turno') {
+                s2.classList.remove('hidden'); selects.classList.remove('hidden');
+                sc.disabled = true; so.disabled = true; sa.disabled = true;
+                document.getElementById('display-hora-entrada').textContent = data.entrada;
+            } else if (state === 'almuerzo') {
+                s3.classList.remove('hidden'); selects.classList.add('hidden');
+                document.getElementById('display-hora-almuerzo').textContent = data.almuerzo_inicio;
+            } else if (state === 'completado') {
+                s4.classList.remove('hidden'); selects.classList.add('hidden');
+                document.getElementById('ui-res-ord').textContent = (data.horas_ordinarias || 0) + "h";
+                document.getElementById('ui-res-diurnas').textContent = (data.horas_extras_diurnas || 0) + "h";
+                document.getElementById('ui-res-nocturnas').textContent = (data.horas_extras_nocturnas || 0) + "h";
+                document.getElementById('ui-res-recnoct').textContent = (data.horas_recargo_nocturno || 0) + "h";
+                document.getElementById('ui-res-dominical').classList.toggle('hidden', !data.es_dominical_festivo);
+            }
+        }
+
+        // ===================================== Panel de administración =====================================
+        document.getElementById('btn-admin-login').addEventListener('click', async () => {
+            const email = document.getElementById('admin-email').value.trim();
+            const pass = document.getElementById('admin-pass').value;
+            if (!email || !pass) return UI.showAlert("Datos incompletos", "Ingresa correo y contraseña.", "error");
+
+            const btn = document.getElementById('btn-admin-login');
+            btn.disabled = true;
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, pass);
+                const adminSnap = await getDoc(doc(db, 'admins', cred.user.uid));
+                if (!adminSnap.exists()) {
+                    await signOut(auth);
+                    return UI.showAlert("Acceso Denegado", "Esta cuenta no tiene permisos de administrador SSTA.", "error");
+                }
+                document.getElementById('admin-login-view').classList.add('hidden');
+                document.getElementById('admin-panel-view').classList.remove('hidden');
+                document.getElementById('admin-panel-view').classList.add('flex');
+                document.getElementById('admin-pass').value = '';
+                await initAdminManualEntry();
+                startAdminTableListener();
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Acceso Denegado", "Correo o contraseña incorrectos.", "error");
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('btn-admin-logout').addEventListener('click', async () => {
+            if (unsubAdminTable) { unsubAdminTable(); unsubAdminTable = null; }
+            await signOut(auth).catch(() => {});
+            document.getElementById('admin-panel-view').classList.add('hidden');
+            document.getElementById('admin-panel-view').classList.remove('flex');
+            document.getElementById('admin-login-view').classList.remove('hidden');
+        });
+
+        document.getElementById('btn-import-empleados').addEventListener('click', () => {
+            UI.showConfirm(
+                "Importar plantilla inicial",
+                `Esto creará ${LISTA_EMPLEADOS_INICIAL.length} empleados en la base de datos, solo si no existen todavía (no duplica ni sobrescribe). ¿Continuar?`,
+                async () => {
+                    try {
+                        const batch = writeBatch(db);
+                        let nuevos = 0;
+                        let reparados = 0;
+                        for (const emp of LISTA_EMPLEADOS_INICIAL) {
+                            const ref = doc(db, 'empleados', emp.cedula);
+                            const pubRef = doc(db, 'empleados_publico', emp.cedula);
+                            const [existing, existingPub] = await Promise.all([getDoc(ref), getDoc(pubRef)]);
+
+                            if (!existing.exists()) {
+                                batch.set(ref, { nombre: emp.nombre, cargo: emp.cargo, sueldo_base: 1300000, authUid: null });
+                                nuevos++;
+                            }
+                            if (!existingPub.exists()) {
+                                const authUidActual = existing.exists() ? (existing.data().authUid || null) : null;
+                                batch.set(pubRef, { nombre: emp.nombre, authUid: authUidActual });
+                                reparados++;
+                            }
+                        }
+                        if (nuevos > 0 || reparados > 0) await batch.commit();
+                        await cargarListaEmpleadosDatalist();
+                        await initAdminManualEntry();
+                        UI.showAlert("Listo", `${nuevos} empleados nuevos. ${reparados} registros públicos reparados/creados. Ya puedes buscar tu nombre en "Mi Tarjeta".`, "success");
+                    } catch (e) {
+                        console.error(e);
+                        UI.showAlert("Error", "No se pudo importar la plantilla. Revisa las reglas de Firestore.", "error");
+                    }
+                }
+            );
+        });
+
+        async function agregarACatalogo(campo, etiqueta) {
+            const valor = await UI.showPrompt(`Agregar ${etiqueta}`, `Escribe el nuevo valor para la lista de ${etiqueta.toLowerCase()}s.`, `Ej: Nuevo ${etiqueta}`);
+            if (!valor) return;
+            try {
+                await updateDoc(doc(db, 'catalogos', 'listas'), { [campo]: arrayUnion(valor.trim().toUpperCase()) });
+                await cargarCatalogos();
+                UI.showAlert("Guardado", `"${valor}" fue agregado a ${etiqueta.toLowerCase()}s.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar el nuevo valor.", "error");
+            }
+        }
+        document.getElementById('btn-add-cliente').addEventListener('click', () => agregarACatalogo('clientes', 'Cliente'));
+        document.getElementById('btn-add-obra').addEventListener('click', () => agregarACatalogo('obras', 'Obra'));
+        document.getElementById('btn-add-supervisor').addEventListener('click', () => agregarACatalogo('supervisores', 'Supervisor'));
+        document.getElementById('btn-add-festivo').addEventListener('click', async () => {
+            const valor = await UI.showPrompt("Agregar Festivo", "Formato AAAA-MM-DD, ej: 2026-12-25", "2026-12-25");
+            if (!valor) return;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(valor.trim())) return UI.showAlert("Formato inválido", "Usa el formato AAAA-MM-DD.", "error");
+            try {
+                await updateDoc(doc(db, 'catalogos', 'listas'), { festivos: arrayUnion(valor.trim()) });
+                await cargarCatalogos();
+                UI.showAlert("Guardado", `Festivo ${valor} agregado. Afectará el cálculo del recargo dominical/festivo.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar el festivo.", "error");
+            }
+        });
+
+        async function initAdminManualEntry() {
+            const selEmp = document.getElementById('manual-empleado');
+            selEmp.innerHTML = '<option value="">Seleccione...</option>';
+            const snap = await getDocs(collection(db, 'empleados'));
+            const users = [];
+            snap.forEach(d => users.push({ cedula: d.id, ...d.data() }));
+            users.sort((a, b) => a.nombre.localeCompare(b.nombre));
+            users.forEach(u => selEmp.appendChild(new Option(u.nombre, u.cedula)));
+
+            document.getElementById('manual-cliente').value = '';
+            document.getElementById('manual-obra').value = '';
+            document.getElementById('manual-autoriza').value = '';
+        }
+
+        document.getElementById('btn-save-manual').addEventListener('click', async () => {
+            const fecha = document.getElementById('manual-fecha').value;
+            const cedula = document.getElementById('manual-empleado').value;
+            const cliente = document.getElementById('manual-cliente').value.trim();
+            const obra = document.getElementById('manual-obra').value.trim();
+            const autoriza = document.getElementById('manual-autoriza').value.trim();
+            const entrada = document.getElementById('manual-entrada').value;
+            const salida = document.getElementById('manual-salida').value;
+
+            if (!fecha || !cedula || !cliente || !obra || !autoriza || !entrada || !salida) {
+                return UI.showAlert("Datos Incompletos", "Por favor completa todos los campos, incluyendo Cliente y Obra.", "error");
+            }
+
+            try {
+                const empSnap = await getDoc(doc(db, 'empleados', cedula));
+                const nombre = empSnap.data().nombre;
+                let data = { fecha, empleado_nombre: nombre, cedula, cliente, obra, autoriza, entrada, salida, estado: 'completado', loc_entrada: null, loc_salida: null };
+
+                const calc = calcularJornadaDiaria(data);
+                data.horas_ordinarias = calc.ord;
+                data.horas_extras_diurnas = calc.extD;
+                data.horas_extras_nocturnas = calc.extN;
+                data.horas_recargo_nocturno = calc.recNoct;
+                data.es_dominical_festivo = calc.dominical;
+
+                await setDoc(doc(db, 'empleados', cedula, 'registros', fecha), data);
+                UI.showAlert("Guardado", `Registro manual agregado para el día ${fecha}.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar el registro manual.", "error");
+            }
+        });
+
+        function startAdminTableListener() {
+            if (unsubAdminTable) unsubAdminTable();
+            const q = query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(500));
+            unsubAdminTable = onSnapshot(q, (snapshot) => {
+                const regs = [];
+                snapshot.forEach(d => regs.push({ id: d.id, ref: d.ref, ...d.data() }));
+                renderAdminTable(regs);
+            }, (error) => {
+                console.error("Error escuchando registros:", error);
+                document.getElementById('admin-table-body').innerHTML =
+                    '<tr><td colspan="6" class="text-center py-10 text-rose-400 font-medium">Error de permisos o conexión. Revisa las reglas de Firestore.</td></tr>';
+            });
+        }
+
+        function renderAdminTable(regs) {
+            const tbody = document.getElementById('admin-table-body');
+            tbody.innerHTML = '';
+
+            if (!regs || regs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-slate-400 font-medium">No hay registros de tiempo en el sistema.</td></tr>';
+                return;
+            }
+
+            regs.forEach(r => {
+                const mapBtn = (loc) => loc ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>` : `<span class="text-slate-300">-</span>`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-4 border-b border-slate-100">
+                        <div class="font-mono font-bold text-slate-700">${escHtml(r.fecha)} ${r.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
+                        <div class="text-[10px] flex gap-2 mt-1 items-center">
+                            IN: ${mapBtn(r.loc_entrada)} <span class="text-slate-200">|</span> OUT: ${mapBtn(r.loc_salida)}
+                        </div>
+                    </td>
+                    <td class="p-4 border-b border-slate-100">
+                        <div class="font-bold text-slate-800 text-xs">${escHtml(r.empleado_nombre)}</div>
+                        <div class="text-[10px] text-slate-400 font-mono mt-0.5">CC: ${escHtml(r.cedula)}</div>
+                    </td>
+                    <td class="p-4 border-b border-slate-100">
+                        <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold mb-1 inline-block"><i class="ph-bold ph-buildings"></i> ${escHtml(r.cliente || 'INDIMON')}</span><br>
+                        <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md font-bold text-xs inline-block mb-1">${escHtml(r.obra || '-')}</span><br>
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase">Auth: <span class="text-slate-800 font-bold">${escHtml(r.autoriza || '-')}</span></span>
+                    </td>
+                    <td class="p-4 border-b border-slate-100 text-center font-mono text-xs">
+                        <span class="text-emerald-600 font-bold">${escHtml(r.entrada || '--:--')}</span>
+                        <span class="text-slate-300 mx-1">a</span>
+                        <span class="text-rose-600 font-bold">${escHtml(r.salida || '--:--')}</span>
+                        ${r.almuerzo_inicio ? `<div class="text-[9px] text-amber-600 mt-1 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)} - ${escHtml(r.almuerzo_fin || '...')}</div>` : ''}
+                    </td>
+                    <td class="p-4 border-b border-slate-100 text-center">
+                        ${r.estado === 'completado' ?
+                            `<div class="text-xs font-bold text-slate-700 mb-0.5">${r.horas_ordinarias || 0}h Ord.</div>
+                             <div class="text-[10px] flex justify-center gap-1 flex-wrap">
+                                <span class="bg-amber-50 text-amber-700 px-1.5 rounded">+${r.horas_extras_diurnas || 0} ED</span>
+                                <span class="bg-indigo-50 text-indigo-700 px-1.5 rounded">+${r.horas_extras_nocturnas || 0} EN</span>
+                                <span class="bg-violet-50 text-violet-700 px-1.5 rounded">+${r.horas_recargo_nocturno || 0} RN</span>
+                             </div>` : `<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider animate-pulse">En Turno</span>`
+                        }
+                    </td>
+                    <td class="p-4 border-b border-slate-100 text-center">
+                        <button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-borrar-registro w-8 h-8 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors flex items-center justify-center mx-auto shadow-sm" title="Eliminar Registro">
+                            <i class="ph-bold ph-trash text-lg"></i>
+                        </button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+
+            tbody.querySelectorAll('.btn-borrar-registro').forEach(btn => {
+                btn.addEventListener('click', () => borrarRegistro(btn.dataset.cedula, btn.dataset.fecha));
+            });
+        }
+
+        function escHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+        }
+
+        function borrarRegistro(cedula, fecha) {
+            UI.showConfirm("Eliminar Registro", `¿Estás seguro que deseas eliminar permanentemente el registro del ${fecha}? Esta acción no se puede deshacer.`, async () => {
+                try {
+                    await deleteDoc(doc(db, 'empleados', cedula, 'registros', fecha));
+                    if (currentUserId === cedula) { await calculateMonthlyAccumulated(); await checkTodayState(); }
+                    UI.showAlert("Eliminado", `El registro del ${fecha} ha sido eliminado.`, "success");
+                } catch (e) {
+                    console.error(e);
+                    UI.showAlert("Error", "No se pudo eliminar el registro.", "error");
+                }
+            });
+        }
+
+        // ===================================== Exportar a Excel (CSV) =====================================
+        function sanitizeCsvField(v) {
+            let s = (v === null || v === undefined) ? '' : String(v);
+            // Previene CSV/Formula Injection: si el campo empieza con caracteres que Excel
+            // podría interpretar como fórmula, se antepone un apóstrofe neutralizante.
+            if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+            s = s.replace(/"/g, '""'); // escapa comillas internas correctamente
+            return `"${s}"`;
+        }
+
+        document.getElementById('btn-export-excel').addEventListener('click', async () => {
+            try {
+                const snap = await getDocs(query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(2000)));
+                if (snap.empty) return UI.showAlert("Aviso", "No hay registros para exportar.", "info");
+
+                let rows = [];
+                snap.forEach(d => rows.push(d.data()));
+                rows.sort((a, b) => {
+                    if (a.empleado_nombre === b.empleado_nombre) return a.fecha.localeCompare(b.fecha);
+                    return (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '');
+                });
+
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+                csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO\n";
+
+                rows.forEach(r => {
+                    const row = [
+                        r.cedula, r.empleado_nombre, r.fecha, r.es_dominical_festivo ? 'SI' : 'NO',
+                        r.cliente || '', r.obra || '', r.autoriza || '',
+                        r.entrada || '', r.almuerzo_inicio || '', r.almuerzo_fin || '', r.salida || '',
+                        r.horas_ordinarias || 0, r.horas_extras_diurnas || 0, r.horas_extras_nocturnas || 0, r.horas_recargo_nocturno || 0
+                    ].map(sanitizeCsvField).join(";");
+                    csvContent += row + "\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `Tiempos_INDIMON_${getTodayStr()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo generar el archivo de exportación.", "error");
+            }
+        });
+
+        // ===================================== Borrado total (muy protegido) =====================================
+        document.getElementById('btn-reset-db').addEventListener('click', async () => {
+            const texto = await UI.showPrompt(
+                "Zona de peligro",
+                'Esto BORRARÁ TODOS los registros de tiempo de TODOS los empleados, en la nube, para siempre. Se descargará un respaldo CSV automáticamente antes de borrar. Escribe BORRAR para confirmar.',
+                'Escribe BORRAR'
+            );
+            if (texto !== 'BORRAR') {
+                if (texto !== null) UI.showAlert("Cancelado", "El texto no coincide. No se borró nada.", "info");
+                return;
+            }
+            try {
+                document.getElementById('btn-export-excel').click();
+                await new Promise(r => setTimeout(r, 1500));
+
+                const snap = await getDocs(collectionGroup(db, 'registros'));
+                const batchSize = 400;
+                let docs = snap.docs;
+                for (let i = 0; i < docs.length; i += batchSize) {
+                    const batch = writeBatch(db);
+                    docs.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
+                    await batch.commit();
+                }
+                UI.showAlert("Sistema Reiniciado", `Se eliminaron ${docs.length} registros de tiempo. Los perfiles de empleados NO se borraron.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo completar el borrado. Revisa las reglas de Firestore.", "error");
+            }
+        });
+
+        window.borrarRegistro = borrarRegistro;
+    </script>
+</body>
+</html>
