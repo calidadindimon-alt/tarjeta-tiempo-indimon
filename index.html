@@ -267,6 +267,12 @@
                         <button id="btn-add-obra" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Obra</button>
                         <button id="btn-add-supervisor" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Supervisor</button>
                         <button id="btn-add-festivo" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Festivo (AAAA-MM-DD)</button>
+                        <button id="btn-add-horario-obra" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Horario por Obra</button>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo para alertas de tardanza</label>
+                        <input type="email" id="input-email-alertas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="admin@indimon.com">
+                        <button id="btn-save-email-alertas" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
                 </div>
 
@@ -391,8 +397,23 @@
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
         import {
             getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup,
-            getDocs, query, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion
+            getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/+esm";
+
+        // =====================================================================================
+        //  CONFIGURACIÓN DE EMAILJS (alertas de tardanza por correo, sin backend)
+        //  1. Crea una cuenta gratis en https://www.emailjs.com
+        //  2. "Email Services" -> Add New Service -> conecta el Gmail/correo de la empresa.
+        //  3. "Email Templates" -> Create New Template. Usa estas variables en el cuerpo:
+        //     {{empleado}}, {{obra}}, {{fecha}}, {{hora_entrada}}, {{hora_esperada}}, {{minutos_tarde}}
+        //  4. "Account" -> copia tu Public Key. Pega los 3 valores abajo.
+        //  Si dejas EMAILJS_PUBLIC_KEY vacío, las alertas simplemente no se envían (no rompe la app).
+        // =====================================================================================
+        const EMAILJS_PUBLIC_KEY = "";   // Ej: "AbCdEfGhIjKlMnOp"
+        const EMAILJS_SERVICE_ID = "";   // Ej: "service_xxxxxxx"
+        const EMAILJS_TEMPLATE_ID = "";  // Ej: "template_xxxxxxx"
+        if (EMAILJS_PUBLIC_KEY) emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 
         // =====================================================================================
         //  CONFIGURACIÓN DE FIREBASE
@@ -472,7 +493,9 @@
             clientes: ["INDIMON S.A.S.", "EXTERNO"],
             obras: ["MYKW", "BODEGA", "POSTOBON"],
             supervisores: ["JLAF", "S. BOHORQUEZ", "A. PINZON", "C. RIOS"],
-            festivos: []
+            festivos: [],
+            horarios_obra: { "BOGOTA": "07:30" }, // hora de entrada esperada por obra, para alertas de tardanza
+            email_alertas: ""                      // correo del administrador que recibe alertas de tardanza
         };
 
         // ------------------------------- Normativa laboral (Colombia, vigente 2026) -------------------------------
@@ -486,6 +509,7 @@
             HORA_INICIO_NOCTURNA: 19.0,   // 7:00 p.m.
             HORA_FIN_NOCTURNA: 30.0,      // 6:00 a.m. del día siguiente, en escala continua
             JORNADA_ORDINARIA_DIARIA: 8,
+            JORNADA_ORDINARIA_SEMANAL: 42, // tope semanal de horas ordinarias (jornada NO flexible)
             RECARGO_NOCTURNO_ORDINARIO: 0.35,
             RECARGO_EXTRA_DIURNA: 0.25,
             RECARGO_EXTRA_NOCTURNA: 0.75,
@@ -695,9 +719,77 @@
             return (catalogosCache.festivos || []).includes(fechaStr);
         }
 
-        // Calcula ordinarias, extra diurna, extra nocturna y recargo nocturno ordinario (35%)
+        // Devuelve [lunesStr, domingoStr] de la semana ISO (lunes a domingo) que contiene fechaStr.
+        function getRangoSemana(fechaStr) {
+            const [y, m, d] = fechaStr.split('-').map(Number);
+            const fecha = new Date(y, m - 1, d);
+            const dow = fecha.getDay(); // 0=domingo,1=lunes,...
+            const offsetLunes = (dow === 0) ? -6 : 1 - dow;
+            const lunes = new Date(fecha); lunes.setDate(fecha.getDate() + offsetLunes);
+            const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+            return [lunes.toLocaleDateString('en-CA'), domingo.toLocaleDateString('en-CA')];
+        }
+
+        // Suma las horas ordinarias ya guardadas esta semana (lunes-domingo) para un empleado,
+        // sin contar el día que se está calculando ahora mismo (para no duplicarlo).
+        async function getOrdinariasAcumuladasSemana(cedula, fechaActual) {
+            const [lunes, domingo] = getRangoSemana(fechaActual);
+            try {
+                const snap = await getDocs(query(
+                    collection(db, 'empleados', cedula, 'registros'),
+                    where(documentId(), '>=', lunes),
+                    where(documentId(), '<=', domingo)
+                ));
+                let total = 0;
+                snap.forEach(d => {
+                    if (d.id !== fechaActual && d.data().estado === 'completado') {
+                        total += (d.data().horas_ordinarias || 0);
+                    }
+                });
+                return total;
+            } catch (e) {
+                console.error("Error calculando acumulado semanal:", e);
+                return 0; // si falla la consulta, no bloqueamos el registro; se aplica solo el tope diario
+            }
+        }
+
+        // Compara la hora de entrada real contra la hora esperada configurada para esa obra
+        // (catálogo "horarios_obra"). Devuelve null si esa obra no tiene horario configurado,
+        // o { tarde: bool, minutos: number, horaEsperada: 'HH:MM' } si sí lo tiene.
+        function evaluarTardanza(obra, horaEntradaStr) {
+            const horaEsperada = (catalogosCache.horarios_obra || {})[obra];
+            if (!horaEsperada) return null;
+            const minEntrada = timeStrToFloat(horaEntradaStr) * 60;
+            const minEsperado = timeStrToFloat(horaEsperada) * 60;
+            const minutosTarde = Math.round(minEntrada - minEsperado);
+            return { tarde: minutosTarde > 15, minutos: minutosTarde, horaEsperada };
+        }
+
+        // Envía la alerta de tardanza por correo al administrador (vía EmailJS, sin backend).
+        // Si EmailJS no está configurado, o falla el envío, no interrumpe el registro del empleado.
+        async function enviarAlertaTardanza({ empleado, obra, fecha, horaEntrada, horaEsperada, minutos }) {
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) return;
+            const destino = catalogosCache.email_alertas;
+            if (!destino) return;
+            try {
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                    to_email: destino,
+                    empleado, obra, fecha,
+                    hora_entrada: horaEntrada,
+                    hora_esperada: horaEsperada,
+                    minutos_tarde: minutos
+                });
+            } catch (e) {
+                console.error("No se pudo enviar la alerta de tardanza por correo:", e);
+            }
+        }
+
+
         // siguiendo el orden cronológico real del turno (entrada -> almuerzo -> salida).
-        function calcularJornadaDiaria(reg) {
+        // "topeOrdinarioDia" es el máximo de horas ordinarias que puede tener ESTE día,
+        // ya ajustado por cuántas horas ordinarias lleva acumuladas el empleado esta semana
+        // (el límite legal es 42h ordinarias/semana, no solo 8h/día).
+        function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
             if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false };
 
             let hIn = timeStrToFloat(reg.entrada);
@@ -727,8 +819,9 @@
             let efectivas = intervals.reduce((acc, [s, e]) => acc + (e - s), 0);
             if (efectivas < 0) efectivas = 0;
 
-            const ord = Math.min(LEY.JORNADA_ORDINARIA_DIARIA, efectivas);
-            const extras = Math.max(0, efectivas - LEY.JORNADA_ORDINARIA_DIARIA);
+            const topeDia = Math.max(0, Math.min(LEY.JORNADA_ORDINARIA_DIARIA, topeOrdinarioDia));
+            const ord = Math.min(topeDia, efectivas);
+            const extras = Math.max(0, efectivas - topeDia);
 
             // Punto en el tiempo donde terminan las horas ordinarias y empiezan las extra
             let accum = 0;
@@ -967,13 +1060,31 @@
                 }
                 if (!navigator.geolocation) return resolve(null);
 
+                // Primer intento: alta precisión (GPS del teléfono), hasta 9 segundos.
+                // Si falla o no hay señal GPS clara, se reintenta con precisión de red (más rápida).
                 let isResolved = false;
-                const timer = setTimeout(() => { if (!isResolved) { isResolved = true; resolve(null); } }, 4000);
+                const attemptLowAccuracy = () => {
+                    if (isResolved) return;
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => { if (!isResolved) { isResolved = true; resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); } },
+                        () => { if (!isResolved) { isResolved = true; resolve(null); } },
+                        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+                    );
+                };
+
+                const timerAlta = setTimeout(() => { if (!isResolved) attemptLowAccuracy(); }, 9000);
 
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => { if (!isResolved) { isResolved = true; clearTimeout(timer); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); } },
-                    () => { if (!isResolved) { isResolved = true; clearTimeout(timer); resolve(null); } },
-                    { enableHighAccuracy: false, timeout: 3500 }
+                    (pos) => { if (!isResolved) { isResolved = true; clearTimeout(timerAlta); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); } },
+                    (err) => {
+                        clearTimeout(timerAlta);
+                        if (err.code === 1) { // PERMISSION_DENIED
+                            if (!isResolved) { isResolved = true; resolve(null); }
+                        } else if (!isResolved) {
+                            attemptLowAccuracy();
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 9000 }
                 );
             });
         }
@@ -998,14 +1109,33 @@
                 };
 
                 let loc = null;
-                if (action === 'in' || action === 'out') { loc = await getSafeGPS(); }
+                if (action === 'in' || action === 'out') {
+                    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Obteniendo ubicación...';
+                    loc = await getSafeGPS();
+                    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Guardando...';
+                }
 
-                if (action === 'in') { data.entrada = tTime; data.loc_entrada = loc; data.estado = 'activo'; }
+                if (action === 'in') {
+                    data.entrada = tTime; data.loc_entrada = loc; data.estado = 'activo';
+                    const evalTardanza = evaluarTardanza(data.obra, tTime);
+                    if (evalTardanza) {
+                        data.llegada_tarde = evalTardanza.tarde;
+                        data.minutos_tarde = evalTardanza.tarde ? evalTardanza.minutos : 0;
+                        if (evalTardanza.tarde) {
+                            enviarAlertaTardanza({
+                                empleado: currentUserProfile.nombre, obra: data.obra, fecha: tStr,
+                                horaEntrada: tTime, horaEsperada: evalTardanza.horaEsperada, minutos: evalTardanza.minutos
+                            });
+                        }
+                    }
+                }
                 else if (action === 'lunch_in') { data.almuerzo_inicio = tTime; }
                 else if (action === 'lunch_out') { data.almuerzo_fin = tTime; }
                 else if (action === 'out') {
                     data.salida = tTime; data.loc_salida = loc; data.estado = 'completado';
-                    const calc = calcularJornadaDiaria(data);
+                    const acumuladaSemana = await getOrdinariasAcumuladasSemana(currentUserId, tStr);
+                    const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
+                    const calc = calcularJornadaDiaria(data, topeDia);
                     data.horas_ordinarias = calc.ord;
                     data.horas_extras_diurnas = calc.extD;
                     data.horas_extras_nocturnas = calc.extN;
@@ -1096,6 +1226,7 @@
                 document.getElementById('admin-panel-view').classList.add('flex');
                 document.getElementById('admin-pass').value = '';
                 await initAdminManualEntry();
+                document.getElementById('input-email-alertas').value = catalogosCache.email_alertas || '';
                 startAdminTableListener();
             } catch (e) {
                 console.error(e);
@@ -1178,6 +1309,35 @@
             }
         });
 
+        document.getElementById('btn-add-horario-obra').addEventListener('click', async () => {
+            const obra = await UI.showPrompt("Horario por Obra", "Escribe el nombre EXACTO de la obra (como aparece en el campo Obra al fichar), ej: BOGOTA", "Ej: BOGOTA");
+            if (!obra) return;
+            const hora = await UI.showPrompt("Hora de entrada esperada", `Para la obra "${obra.trim().toUpperCase()}". Formato 24h HH:MM, ej: 07:30`, "07:30");
+            if (!hora) return;
+            if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora.trim())) return UI.showAlert("Formato inválido", "Usa el formato 24h HH:MM, ej: 07:30.", "error");
+            try {
+                await updateDoc(doc(db, 'catalogos', 'listas'), { [`horarios_obra.${obra.trim().toUpperCase()}`]: hora.trim() });
+                await cargarCatalogos();
+                UI.showAlert("Guardado", `Horario de ${hora} configurado para la obra "${obra.trim().toUpperCase()}". Las llegadas 15+ min después generarán alerta.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar el horario.", "error");
+            }
+        });
+
+        document.getElementById('btn-save-email-alertas').addEventListener('click', async () => {
+            const email = document.getElementById('input-email-alertas').value.trim();
+            if (!email || !email.includes('@')) return UI.showAlert("Correo inválido", "Ingresa un correo válido.", "error");
+            try {
+                await updateDoc(doc(db, 'catalogos', 'listas'), { email_alertas: email });
+                await cargarCatalogos();
+                UI.showAlert("Guardado", `Las alertas de tardanza se enviarán a ${email}.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar el correo.", "error");
+            }
+        });
+
         async function initAdminManualEntry() {
             const selEmp = document.getElementById('manual-empleado');
             selEmp.innerHTML = '<option value="">Seleccione...</option>';
@@ -1210,7 +1370,9 @@
                 const nombre = empSnap.data().nombre;
                 let data = { fecha, empleado_nombre: nombre, cedula, cliente, obra, autoriza, entrada, salida, estado: 'completado', loc_entrada: null, loc_salida: null };
 
-                const calc = calcularJornadaDiaria(data);
+                const acumuladaSemana = await getOrdinariasAcumuladasSemana(cedula, fecha);
+                const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
+                const calc = calcularJornadaDiaria(data, topeDia);
                 data.horas_ordinarias = calc.ord;
                 data.horas_extras_diurnas = calc.extD;
                 data.horas_extras_nocturnas = calc.extN;
@@ -1271,6 +1433,7 @@
                         <span class="text-emerald-600 font-bold">${escHtml(r.entrada || '--:--')}</span>
                         <span class="text-slate-300 mx-1">a</span>
                         <span class="text-rose-600 font-bold">${escHtml(r.salida || '--:--')}</span>
+                        ${r.llegada_tarde ? `<div class="text-[9px] text-rose-700 mt-1 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-block font-bold">🔴 Tarde (${r.minutos_tarde}min)</div>` : ''}
                         ${r.almuerzo_inicio ? `<div class="text-[9px] text-amber-600 mt-1 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)} - ${escHtml(r.almuerzo_fin || '...')}</div>` : ''}
                     </td>
                     <td class="p-4 border-b border-slate-100 text-center">
