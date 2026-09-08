@@ -219,6 +219,19 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                            <i class="ph-fill ph-calendar-check text-indigo-500"></i> Mi Historial
+                        </h3>
+                        <input type="month" id="historial-mes" class="border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div id="historial-lista" class="space-y-2">
+                        <p class="text-xs text-slate-400 text-center py-4">Cargando...</p>
+                    </div>
+                    <div id="historial-resumen" class="hidden mt-3 pt-3 border-t border-slate-200 text-xs font-semibold text-slate-600 text-center"></div>
+                </div>
             </div>
         </section>
 
@@ -313,6 +326,39 @@
                     <button id="btn-save-manual" class="btn-touch w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-xl shadow-sm text-sm transition-all">Guardar Registro Pasado</button>
                 </div>
 
+                <div class="bg-amber-50/50 p-4 rounded-2xl shadow-sm border border-amber-200 mb-2">
+                    <h3 class="font-bold text-amber-900 mb-1 flex items-center gap-2 text-sm">
+                        <i class="ph-fill ph-arrows-clockwise text-amber-600 text-lg"></i> Recalcular Semana
+                    </h3>
+                    <p class="text-[11px] text-amber-800 mb-3">Vuelve a calcular las horas ordinarias/extra de días ya guardados de una semana completa (útil después de un ajuste en la fórmula). No borra nada, solo actualiza los números.</p>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] font-bold text-amber-700 uppercase">Colaborador</label>
+                            <select id="recalc-empleado" class="w-full border border-amber-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 outline-none"></select>
+                        </div>
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] font-bold text-amber-700 uppercase">Cualquier fecha de esa semana</label>
+                            <input type="date" id="recalc-fecha" class="w-full border border-amber-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 outline-none">
+                        </div>
+                    </div>
+                    <button id="btn-recalcular-semana" class="btn-touch w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-6 rounded-xl shadow-sm text-sm transition-all">Recalcular esta Semana</button>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-3">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por colaborador</label>
+                        <select id="filtro-colaborador" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">Todos los colaboradores</option>
+                        </select>
+                    </div>
+                    <div class="min-w-[160px]">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Mes</label>
+                        <input type="month" id="filtro-mes" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <button id="btn-limpiar-filtros" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-lg text-xs font-bold">Limpiar filtros</button>
+                    <div id="filtro-resumen" class="w-full text-xs font-semibold text-slate-500 hidden"></div>
+                </div>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse min-w-[900px]">
@@ -381,6 +427,7 @@
             <h3 id="pin-title" class="text-lg font-bold text-center text-slate-800 mb-1">Ingresa tu PIN</h3>
             <p id="pin-subtitle" class="text-xs text-center text-slate-500 mb-5">Protege tu tarjeta de tiempo.</p>
 
+            <input type="text" id="pin-verif-cedula" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input hidden w-full bg-amber-50 border border-amber-300 rounded-xl p-3.5 mb-3 text-lg focus:ring-2 focus:ring-amber-500 outline-none" placeholder="Últimos 4 dígitos de tu cédula">
             <input type="password" id="pin-input-1" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="pin-input w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••">
             <input type="password" id="pin-input-2" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="pin-input hidden w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Confirma tu PIN">
 
@@ -410,9 +457,9 @@
         //  4. "Account" -> copia tu Public Key. Pega los 3 valores abajo.
         //  Si dejas EMAILJS_PUBLIC_KEY vacío, las alertas simplemente no se envían (no rompe la app).
         // =====================================================================================
-        const EMAILJS_PUBLIC_KEY = "";   // Ej: "AbCdEfGhIjKlMnOp"
-        const EMAILJS_SERVICE_ID = "";   // Ej: "service_xxxxxxx"
-        const EMAILJS_TEMPLATE_ID = "";  // Ej: "template_xxxxxxx"
+        const EMAILJS_PUBLIC_KEY = "TZtLCZmATEnVjWYJo";
+        const EMAILJS_SERVICE_ID = "service_j2lkf74";
+        const EMAILJS_TEMPLATE_ID = "template_yp97zz6";
         if (EMAILJS_PUBLIC_KEY) emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 
         // =====================================================================================
@@ -894,6 +941,57 @@
             document.getElementById('ui-total-neto').textContent = UI.formatCOP(netoEstimado);
         }
 
+        // Historial del propio colaborador, filtrable por mes (lectura de sus propios registros).
+        async function cargarHistorialPersonal(mesStr) {
+            const lista = document.getElementById('historial-lista');
+            const resumen = document.getElementById('historial-resumen');
+            lista.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Cargando...</p>';
+            resumen.classList.add('hidden');
+
+            try {
+                const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
+                let dias = [];
+                snap.forEach(d => { if ((d.data().fecha || '').startsWith(mesStr)) dias.push(d.data()); });
+                dias.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+                if (dias.length === 0) {
+                    lista.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No tienes registros en este mes.</p>';
+                    return;
+                }
+
+                lista.innerHTML = dias.map(d => {
+                    const enTurno = d.estado !== 'completado';
+                    const extrasDia = (d.horas_extras_diurnas || 0) + (d.horas_extras_nocturnas || 0);
+                    return `
+                    <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                        <div>
+                            <div class="text-xs font-bold text-slate-700 font-mono">${d.fecha} ${d.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
+                            <div class="text-[10px] text-slate-500 font-mono mt-0.5">${d.entrada || '--:--'} a ${enTurno ? '...' : (d.salida || '--:--')}</div>
+                        </div>
+                        <div class="text-right">
+                            ${enTurno
+                                ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase">En Turno</span>'
+                                : `<div class="text-xs font-bold text-slate-700">${d.horas_ordinarias || 0}h Ord.</div>
+                                   ${extrasDia > 0 ? `<div class="text-[10px] font-bold text-amber-600">+${extrasDia.toFixed(1)}h extra</div>` : ''}`
+                            }
+                        </div>
+                    </div>`;
+                }).join('');
+
+                const totalOrd = dias.reduce((a, d) => a + (d.horas_ordinarias || 0), 0);
+                const totalExtras = dias.reduce((a, d) => a + (d.horas_extras_diurnas || 0) + (d.horas_extras_nocturnas || 0), 0);
+                resumen.textContent = `${dias.length} día(s) registrado(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra`;
+                resumen.classList.remove('hidden');
+            } catch (e) {
+                console.error(e);
+                lista.innerHTML = '<p class="text-xs text-rose-400 text-center py-4">No se pudo cargar el historial.</p>';
+            }
+        }
+
+        document.getElementById('historial-mes').addEventListener('change', (e) => {
+            if (currentUserId && e.target.value) cargarHistorialPersonal(e.target.value);
+        });
+
         // ===================================== Login de colaborador (con PIN) =====================================
         document.getElementById('btn-login').addEventListener('click', async () => {
             const nomInput = document.getElementById('login-nombre').value.trim().toUpperCase();
@@ -913,7 +1011,7 @@
                 const cedula = foundDoc.id;
                 const esNuevo = !foundDoc.data().authUid;
 
-                const pin = await pedirPin(esNuevo);
+                const pin = await pedirPin(esNuevo, cedula);
                 if (pin === null) return; // cancelado
 
                 const email = cedulaToAuthEmail(cedula);
@@ -945,6 +1043,9 @@
 
                 await checkTodayState();
                 await calculateMonthlyAccumulated();
+                const mesActual = getTodayStr().substring(0, 7);
+                document.getElementById('historial-mes').value = mesActual;
+                await cargarHistorialPersonal(mesActual);
 
             } catch (e) {
                 console.error(e);
@@ -960,21 +1061,27 @@
             }
         });
 
-        function pedirPin(esNuevo) {
+        function pedirPin(esNuevo, cedula) {
             return new Promise((resolve) => {
                 const m = document.getElementById('modal-pin');
                 const b = document.getElementById('modal-pin-box');
                 const in1 = document.getElementById('pin-input-1');
                 const in2 = document.getElementById('pin-input-2');
+                const inCedula = document.getElementById('pin-verif-cedula');
                 in1.type = 'password'; in1.classList.add('pin-input'); in1.maxLength = 6;
-                in1.value = ''; in2.value = '';
+                in1.value = ''; in2.value = ''; inCedula.value = '';
                 document.getElementById('pin-title').textContent = esNuevo ? "Crea tu PIN" : "Ingresa tu PIN";
                 document.getElementById('pin-subtitle').textContent = esNuevo
-                    ? "Es tu primer ingreso. Elige un PIN de 6 dígitos que usarás cada vez."
+                    ? "Es tu primer ingreso. Para confirmar que eres tú, primero escribe los últimos 4 dígitos de tu cédula, y luego elige un PIN de 6 dígitos."
                     : "Ingresa el PIN de 6 dígitos que creaste la primera vez.";
                 in1.placeholder = "••••••";
-                if (esNuevo) { in2.classList.remove('hidden'); in2.placeholder = "Confirma tu PIN"; }
-                else { in2.classList.add('hidden'); }
+                if (esNuevo) {
+                    inCedula.classList.remove('hidden');
+                    in2.classList.remove('hidden'); in2.placeholder = "Confirma tu PIN";
+                } else {
+                    inCedula.classList.add('hidden');
+                    in2.classList.add('hidden');
+                }
 
                 const btnOk = document.getElementById('btn-pin-confirm');
                 const btnCancel = document.getElementById('btn-pin-cancel');
@@ -987,6 +1094,12 @@
                     resolve(val);
                 };
                 const onOk = () => {
+                    if (esNuevo) {
+                        const ultimos4 = (cedula || '').slice(-4);
+                        if (inCedula.value.trim() !== ultimos4) {
+                            return UI.showAlert("No coincide", "Los últimos 4 dígitos de la cédula no coinciden con nuestros registros. Si no eres tú quien está creando este PIN, por favor detente aquí — solo el propio colaborador debe crear su PIN.", "error");
+                        }
+                    }
                     const p1 = in1.value.trim();
                     if (!/^\d{6}$/.test(p1)) return UI.showAlert("PIN inválido", "El PIN debe tener exactamente 6 dígitos numéricos.", "error");
                     if (esNuevo) {
@@ -1061,12 +1174,13 @@
                 if (!navigator.geolocation) return resolve(null);
 
                 // Primer intento: alta precisión (GPS del teléfono), hasta 9 segundos.
-                // Si falla o no hay señal GPS clara, se reintenta con precisión de red (más rápida).
+                // Si falla o no hay señal GPS clara, se reintenta con precisión de red (más rápida,
+                // pero puede tener varios cientos de metros de margen de error).
                 let isResolved = false;
                 const attemptLowAccuracy = () => {
                     if (isResolved) return;
                     navigator.geolocation.getCurrentPosition(
-                        (pos) => { if (!isResolved) { isResolved = true; resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); } },
+                        (pos) => { if (!isResolved) { isResolved = true; resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'baja', exactitud_m: Math.round(pos.coords.accuracy || 0) }); } },
                         () => { if (!isResolved) { isResolved = true; resolve(null); } },
                         { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
                     );
@@ -1075,7 +1189,7 @@
                 const timerAlta = setTimeout(() => { if (!isResolved) attemptLowAccuracy(); }, 9000);
 
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => { if (!isResolved) { isResolved = true; clearTimeout(timerAlta); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); } },
+                    (pos) => { if (!isResolved) { isResolved = true; clearTimeout(timerAlta); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'alta', exactitud_m: Math.round(pos.coords.accuracy || 0) }); } },
                     (err) => {
                         clearTimeout(timerAlta);
                         if (err.code === 1) { // PERMISSION_DENIED
@@ -1143,7 +1257,7 @@
                     data.es_dominical_festivo = calc.dominical;
                 }
 
-                await setDoc(ref, data);
+                await setDocConReintento(ref, data);
 
                 btn.innerHTML = originalHTML; btn.disabled = false;
                 await checkTodayState();
@@ -1156,7 +1270,25 @@
             } catch (e) {
                 console.error(e);
                 btn.innerHTML = originalHTML; btn.disabled = false;
-                UI.showAlert("Error", "No se pudo guardar el registro. Verifica tu conexión a internet e intenta de nuevo.", "error");
+                if (e.code === 'unavailable' || e.message?.includes('offline')) {
+                    UI.showAlert("Sin Conexión", "No hay señal de internet suficiente para guardar. Espera a tener mejor señal (WiFi o datos) e inténtalo de nuevo — no cierres la app.", "error");
+                } else {
+                    UI.showAlert("Error", "No se pudo guardar el registro. Verifica tu conexión a internet e intenta de nuevo. Si el problema persiste, prueba desde Safari o Chrome en vez de otro navegador.", "error");
+                }
+            }
+        }
+
+        // Reintenta guardar hasta 2 veces más si falla por temas de red (común en señal débil de obra),
+        // con una pequeña espera entre intentos, antes de rendirse y mostrar el error al usuario.
+        async function setDocConReintento(ref, data, intentos = 3) {
+            for (let i = 1; i <= intentos; i++) {
+                try {
+                    await setDoc(ref, data);
+                    return;
+                } catch (e) {
+                    if (i === intentos) throw e;
+                    await new Promise(r => setTimeout(r, 1200 * i));
+                }
             }
         }
 
@@ -1341,11 +1473,19 @@
         async function initAdminManualEntry() {
             const selEmp = document.getElementById('manual-empleado');
             selEmp.innerHTML = '<option value="">Seleccione...</option>';
+            const selFiltro = document.getElementById('filtro-colaborador');
+            selFiltro.innerHTML = '<option value="">Todos los colaboradores</option>';
+            const selRecalc = document.getElementById('recalc-empleado');
+            selRecalc.innerHTML = '<option value="">Seleccione...</option>';
             const snap = await getDocs(collection(db, 'empleados'));
             const users = [];
             snap.forEach(d => users.push({ cedula: d.id, ...d.data() }));
             users.sort((a, b) => a.nombre.localeCompare(b.nombre));
-            users.forEach(u => selEmp.appendChild(new Option(u.nombre, u.cedula)));
+            users.forEach(u => {
+                selEmp.appendChild(new Option(u.nombre, u.cedula));
+                selFiltro.appendChild(new Option(u.nombre, u.cedula));
+                selRecalc.appendChild(new Option(u.nombre, u.cedula));
+            });
 
             document.getElementById('manual-cliente').value = '';
             document.getElementById('manual-obra').value = '';
@@ -1387,13 +1527,75 @@
             }
         });
 
+        // Vuelve a calcular ordinarias/extras de todos los días YA GUARDADOS de una semana,
+        // en orden cronológico, aplicando correctamente el tope semanal de 42h acumulativo.
+        // Útil después de un cambio en la fórmula de cálculo. No borra ni crea registros.
+        async function recalcularSemana(cedula, fechaReferencia) {
+            const [lunes, domingo] = getRangoSemana(fechaReferencia);
+            const snap = await getDocs(query(
+                collection(db, 'empleados', cedula, 'registros'),
+                where(documentId(), '>=', lunes),
+                where(documentId(), '<=', domingo)
+            ));
+
+            let dias = [];
+            snap.forEach(d => { if (d.data().estado === 'completado' && d.data().entrada && d.data().salida) dias.push({ id: d.id, ref: d.ref, data: d.data() }); });
+            dias.sort((a, b) => a.id.localeCompare(b.id)); // orden cronológico: lunes primero
+
+            let acumulada = 0;
+            let actualizados = 0;
+            for (const dia of dias) {
+                const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumulada;
+                const calc = calcularJornadaDiaria(dia.data, topeDia);
+                await updateDoc(dia.ref, {
+                    horas_ordinarias: calc.ord,
+                    horas_extras_diurnas: calc.extD,
+                    horas_extras_nocturnas: calc.extN,
+                    horas_recargo_nocturno: calc.recNoct,
+                    es_dominical_festivo: calc.dominical
+                });
+                acumulada += calc.ord;
+                actualizados++;
+            }
+            return { actualizados, lunes, domingo };
+        }
+
+        document.getElementById('btn-recalcular-semana').addEventListener('click', async () => {
+            const cedula = document.getElementById('recalc-empleado').value;
+            const fecha = document.getElementById('recalc-fecha').value;
+            if (!cedula || !fecha) return UI.showAlert("Datos Incompletos", "Selecciona el colaborador y una fecha de la semana a recalcular.", "error");
+
+            const btn = document.getElementById('btn-recalcular-semana');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i> Recalculando...';
+            try {
+                const { actualizados, lunes, domingo } = await recalcularSemana(cedula, fecha);
+                if (actualizados === 0) {
+                    UI.showAlert("Sin cambios", `No hay días completos guardados entre ${lunes} y ${domingo} para recalcular.`, "info");
+                } else {
+                    UI.showAlert("Listo", `${actualizados} día(s) recalculados correctamente (semana del ${lunes} al ${domingo}).`, "success");
+                }
+                if (currentUserId === cedula) { await calculateMonthlyAccumulated(); await checkTodayState(); }
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo recalcular la semana. Revisa la consola para más detalle.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        });
+
+        let allRegsCache = [];
+
         function startAdminTableListener() {
             if (unsubAdminTable) unsubAdminTable();
             const q = query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(500));
             unsubAdminTable = onSnapshot(q, (snapshot) => {
                 const regs = [];
                 snapshot.forEach(d => regs.push({ id: d.id, ref: d.ref, ...d.data() }));
-                renderAdminTable(regs);
+                allRegsCache = regs;
+                aplicarFiltrosYRenderizar();
             }, (error) => {
                 console.error("Error escuchando registros:", error);
                 document.getElementById('admin-table-body').innerHTML =
@@ -1401,17 +1603,50 @@
             });
         }
 
+        function aplicarFiltrosYRenderizar() {
+            const cedulaFiltro = document.getElementById('filtro-colaborador').value;
+            const mesFiltro = document.getElementById('filtro-mes').value; // formato AAAA-MM
+
+            let filtrados = allRegsCache;
+            if (cedulaFiltro) filtrados = filtrados.filter(r => r.cedula === cedulaFiltro);
+            if (mesFiltro) filtrados = filtrados.filter(r => (r.fecha || '').startsWith(mesFiltro));
+
+            const resumen = document.getElementById('filtro-resumen');
+            if (cedulaFiltro || mesFiltro) {
+                const totalOrd = filtrados.reduce((a, r) => a + (r.horas_ordinarias || 0), 0);
+                const totalExtras = filtrados.reduce((a, r) => a + (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0), 0);
+                resumen.textContent = `${filtrados.length} registro(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra en total`;
+                resumen.classList.remove('hidden');
+            } else {
+                resumen.classList.add('hidden');
+            }
+
+            renderAdminTable(filtrados);
+        }
+
+        document.getElementById('filtro-colaborador').addEventListener('change', aplicarFiltrosYRenderizar);
+        document.getElementById('filtro-mes').addEventListener('change', aplicarFiltrosYRenderizar);
+        document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+            document.getElementById('filtro-colaborador').value = '';
+            document.getElementById('filtro-mes').value = '';
+            aplicarFiltrosYRenderizar();
+        });
+
         function renderAdminTable(regs) {
             const tbody = document.getElementById('admin-table-body');
             tbody.innerHTML = '';
 
             if (!regs || regs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-slate-400 font-medium">No hay registros de tiempo en el sistema.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-slate-400 font-medium">No hay registros de tiempo que coincidan con el filtro.</td></tr>';
                 return;
             }
 
             regs.forEach(r => {
-                const mapBtn = (loc) => loc ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>` : `<span class="text-slate-300">-</span>`;
+                const mapBtn = (loc) => {
+                    if (!loc) return `<span class="text-slate-300">-</span>`;
+                    const avisoBaja = loc.precision === 'baja' ? ` <span class="text-amber-600" title="Ubicación aproximada por red, puede tener varios cientos de metros de margen de error">⚠️${loc.exactitud_m ? '±' + loc.exactitud_m + 'm' : ''}</span>` : '';
+                    return `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoBaja}`;
+                };
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-4 border-b border-slate-100">
@@ -1489,11 +1724,22 @@
 
         document.getElementById('btn-export-excel').addEventListener('click', async () => {
             try {
-                const snap = await getDocs(query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(2000)));
-                if (snap.empty) return UI.showAlert("Aviso", "No hay registros para exportar.", "info");
+                const cedulaFiltro = document.getElementById('filtro-colaborador').value;
+                const mesFiltro = document.getElementById('filtro-mes').value; // AAAA-MM
 
                 let rows = [];
-                snap.forEach(d => rows.push(d.data()));
+                if (cedulaFiltro) {
+                    // Un solo colaborador: se consulta directo su subcolección (más rápido, sin límite de 2000)
+                    const snap = await getDocs(collection(db, 'empleados', cedulaFiltro, 'registros'));
+                    snap.forEach(d => rows.push(d.data()));
+                } else {
+                    const snap = await getDocs(query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(2000)));
+                    snap.forEach(d => rows.push(d.data()));
+                }
+                if (mesFiltro) rows = rows.filter(r => (r.fecha || '').startsWith(mesFiltro));
+
+                if (rows.length === 0) return UI.showAlert("Aviso", "No hay registros para exportar con ese filtro.", "info");
+
                 rows.sort((a, b) => {
                     if (a.empleado_nombre === b.empleado_nombre) return a.fecha.localeCompare(b.fecha);
                     return (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '');
@@ -1512,10 +1758,20 @@
                     csvContent += row + "\n";
                 });
 
+                // Nombre de archivo descriptivo según el filtro activo
+                let nombreArchivo = "Tiempos_INDIMON";
+                if (cedulaFiltro) {
+                    const selEl = document.getElementById('filtro-colaborador');
+                    const nombreEmpleado = selEl.options[selEl.selectedIndex].text.trim().replace(/[^a-zA-Z0-9]+/g, '_');
+                    nombreArchivo += `_${nombreEmpleado}`;
+                }
+                if (mesFiltro) nombreArchivo += `_${mesFiltro}`;
+                nombreArchivo += `_${getTodayStr()}.csv`;
+
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
-                link.setAttribute("download", `Tiempos_INDIMON_${getTodayStr()}.csv`);
+                link.setAttribute("download", nombreArchivo);
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -1559,3 +1815,4 @@
     </script>
 </body>
 </html>
+
