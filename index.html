@@ -875,9 +875,17 @@
             let hOut = timeStrToFloat(reg.salida);
             if (hOut < hIn) hOut += 24;
 
-            // Intervalos efectivamente trabajados: solo se resta el almuerzo si hay horas EXPLÍCITAS
-            // de inicio/fin de almuerzo. Sin esos datos, se asume que no hubo pausa (ej. turnos cortos
-            // de sábado sin almuerzo) — nunca se adivina un descanso que no se registró.
+            // Intervalos efectivamente trabajados: se resta el almuerzo si hay horas EXPLÍCITAS.
+            // Si no las hay: de lunes a viernes SIEMPRE se asume 1h de almuerzo a mitad de jornada
+            // (práctica estándar de la empresa); sábado, domingo y festivos NO se asume ningún
+            // descanso (turnos cortos sin almuerzo real) — nunca se adivina uno que no aplica.
+            const diaSemana = (() => {
+                if (!reg.fecha) return null;
+                const [y, m, d] = reg.fecha.split('-').map(Number);
+                return new Date(y, m - 1, d).getDay(); // 0=domingo … 6=sábado
+            })();
+            const esDiaLaborableConAlmuerzo = diaSemana !== null && diaSemana >= 1 && diaSemana <= 5;
+
             let intervals = [];
             if (reg.almuerzo_inicio && reg.almuerzo_fin) {
                 let aIn = timeStrToFloat(reg.almuerzo_inicio);
@@ -887,6 +895,10 @@
                 if (aOut < hIn) aOut += 24;
                 intervals.push([hIn, Math.min(aIn, hOut)]);
                 if (aOut < hOut) intervals.push([aOut, hOut]);
+            } else if (esDiaLaborableConAlmuerzo && (hOut - hIn) > 5) {
+                let mid = hIn + (hOut - hIn) / 2;
+                intervals.push([hIn, mid - 0.5]);
+                intervals.push([mid + 0.5, hOut]);
             } else {
                 intervals.push([hIn, hOut]);
             }
