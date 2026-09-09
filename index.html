@@ -322,7 +322,39 @@
                             <label class="text-[10px] font-bold text-slate-500 uppercase">Salida (24h)</label>
                             <input type="time" id="manual-salida" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio (opcional)</label>
+                            <input type="time" id="manual-almuerzo-inicio" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="col-span-1 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin (opcional)</label>
+                            <input type="time" id="manual-almuerzo-fin" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
                     </div>
+                    <p class="text-[10px] text-slate-400 mb-3">Deja el almuerzo en blanco si ese día no hubo pausa (ej. turnos cortos de sábado).</p>
+
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 bg-violet-50/50 p-3 rounded-lg border border-violet-100">
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] font-bold text-violet-700 uppercase">Tipo de permiso (opcional)</label>
+                            <select id="manual-tipo-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none">
+                                <option value="">Ninguno</option>
+                                <option value="Cita médica">Cita médica (urgencia o especialista)</option>
+                                <option value="Calamidad doméstica">Calamidad doméstica</option>
+                                <option value="Diligencia judicial">Diligencia judicial/entidad pública</option>
+                                <option value="Obligación escolar">Obligación escolar (acudiente)</option>
+                                <option value="Personal">Permiso personal (según política interna)</option>
+                            </select>
+                        </div>
+                        <div class="col-span-1">
+                            <label class="text-[10px] font-bold text-violet-700 uppercase">Horas de permiso</label>
+                            <input type="number" step="0.5" min="0" max="12" id="manual-horas-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none" placeholder="Ej: 2">
+                        </div>
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="text-[10px] font-bold text-violet-700 uppercase">Nota (opcional)</label>
+                            <input type="text" id="manual-nota-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none" placeholder="Ej: Cita EPS 2pm">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mb-3"><i class="ph-bold ph-info"></i> La ley (Art. 57 CST, Ley 2466/2025) no fija un número de horas exacto para citas médicas — usa el tiempo razonable del caso. Si el día fue permiso completo, puedes dejar Entrada/Salida en blanco.</p>
                     <button id="btn-save-manual" class="btn-touch w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-xl shadow-sm text-sm transition-all">Guardar Registro Pasado</button>
                 </div>
 
@@ -843,7 +875,9 @@
             let hOut = timeStrToFloat(reg.salida);
             if (hOut < hIn) hOut += 24;
 
-            // Intervalos efectivamente trabajados (se resta el almuerzo si existe, o 1h por defecto si la jornada > 5h)
+            // Intervalos efectivamente trabajados: solo se resta el almuerzo si hay horas EXPLÍCITAS
+            // de inicio/fin de almuerzo. Sin esos datos, se asume que no hubo pausa (ej. turnos cortos
+            // de sábado sin almuerzo) — nunca se adivina un descanso que no se registró.
             let intervals = [];
             if (reg.almuerzo_inicio && reg.almuerzo_fin) {
                 let aIn = timeStrToFloat(reg.almuerzo_inicio);
@@ -853,11 +887,6 @@
                 if (aOut < hIn) aOut += 24;
                 intervals.push([hIn, Math.min(aIn, hOut)]);
                 if (aOut < hOut) intervals.push([aOut, hOut]);
-            } else if ((hOut - hIn) > 5) {
-                // Sin registro explícito de almuerzo: se asume 1h de descanso a mitad de jornada (comportamiento heredado)
-                let mid = hIn + (hOut - hIn) / 2;
-                intervals.push([hIn, mid - 0.5]);
-                intervals.push([mid + 0.5, hOut]);
             } else {
                 intervals.push([hIn, hOut]);
             }
@@ -1490,6 +1519,11 @@
             document.getElementById('manual-cliente').value = '';
             document.getElementById('manual-obra').value = '';
             document.getElementById('manual-autoriza').value = '';
+            document.getElementById('manual-almuerzo-inicio').value = '';
+            document.getElementById('manual-almuerzo-fin').value = '';
+            document.getElementById('manual-tipo-permiso').value = '';
+            document.getElementById('manual-horas-permiso').value = '';
+            document.getElementById('manual-nota-permiso').value = '';
         }
 
         document.getElementById('btn-save-manual').addEventListener('click', async () => {
@@ -1500,24 +1534,57 @@
             const autoriza = document.getElementById('manual-autoriza').value.trim();
             const entrada = document.getElementById('manual-entrada').value;
             const salida = document.getElementById('manual-salida').value;
+            const almuerzoInicio = document.getElementById('manual-almuerzo-inicio').value;
+            const almuerzoFin = document.getElementById('manual-almuerzo-fin').value;
+            const tipoPermiso = document.getElementById('manual-tipo-permiso').value;
+            const horasPermisoStr = document.getElementById('manual-horas-permiso').value;
+            const notaPermiso = document.getElementById('manual-nota-permiso').value.trim();
+            const horasPermiso = horasPermisoStr ? Number(horasPermisoStr) : 0;
 
-            if (!fecha || !cedula || !cliente || !obra || !autoriza || !entrada || !salida) {
-                return UI.showAlert("Datos Incompletos", "Por favor completa todos los campos, incluyendo Cliente y Obra.", "error");
+            if (!fecha || !cedula || !cliente || !obra || !autoriza) {
+                return UI.showAlert("Datos Incompletos", "Completa Fecha, Colaborador, Cliente, Obra y Autoriza.", "error");
+            }
+            if ((entrada && !salida) || (!entrada && salida)) {
+                return UI.showAlert("Horario incompleto", "Si registras horario trabajado, completa tanto Entrada como Salida (o déjalas ambas en blanco si el día fue 100% permiso).", "error");
+            }
+            if (!entrada && !salida && !(tipoPermiso && horasPermiso > 0)) {
+                return UI.showAlert("Datos Incompletos", "Registra un horario de Entrada/Salida, o un Tipo de permiso con sus horas — el día no puede quedar vacío.", "error");
+            }
+            if ((tipoPermiso && !horasPermiso) || (!tipoPermiso && horasPermiso > 0)) {
+                return UI.showAlert("Permiso incompleto", "Si registras un permiso, indica tanto el Tipo como las Horas.", "error");
+            }
+            if ((almuerzoInicio && !almuerzoFin) || (!almuerzoInicio && almuerzoFin)) {
+                return UI.showAlert("Almuerzo incompleto", "Si registras almuerzo, completa tanto la hora de inicio como la de fin (o deja ambas en blanco).", "error");
             }
 
             try {
                 const empSnap = await getDoc(doc(db, 'empleados', cedula));
                 const nombre = empSnap.data().nombre;
-                let data = { fecha, empleado_nombre: nombre, cedula, cliente, obra, autoriza, entrada, salida, estado: 'completado', loc_entrada: null, loc_salida: null };
+                let data = {
+                    fecha, empleado_nombre: nombre, cedula, cliente, obra, autoriza,
+                    entrada: entrada || null, salida: salida || null,
+                    almuerzo_inicio: almuerzoInicio || null, almuerzo_fin: almuerzoFin || null,
+                    tipo_permiso: tipoPermiso || null, horas_permiso: horasPermiso || 0, nota_permiso: notaPermiso || null,
+                    estado: 'completado', loc_entrada: null, loc_salida: null
+                };
 
-                const acumuladaSemana = await getOrdinariasAcumuladasSemana(cedula, fecha);
-                const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
-                const calc = calcularJornadaDiaria(data, topeDia);
-                data.horas_ordinarias = calc.ord;
-                data.horas_extras_diurnas = calc.extD;
-                data.horas_extras_nocturnas = calc.extN;
-                data.horas_recargo_nocturno = calc.recNoct;
-                data.es_dominical_festivo = calc.dominical;
+                if (entrada && salida) {
+                    const acumuladaSemana = await getOrdinariasAcumuladasSemana(cedula, fecha);
+                    const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
+                    const calc = calcularJornadaDiaria(data, topeDia);
+                    data.horas_ordinarias = calc.ord;
+                    data.horas_extras_diurnas = calc.extD;
+                    data.horas_extras_nocturnas = calc.extN;
+                    data.horas_recargo_nocturno = calc.recNoct;
+                    data.es_dominical_festivo = calc.dominical;
+                } else {
+                    // Día 100% permiso, sin horario trabajado
+                    data.horas_ordinarias = 0;
+                    data.horas_extras_diurnas = 0;
+                    data.horas_extras_nocturnas = 0;
+                    data.horas_recargo_nocturno = 0;
+                    data.es_dominical_festivo = esDominicalOFestivo(fecha);
+                }
 
                 await setDoc(doc(db, 'empleados', cedula, 'registros', fecha), data);
                 UI.showAlert("Guardado", `Registro manual agregado para el día ${fecha}.`, "success");
@@ -1670,6 +1737,7 @@
                         <span class="text-rose-600 font-bold">${escHtml(r.salida || '--:--')}</span>
                         ${r.llegada_tarde ? `<div class="text-[9px] text-rose-700 mt-1 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-block font-bold">🔴 Tarde (${r.minutos_tarde}min)</div>` : ''}
                         ${r.almuerzo_inicio ? `<div class="text-[9px] text-amber-600 mt-1 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)} - ${escHtml(r.almuerzo_fin || '...')}</div>` : ''}
+                        ${r.tipo_permiso ? `<div class="text-[9px] text-violet-700 mt-1 bg-violet-50 border border-violet-200 rounded px-1 py-0.5 inline-block font-bold" title="${escHtml(r.nota_permiso || '')}">🩺 ${escHtml(r.tipo_permiso)} (${r.horas_permiso}h)</div>` : ''}
                     </td>
                     <td class="p-4 border-b border-slate-100 text-center">
                         ${r.estado === 'completado' ?
@@ -1746,14 +1814,15 @@
                 });
 
                 let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-                csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO\n";
+                csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO;TIPO PERMISO;HORAS PERMISO;NOTA PERMISO\n";
 
                 rows.forEach(r => {
                     const row = [
                         r.cedula, r.empleado_nombre, r.fecha, r.es_dominical_festivo ? 'SI' : 'NO',
                         r.cliente || '', r.obra || '', r.autoriza || '',
                         r.entrada || '', r.almuerzo_inicio || '', r.almuerzo_fin || '', r.salida || '',
-                        r.horas_ordinarias || 0, r.horas_extras_diurnas || 0, r.horas_extras_nocturnas || 0, r.horas_recargo_nocturno || 0
+                        r.horas_ordinarias || 0, r.horas_extras_diurnas || 0, r.horas_extras_nocturnas || 0, r.horas_recargo_nocturno || 0,
+                        r.tipo_permiso || '', r.horas_permiso || 0, r.nota_permiso || ''
                     ].map(sanitizeCsvField).join(";");
                     csvContent += row + "\n";
                 });
@@ -1815,4 +1884,3 @@
     </script>
 </body>
 </html>
-
