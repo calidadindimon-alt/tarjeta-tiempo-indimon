@@ -835,8 +835,19 @@
         // Compara la hora de entrada real contra la hora esperada configurada para esa obra
         // (catálogo "horarios_obra"). Devuelve null si esa obra no tiene horario configurado,
         // o { tarde: bool, minutos: number, horaEsperada: 'HH:MM' } si sí lo tiene.
+        // Busca la hora de entrada esperada configurada para una obra, sin sensibilidad a mayúsculas/espacios.
+        function getHoraEsperadaObra(obra) {
+            if (!obra) return null;
+            const horarios = catalogosCache.horarios_obra || {};
+            const claveNormalizada = obra.trim().toUpperCase();
+            for (const key in horarios) {
+                if (key.trim().toUpperCase() === claveNormalizada) return horarios[key];
+            }
+            return null;
+        }
+
         function evaluarTardanza(obra, horaEntradaStr) {
-            const horaEsperada = (catalogosCache.horarios_obra || {})[obra];
+            const horaEsperada = getHoraEsperadaObra(obra);
             if (!horaEsperada) return null;
             const minEntrada = timeStrToFloat(horaEntradaStr) * 60;
             const minEsperado = timeStrToFloat(horaEsperada) * 60;
@@ -874,6 +885,15 @@
             let hIn = timeStrToFloat(reg.entrada);
             let hOut = timeStrToFloat(reg.salida);
             if (hOut < hIn) hOut += 24;
+
+            // Si la obra tiene una hora de entrada oficial configurada y el colaborador marcó ANTES de
+            // esa hora, el cálculo de horas empieza en la hora oficial (no se paga tiempo no autorizado
+            // llegado antes de tiempo). La hora real marcada se sigue guardando tal cual para el registro.
+            const horaEsperadaObra = getHoraEsperadaObra(reg.obra);
+            if (horaEsperadaObra) {
+                const horaEsperadaFloat = timeStrToFloat(horaEsperadaObra);
+                if (hIn < horaEsperadaFloat && horaEsperadaFloat < hOut) hIn = horaEsperadaFloat;
+            }
 
             // Intervalos efectivamente trabajados: se resta el almuerzo si hay horas EXPLÍCITAS.
             // Si no las hay: de lunes a viernes SIEMPRE se asume 1h de almuerzo a mitad de jornada
