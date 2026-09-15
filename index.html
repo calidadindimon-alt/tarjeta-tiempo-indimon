@@ -23,6 +23,8 @@
         .btn-touch:active { transform: scale(0.97); }
         .btn-touch:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .pin-input { letter-spacing: 0.5em; text-align: center; font-weight: 800; }
+        .firma-canvas { touch-action: none; cursor: crosshair; background: #fdfdfa; display: block; width: 100%; height: 160px; border-radius: 0.75rem; }
+        .firma-box.firmado { border-color: #10b981 !important; background: #ecfdf5; }
     </style>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col relative">
@@ -47,6 +49,9 @@
                 <nav class="hidden md:flex gap-1 bg-slate-800 p-1 rounded-lg">
                     <button class="nav-tab active bg-slate-700 text-white px-4 py-2 rounded-md text-xs font-semibold transition-all" data-target="tab-colaborador">
                         <i class="ph-bold ph-user mr-1"></i> Mi Tarjeta
+                    </button>
+                    <button class="nav-tab text-slate-400 hover:text-white px-4 py-2 rounded-md text-xs font-semibold transition-all" data-target="tab-permisos">
+                        <i class="ph-bold ph-signature mr-1"></i> Permisos
                     </button>
                     <button class="nav-tab text-slate-400 hover:text-white px-4 py-2 rounded-md text-xs font-semibold transition-all" data-target="tab-admin">
                         <i class="ph-bold ph-shield-check mr-1"></i> Admin SSTA
@@ -287,6 +292,68 @@
                         <input type="email" id="input-email-alertas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="admin@indimon.com">
                         <button id="btn-save-email-alertas" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
+                    <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo de RRHH (notificación de permisos)</label>
+                        <input type="email" id="input-email-rrhh" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="rrhh@indimon.com">
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo Coordinador de Proyectos (notificación de permisos)</label>
+                        <input type="email" id="input-email-coordinador" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="coordinador@indimon.com">
+                        <button id="btn-save-emails-permisos" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Días para vencer un permiso pendiente</label>
+                        <input type="number" min="1" id="input-dias-vencimiento" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="5">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Límite del mismo tipo de permiso al mes</label>
+                        <input type="number" min="1" id="input-limite-permisos" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
+                        <button id="btn-save-config-permisos" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 mb-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                            <i class="ph-fill ph-users text-blue-500 text-lg"></i> Gestión de Colaboradores
+                        </h3>
+                        <button id="btn-mostrar-form-colaborador" class="btn-touch bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-xs font-bold border border-blue-200"><i class="ph-bold ph-user-plus"></i> Agregar Colaborador</button>
+                    </div>
+
+                    <div id="form-agregar-colaborador" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cédula</label>
+                            <input type="text" id="nuevo-colaborador-cedula" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Nombre completo</label>
+                            <input type="text" id="nuevo-colaborador-nombre" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: CARLOS ANDRES RIOS">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cargo</label>
+                            <input type="text" id="nuevo-colaborador-cargo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Ayudante de Obra">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tipo de vinculación</label>
+                            <select id="nuevo-colaborador-tipo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="Planta">Planta (empleado directo)</option>
+                                <option value="Contratista">Contratista (externo)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Sueldo base (opcional)</label>
+                            <input type="number" id="nuevo-colaborador-sueldo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1300000">
+                        </div>
+                        <div class="md:col-span-2 flex gap-2">
+                            <button id="btn-guardar-colaborador" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold">Guardar Colaborador</button>
+                            <button id="btn-cancelar-colaborador" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-bold">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="filtro-colaborador-gestion" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Buscar colaborador...">
+                    </div>
+                    <div id="lista-colaboradores-admin" class="space-y-1.5 max-h-96 overflow-y-auto">
+                        <p class="text-xs text-slate-400 text-center py-4">Cargando...</p>
+                    </div>
                 </div>
 
                 <div class="bg-blue-50/50 p-4 rounded-2xl shadow-sm border border-blue-100 mb-2">
@@ -416,12 +483,154 @@
                 </div>
             </div>
         </section>
+
+        <section id="tab-permisos" class="tab-content">
+
+            <div class="max-w-2xl mx-auto">
+
+                <div id="permisos-subtabs" class="flex gap-2 bg-slate-100 p-1 rounded-xl mb-4 mt-2">
+                    <button id="btn-permisos-sub-nuevo" class="permiso-subtab flex-1 py-2.5 rounded-lg text-xs font-bold transition-all bg-white shadow-sm text-slate-800">
+                        <i class="ph-bold ph-plus-circle mr-1"></i> Nueva Solicitud
+                    </button>
+                    <button id="btn-permisos-sub-historial" class="permiso-subtab flex-1 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-500">
+                        <i class="ph-bold ph-clock-counter-clockwise mr-1"></i> Historial
+                    </button>
+                </div>
+
+                <!-- ============================ NUEVA SOLICITUD ============================ -->
+                <div id="permiso-view-nuevo" class="flex flex-col gap-4">
+
+                    <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
+                            <i class="ph-fill ph-note-pencil text-blue-500"></i> Datos del Permiso
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Trabajador</label>
+                                <input type="text" id="permiso-trabajador" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre del colaborador">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre (quien crea esta solicitud)</label>
+                                <input type="text" id="permiso-creado-por" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Supervisor que la registra">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tipo de Permiso</label>
+                                <select id="permiso-tipo" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <option value="">Selecciona...</option>
+                                    <option>Cita médica (urgencia o especialista)</option>
+                                    <option>Calamidad doméstica</option>
+                                    <option>Diligencia judicial/entidad pública</option>
+                                    <option>Obligación escolar (acudiente)</option>
+                                    <option>Permiso personal (según política interna)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Fecha del Permiso</label>
+                                <input type="date" id="permiso-fecha" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Horas Solicitadas</label>
+                                <input type="number" id="permiso-horas" min="0" step="0.5" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 4">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Motivo / Nota</label>
+                                <textarea id="permiso-nota" rows="2" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Describe brevemente el motivo del permiso"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-1 flex items-center gap-2 text-lg">
+                            <i class="ph-fill ph-users-four text-blue-500"></i> Firmantes
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">Cada persona firmará desde su propio celular usando un enlace que generarás al final.</p>
+                        <div id="firmantes-container" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                    </div>
+
+                    <button id="btn-guardar-permiso" disabled class="btn-touch w-full bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all text-base mb-8">
+                        <i class="ph-bold ph-link text-xl"></i> Crear Solicitud y Generar Enlaces
+                    </button>
+                    <p id="permiso-progreso" class="text-[11px] text-center text-slate-400 -mt-6 mb-8">Completa los datos y los 4 nombres de los firmantes.</p>
+                </div>
+
+                <!-- ============================ ENLACES GENERADOS ============================ -->
+                <div id="permiso-view-enlaces" class="hidden flex-col gap-3 mb-8">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+                        <i class="ph-fill ph-check-circle text-3xl text-emerald-500 mb-2"></i>
+                        <h3 class="font-bold text-emerald-800">Solicitud creada</h3>
+                        <p class="text-xs text-emerald-700 mt-1">Envía a cada persona su enlace para que firme desde su propio celular. El permiso quedará aprobado automáticamente cuando las 4 personas hayan firmado.</p>
+                    </div>
+                    <div id="enlaces-lista" class="flex flex-col gap-2"></div>
+                    <button id="btn-enlaces-terminar" class="btn-touch w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl">Listo, volver</button>
+                </div>
+
+                <!-- ============================ FIRMA REMOTA (vía enlace individual) ============================ -->
+                <div id="permiso-view-firmar" class="hidden flex-col gap-4 mb-8">
+                    <div id="firmar-loading" class="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm">Cargando solicitud...</div>
+                    <div id="firmar-error" class="hidden bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center text-rose-700 font-semibold text-sm"></div>
+                    <div id="firmar-contenido" class="hidden flex-col gap-4">
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Firma de <span id="firmar-rol-label"></span></p>
+                            <h3 class="text-lg font-bold text-slate-800 mb-3">Solicitud de Permiso</h3>
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">Trabajador</span><span id="firmar-trabajador" class="font-semibold text-slate-700"></span></div>
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">Tipo</span><span id="firmar-tipo" class="font-semibold text-slate-700"></span></div>
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">Fecha</span><span id="firmar-fecha" class="font-semibold text-slate-700"></span></div>
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">Horas</span><span id="firmar-horas" class="font-semibold text-slate-700"></span></div>
+                            </div>
+                            <p id="firmar-nota-wrap" class="hidden text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100"><span class="font-bold">Motivo:</span> <span id="firmar-nota"></span></p>
+                        </div>
+
+                        <div id="firmar-pendiente-box" class="bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-sm flex flex-col gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
+                                <input type="text" id="firmar-nombre-input" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden">
+                                <canvas id="firmar-canvas-standalone" class="firma-canvas"></canvas>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-[10px] text-slate-400 flex items-center gap-1"><i class="ph-bold ph-info"></i> Gira el celular para firmar con más espacio</p>
+                                <button type="button" id="btn-firmar-clear" class="btn-touch text-xs font-bold text-rose-500 hover:text-rose-700 px-2 py-1 flex-shrink-0">Borrar</button>
+                            </div>
+                            <button id="btn-firmar-confirmar" disabled class="btn-touch w-full bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md">Firmar y Confirmar</button>
+                        </div>
+
+                        <div id="firmar-ya-firmado-box" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center">
+                            <i class="ph-fill ph-check-circle text-4xl text-emerald-500 mb-2"></i>
+                            <p id="firmar-ya-firmado-msg" class="font-bold text-emerald-800">Ya registraste tu firma en esta solicitud.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================ HISTORIAL ============================ -->
+                <div id="permiso-view-historial" class="hidden flex-col gap-3 mb-8">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                            <i class="ph-fill ph-clipboard-text text-indigo-500 text-lg"></i> Solicitudes de Permiso
+                        </h3>
+                        <div class="flex gap-2 flex-wrap">
+                            <input type="text" id="permiso-filtro-nombre" class="border border-slate-300 rounded-lg p-2 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Filtrar por nombre...">
+                            <button id="btn-exportar-permisos" class="btn-touch bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg text-xs font-bold border border-emerald-200 flex items-center gap-1"><i class="ph-bold ph-file-xls"></i> Exportar a Excel</button>
+                        </div>
+                    </div>
+                    <div id="permisos-historial-lista" class="space-y-2">
+                        <p class="text-xs text-slate-400 text-center py-4">Cargando...</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
     </main>
 
     <nav class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around p-2 pb-safe z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
         <button class="nav-tab flex-1 flex flex-col items-center py-2 text-blue-600 active" data-target="tab-colaborador">
             <i class="ph-fill ph-user-circle text-2xl mb-1 transition-transform"></i>
             <span class="text-[10px] font-bold">Mi Tarjeta</span>
+        </button>
+        <button class="nav-tab flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-slate-600" data-target="tab-permisos">
+            <i class="ph-fill ph-signature text-2xl mb-1 transition-transform"></i>
+            <span class="text-[10px] font-bold">Permisos</span>
         </button>
         <button class="nav-tab flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-slate-600" data-target="tab-admin">
             <i class="ph-fill ph-shield-check text-2xl mb-1 transition-transform"></i>
@@ -493,6 +702,12 @@
         const EMAILJS_SERVICE_ID = "service_j2lkf74";
         const EMAILJS_TEMPLATE_ID = "template_yp97zz6";
         if (EMAILJS_PUBLIC_KEY) emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+
+        // Plantilla SEPARADA para la notificación de "Permiso aprobado" (4 firmas completas).
+        // Crea otra plantilla en tu cuenta de EmailJS con estas variables en el cuerpo:
+        // {{trabajador}}, {{tipo_permiso}}, {{fecha_permiso}}, {{horas}}, {{nota}}, {{to_email}}
+        // Si la dejas vacía, la app guarda el permiso igual, solo no envía el correo.
+        const EMAILJS_TEMPLATE_PERMISOS_ID = "";
 
         // =====================================================================================
         //  CONFIGURACIÓN DE FIREBASE
@@ -574,7 +789,11 @@
             supervisores: ["JLAF", "S. BOHORQUEZ", "A. PINZON", "C. RIOS"],
             festivos: [],
             horarios_obra: { "BOGOTA": "07:30" }, // hora de entrada esperada por obra, para alertas de tardanza
-            email_alertas: ""                      // correo del administrador que recibe alertas de tardanza
+            email_alertas: "",                     // correo del administrador que recibe alertas de tardanza
+            email_rrhh: "",                        // correo de RRHH que recibe notificación cuando un permiso queda aprobado (4 firmas)
+            email_coordinador: "",                  // correo del coordinador de proyectos que recibe la misma notificación
+            dias_vencimiento_permiso: 5,             // días sin completar las 4 firmas antes de marcar un permiso como "Vencido"
+            limite_permisos_tipo_mes: 3               // aviso si un colaborador supera esta cantidad del mismo tipo de permiso en un mes
         };
 
         // ------------------------------- Normativa laboral (Colombia, vigente 2026) -------------------------------
@@ -598,6 +817,7 @@
 
         let currentUserId = null;
         let currentUserProfile = null;
+        let empleadosNombreCedula = {}; // "NOMBRE EN MAYÚSCULAS" -> cédula, usado para vincular permisos al historial del colaborador
         let currentEmployeeIsNew = false;
         let catalogosCache = { clientes: [], obras: [], supervisores: [], festivos: [] };
         let unsubAdminTable = null;
@@ -757,11 +977,13 @@
         async function cargarListaEmpleadosDatalist() {
             const dl = document.getElementById('lista-empleados');
             dl.innerHTML = '';
+            empleadosNombreCedula = {};
             const snap = await getDocs(collection(db, 'empleados_publico'));
             snap.forEach(d => {
                 const opt = document.createElement('option');
                 opt.value = d.data().nombre;
                 dl.appendChild(opt);
+                empleadosNombreCedula[(d.data().nombre || '').toUpperCase()] = d.id;
             });
             return snap;
         }
@@ -1011,37 +1233,75 @@
 
             try {
                 const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
-                let dias = [];
-                snap.forEach(d => { if ((d.data().fecha || '').startsWith(mesStr)) dias.push(d.data()); });
-                dias.sort((a, b) => b.fecha.localeCompare(a.fecha));
+                const registrosPorFecha = {};
+                snap.forEach(d => { const r = d.data(); if ((r.fecha || '').startsWith(mesStr)) registrosPorFecha[r.fecha] = r; });
 
-                if (dias.length === 0) {
+                // Permisos del colaborador para este mes: primero por cédula (vínculo confiable);
+                // si un permiso viejo no tiene cédula guardada, se vincula por coincidencia exacta de nombre como respaldo.
+                const permisosPorFecha = {};
+                try {
+                    const permisosSnap = await getDocs(collection(db, 'permisos'));
+                    const nombrePropio = (currentUserProfile?.nombre || '').toUpperCase();
+                    permisosSnap.forEach(d => {
+                        const p = d.data();
+                        if (!(p.fecha || '').startsWith(mesStr)) return;
+                        const esMio = p.trabajador_cedula
+                            ? p.trabajador_cedula === currentUserId
+                            : (p.trabajador || '').toUpperCase() === nombrePropio;
+                        if (!esMio) return;
+                        (permisosPorFecha[p.fecha] = permisosPorFecha[p.fecha] || []).push(p);
+                    });
+                } catch (e) {
+                    console.error('No se pudieron cargar los permisos del historial:', e);
+                }
+
+                const fechas = Array.from(new Set([...Object.keys(registrosPorFecha), ...Object.keys(permisosPorFecha)])).sort((a, b) => b.localeCompare(a));
+
+                if (fechas.length === 0) {
                     lista.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No tienes registros en este mes.</p>';
                     return;
                 }
 
-                lista.innerHTML = dias.map(d => {
-                    const enTurno = d.estado !== 'completado';
-                    const extrasDia = (d.horas_extras_diurnas || 0) + (d.horas_extras_nocturnas || 0);
+                lista.innerHTML = fechas.map(fecha => {
+                    const d = registrosPorFecha[fecha];
+                    const permisosDia = permisosPorFecha[fecha] || [];
+                    const enTurno = d && d.estado !== 'completado';
+                    const extrasDia = d ? (d.horas_extras_diurnas || 0) + (d.horas_extras_nocturnas || 0) : 0;
+
+                    const filaPermisos = permisosDia.map(p => {
+                        const aprobado = p.estado === 'aprobado';
+                        const badgeClase = aprobado ? 'text-indigo-600 bg-indigo-50' : 'text-amber-600 bg-amber-50';
+                        const badgeTexto = aprobado ? 'Aprobado' : 'Pendiente de firmas';
+                        return `
+                        <div class="mt-1.5 flex items-center gap-1.5 text-[10px] font-bold ${badgeClase} px-2 py-1 rounded-full w-fit">
+                            <i class="ph-bold ph-signature"></i> Permiso: ${escapeHtml(p.tipo) || 'Sin especificar'}${p.horas ? ` · ${escapeHtml(p.horas)}h` : ''} · ${badgeTexto}
+                        </div>`;
+                    }).join('');
+
                     return `
                     <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
                         <div>
-                            <div class="text-xs font-bold text-slate-700 font-mono">${d.fecha} ${d.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
-                            <div class="text-[10px] text-slate-500 font-mono mt-0.5">${d.entrada || '--:--'} a ${enTurno ? '...' : (d.salida || '--:--')}</div>
+                            <div class="text-xs font-bold text-slate-700 font-mono">${fecha} ${d && d.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
+                            <div class="text-[10px] text-slate-500 font-mono mt-0.5">${d ? `${d.entrada || '--:--'} a ${enTurno ? '...' : (d.salida || '--:--')}` : 'Sin registro de tiempo'}</div>
+                            ${filaPermisos}
                         </div>
                         <div class="text-right">
-                            ${enTurno
-                                ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase">En Turno</span>'
-                                : `<div class="text-xs font-bold text-slate-700">${d.horas_ordinarias || 0}h Ord.</div>
-                                   ${extrasDia > 0 ? `<div class="text-[10px] font-bold text-amber-600">+${extrasDia.toFixed(1)}h extra</div>` : ''}`
+                            ${d
+                                ? (enTurno
+                                    ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase">En Turno</span>'
+                                    : `<div class="text-xs font-bold text-slate-700">${d.horas_ordinarias || 0}h Ord.</div>
+                                       ${extrasDia > 0 ? `<div class="text-[10px] font-bold text-amber-600">+${extrasDia.toFixed(1)}h extra</div>` : ''}`)
+                                : ''
                             }
                         </div>
                     </div>`;
                 }).join('');
 
-                const totalOrd = dias.reduce((a, d) => a + (d.horas_ordinarias || 0), 0);
-                const totalExtras = dias.reduce((a, d) => a + (d.horas_extras_diurnas || 0) + (d.horas_extras_nocturnas || 0), 0);
-                resumen.textContent = `${dias.length} día(s) registrado(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra`;
+                const diasConRegistro = Object.values(registrosPorFecha);
+                const totalOrd = diasConRegistro.reduce((a, d) => a + (d.horas_ordinarias || 0), 0);
+                const totalExtras = diasConRegistro.reduce((a, d) => a + (d.horas_extras_diurnas || 0) + (d.horas_extras_nocturnas || 0), 0);
+                const totalPermisos = Object.values(permisosPorFecha).flat().reduce((a, p) => a + (parseFloat(p.horas) || 0), 0);
+                resumen.textContent = `${diasConRegistro.length} día(s) registrado(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra${totalPermisos > 0 ? ` · ${totalPermisos.toFixed(1)}h en permisos` : ''}`;
                 resumen.classList.remove('hidden');
             } catch (e) {
                 console.error(e);
@@ -1096,7 +1356,7 @@
                 document.getElementById('view-tarjeta').classList.add('flex');
 
                 document.getElementById('ui-user-name').textContent = perfil.nombre;
-                document.getElementById('ui-user-cargo').textContent = perfil.cargo;
+                document.getElementById('ui-user-cargo').textContent = perfil.cargo + (perfil.tipo_vinculacion === 'Contratista' ? ' · Contratista' : '');
                 document.getElementById('input-sueldo').value = perfil.sueldo_base || '';
 
                 document.querySelectorAll('.money-val').forEach(el => el.classList.add('blur-text'));
@@ -1420,6 +1680,11 @@
                 document.getElementById('admin-pass').value = '';
                 await initAdminManualEntry();
                 document.getElementById('input-email-alertas').value = catalogosCache.email_alertas || '';
+                document.getElementById('input-email-rrhh').value = catalogosCache.email_rrhh || '';
+                document.getElementById('input-email-coordinador').value = catalogosCache.email_coordinador || '';
+                document.getElementById('input-dias-vencimiento').value = catalogosCache.dias_vencimiento_permiso ?? 5;
+                document.getElementById('input-limite-permisos').value = catalogosCache.limite_permisos_tipo_mes ?? 3;
+                renderGestionColaboradores();
                 startAdminTableListener();
             } catch (e) {
                 console.error(e);
@@ -1530,6 +1795,165 @@
                 UI.showAlert("Error", "No se pudo guardar el correo.", "error");
             }
         });
+
+        document.getElementById('btn-save-emails-permisos').addEventListener('click', async () => {
+            const emailRrhh = document.getElementById('input-email-rrhh').value.trim();
+            const emailCoord = document.getElementById('input-email-coordinador').value.trim();
+            if ((emailRrhh && !emailRrhh.includes('@')) || (emailCoord && !emailCoord.includes('@'))) {
+                return UI.showAlert("Correo inválido", "Revisa que los correos estén bien escritos.", "error");
+            }
+            try {
+                await updateDoc(doc(db, 'catalogos', 'listas'), { email_rrhh: emailRrhh, email_coordinador: emailCoord });
+                await cargarCatalogos();
+                UI.showAlert("Guardado", "Las notificaciones de permisos aprobados se enviarán a estos correos.", "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar los correos.", "error");
+            }
+        });
+
+        document.getElementById('btn-save-config-permisos').addEventListener('click', async () => {
+            const dias = parseInt(document.getElementById('input-dias-vencimiento').value, 10);
+            const limite = parseInt(document.getElementById('input-limite-permisos').value, 10);
+            if (!dias || dias < 1 || !limite || limite < 1) {
+                return UI.showAlert("Datos inválidos", "Ingresa números mayores a 0 en ambos campos.", "error");
+            }
+            try {
+                await updateDoc(doc(db, 'catalogos', 'listas'), { dias_vencimiento_permiso: dias, limite_permisos_tipo_mes: limite });
+                await cargarCatalogos();
+                UI.showAlert("Guardado", "Configuración de permisos actualizada.", "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar la configuración.", "error");
+            }
+        });
+
+        // ------------------------------- Gestión de Colaboradores (agregar / eliminar) -------------------------------
+        let colaboradoresAdminCache = [];
+
+        document.getElementById('btn-mostrar-form-colaborador').addEventListener('click', () => {
+            document.getElementById('form-agregar-colaborador').classList.toggle('hidden');
+            document.getElementById('form-agregar-colaborador').classList.toggle('grid');
+        });
+        document.getElementById('btn-cancelar-colaborador').addEventListener('click', () => {
+            document.getElementById('form-agregar-colaborador').classList.add('hidden');
+            document.getElementById('form-agregar-colaborador').classList.remove('grid');
+        });
+
+        document.getElementById('btn-guardar-colaborador').addEventListener('click', async () => {
+            const cedula = document.getElementById('nuevo-colaborador-cedula').value.trim();
+            const nombre = document.getElementById('nuevo-colaborador-nombre').value.trim().toUpperCase();
+            const cargo = document.getElementById('nuevo-colaborador-cargo').value.trim();
+            const tipoVinculacion = document.getElementById('nuevo-colaborador-tipo').value;
+            const sueldo = document.getElementById('nuevo-colaborador-sueldo').value;
+
+            if (!cedula || !nombre || !cargo) {
+                return UI.showAlert("Datos incompletos", "Completa cédula, nombre y cargo.", "error");
+            }
+
+            const btn = document.getElementById('btn-guardar-colaborador');
+            btn.disabled = true;
+            try {
+                const ref = doc(db, 'empleados', cedula);
+                const existing = await getDoc(ref);
+                if (existing.exists()) {
+                    return UI.showAlert("Ya existe", `Ya hay un colaborador registrado con la cédula ${cedula} (${existing.data().nombre}).`, "error");
+                }
+
+                await setDoc(ref, {
+                    nombre, cargo, tipo_vinculacion: tipoVinculacion,
+                    sueldo_base: sueldo ? Number(sueldo) : 1300000, authUid: null
+                });
+                await setDoc(doc(db, 'empleados_publico', cedula), { nombre, authUid: null });
+
+                document.getElementById('nuevo-colaborador-cedula').value = '';
+                document.getElementById('nuevo-colaborador-nombre').value = '';
+                document.getElementById('nuevo-colaborador-cargo').value = '';
+                document.getElementById('nuevo-colaborador-sueldo').value = '';
+                document.getElementById('nuevo-colaborador-tipo').value = 'Planta';
+                document.getElementById('form-agregar-colaborador').classList.add('hidden');
+                document.getElementById('form-agregar-colaborador').classList.remove('grid');
+
+                await cargarListaEmpleadosDatalist();
+                await initAdminManualEntry();
+                await renderGestionColaboradores();
+                UI.showAlert("Colaborador agregado", `${nombre} ya puede ingresar desde "Mi Tarjeta" buscando su nombre.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar el colaborador.", "error");
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        async function renderGestionColaboradores() {
+            const cont = document.getElementById('lista-colaboradores-admin');
+            cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Cargando...</p>';
+            try {
+                const snap = await getDocs(collection(db, 'empleados'));
+                const lista = [];
+                snap.forEach(d => lista.push({ cedula: d.id, ...d.data() }));
+                lista.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+                colaboradoresAdminCache = lista;
+                pintarListaColaboradoresAdmin();
+            } catch (e) {
+                console.error(e);
+                cont.innerHTML = '<p class="text-xs text-rose-400 text-center py-4">No se pudo cargar la lista de colaboradores.</p>';
+            }
+        }
+
+        function pintarListaColaboradoresAdmin() {
+            const filtro = document.getElementById('filtro-colaborador-gestion').value.trim().toUpperCase();
+            const cont = document.getElementById('lista-colaboradores-admin');
+            const lista = colaboradoresAdminCache.filter(c => !filtro || (c.nombre || '').toUpperCase().includes(filtro));
+
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay colaboradores para mostrar.</p>';
+                return;
+            }
+
+            cont.innerHTML = lista.map(c => {
+                const esContratista = c.tipo_vinculacion === 'Contratista';
+                const badge = esContratista
+                    ? '<span class="text-[9px] font-bold uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Contratista</span>'
+                    : '<span class="text-[9px] font-bold uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Planta</span>';
+                return `
+                <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 gap-2">
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">${escapeHtml(c.nombre)} ${badge}</div>
+                        <div class="text-[10px] text-slate-500 truncate">${escapeHtml(c.cargo) || '—'} · CC ${escapeHtml(c.cedula)}</div>
+                    </div>
+                    <button class="btn-eliminar-colaborador btn-touch bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0 flex items-center gap-1" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}">
+                        <i class="ph-bold ph-trash"></i> Eliminar
+                    </button>
+                </div>`;
+            }).join('');
+
+            cont.querySelectorAll('.btn-eliminar-colaborador').forEach(btn => {
+                btn.addEventListener('click', () => eliminarColaborador(btn.dataset.cedula, btn.dataset.nombre));
+            });
+        }
+        document.getElementById('filtro-colaborador-gestion').addEventListener('input', pintarListaColaboradoresAdmin);
+
+        function eliminarColaborador(cedula, nombre) {
+            UI.showConfirm(
+                "Eliminar Colaborador",
+                `¿Seguro que quieres eliminar a ${nombre} (CC ${cedula})? Ya no podrá registrar tiempo ni aparecerá en los listados. Su historial de registros pasados NO se borra. Si ya había creado su PIN de acceso, además debes eliminar su cuenta manualmente en Firebase Authentication para bloquearla por completo.`,
+                async () => {
+                    try {
+                        await deleteDoc(doc(db, 'empleados', cedula));
+                        await deleteDoc(doc(db, 'empleados_publico', cedula));
+                        await cargarListaEmpleadosDatalist();
+                        await initAdminManualEntry();
+                        await renderGestionColaboradores();
+                        UI.showAlert("Eliminado", `${nombre} fue eliminado de la lista de colaboradores activos.`, "success");
+                    } catch (e) {
+                        console.error(e);
+                        UI.showAlert("Error", "No se pudo eliminar el colaborador.", "error");
+                    }
+                }
+            );
+        }
 
         async function initAdminManualEntry() {
             const selEmp = document.getElementById('manual-empleado');
@@ -1913,6 +2337,622 @@
         });
 
         window.borrarRegistro = borrarRegistro;
+
+        // ===================================== Pestaña "Permisos" (solicitud con firma remota por enlace) =====================================
+        const SIGNANTES = [
+            { key: 'trabajador', label: 'Trabajador', icon: 'ph-user' },
+            { key: 'jefe', label: 'Jefe Inmediato', icon: 'ph-user-focus' },
+            { key: 'supervisor', label: 'Supervisor', icon: 'ph-user-gear' },
+            { key: 'rrhh', label: 'Encargado de RRHH', icon: 'ph-users-three' }
+        ];
+
+        let permisosCache = [];
+        let firmarPad = null; // pad de la vista de firma remota (uno solo, se reusa)
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+        }
+
+        function buildEnlacePermiso(permisoId, rolKey) {
+            const base = window.location.origin + window.location.pathname;
+            return `${base}?permiso=${encodeURIComponent(permisoId)}&rol=${encodeURIComponent(rolKey)}`;
+        }
+
+        // ------------------------------- Pad de firma reutilizable (misma lógica para cualquier canvas) -------------------------------
+        function createSignaturePad(canvas, onChange) {
+            const ctx = canvas.getContext('2d');
+            let drawing = false, hasDrawing = false;
+
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            }
+
+            canvas.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                drawing = true; hasDrawing = true;
+                const { x, y } = getPos(e);
+                ctx.beginPath(); ctx.moveTo(x, y);
+                canvas.setPointerCapture(e.pointerId);
+                if (onChange) onChange();
+            });
+            canvas.addEventListener('pointermove', (e) => {
+                if (!drawing) return;
+                e.preventDefault();
+                const { x, y } = getPos(e);
+                ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                ctx.lineTo(x, y); ctx.stroke();
+            });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => {
+                canvas.addEventListener(ev, () => { drawing = false; });
+            });
+
+            return {
+                clear: () => { ctx.clearRect(0, 0, canvas.width, canvas.height); hasDrawing = false; if (onChange) onChange(); },
+                isEmpty: () => !hasDrawing,
+                toDataURL: () => hasDrawing ? canvas.toDataURL('image/png') : null,
+                resize: () => {
+                    const rect = canvas.getBoundingClientRect();
+                    if (rect.width === 0 || rect.height === 0) return;
+                    const dpr = window.devicePixelRatio || 1;
+                    canvas.width = rect.width * dpr;
+                    canvas.height = rect.height * dpr;
+                    ctx.scale(dpr, dpr);
+                }
+            };
+        }
+
+        // ------------------------------- Nueva Solicitud: 4 campos de nombre (sin firma, eso pasa por el enlace) -------------------------------
+        function renderFirmantesInputs() {
+            const cont = document.getElementById('firmantes-container');
+            cont.innerHTML = SIGNANTES.map(s => `
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5 flex items-center gap-1">
+                        <i class="ph-bold ${s.icon} text-blue-500"></i> ${s.label}
+                    </label>
+                    <input type="text" id="firmante-nombre-${s.key}" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre completo">
+                </div>
+            `).join('');
+            SIGNANTES.forEach(s => {
+                document.getElementById(`firmante-nombre-${s.key}`).addEventListener('input', updateCrearSolicitudState);
+            });
+        }
+
+        function datosBasicosPermisoCompletos() {
+            return document.getElementById('permiso-trabajador').value.trim() &&
+                   document.getElementById('permiso-creado-por').value.trim() &&
+                   document.getElementById('permiso-tipo').value.trim() &&
+                   document.getElementById('permiso-fecha').value.trim();
+        }
+
+        function nombresFirmantesCompletos() {
+            return SIGNANTES.every(s => document.getElementById(`firmante-nombre-${s.key}`).value.trim());
+        }
+
+        function updateCrearSolicitudState() {
+            const btn = document.getElementById('btn-guardar-permiso');
+            const progreso = document.getElementById('permiso-progreso');
+            const datosOk = datosBasicosPermisoCompletos();
+            const nombresOk = nombresFirmantesCompletos();
+            btn.disabled = !(datosOk && nombresOk);
+
+            if (!datosOk) progreso.textContent = 'Completa trabajador, tu nombre, tipo y fecha del permiso.';
+            else if (!nombresOk) progreso.textContent = 'Completa el nombre de los 4 firmantes.';
+            else progreso.textContent = 'Todo listo. Se generará un enlace de firma para cada persona.';
+        }
+        ['permiso-trabajador', 'permiso-creado-por', 'permiso-tipo', 'permiso-fecha'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateCrearSolicitudState);
+            document.getElementById(id).addEventListener('change', updateCrearSolicitudState);
+        });
+
+        // Punto 5: aviso (no bloqueante) si el colaborador ya superó el límite configurado del mismo
+        // tipo de permiso en el mes de la fecha solicitada. Cuenta solicitudes previas sin importar su estado.
+        async function contarPermisosTipoMes(trabajadorCedula, trabajadorNombre, tipo, mesStr) {
+            const snap = await getDocs(collection(db, 'permisos'));
+            let count = 0;
+            snap.forEach(d => {
+                const p = d.data();
+                if (p.tipo !== tipo || !(p.fecha || '').startsWith(mesStr)) return;
+                const esMismo = trabajadorCedula ? p.trabajador_cedula === trabajadorCedula : (p.trabajador || '').toUpperCase() === trabajadorNombre.toUpperCase();
+                if (esMismo) count++;
+            });
+            return count;
+        }
+
+        // Envía la notificación de "permiso aprobado" a RRHH y al coordinador de proyectos (vía EmailJS).
+        // Si no hay plantilla configurada, o no hay correos guardados, o falla el envío, no interrumpe el guardado.
+        async function enviarNotificacionPermiso(data) {
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_PERMISOS_ID) return;
+            const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
+            for (const destino of destinos) {
+                try {
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_PERMISOS_ID, {
+                        to_email: destino,
+                        trabajador: data.trabajador,
+                        tipo_permiso: data.tipo,
+                        fecha_permiso: data.fecha,
+                        horas: data.horas || '',
+                        nota: data.nota || ''
+                    });
+                } catch (e) {
+                    console.error(`No se pudo enviar la notificación de permiso a ${destino}:`, e);
+                }
+            }
+        }
+
+        async function crearSolicitudPermiso() {
+            const firmantes = {};
+            SIGNANTES.forEach(s => {
+                firmantes[s.key] = {
+                    nombre: document.getElementById(`firmante-nombre-${s.key}`).value.trim(),
+                    firma: null,
+                    firmado: false,
+                    firmado_en: null
+                };
+            });
+
+            const data = {
+                trabajador: document.getElementById('permiso-trabajador').value.trim(),
+                trabajador_cedula: empleadosNombreCedula[document.getElementById('permiso-trabajador').value.trim().toUpperCase()] || null,
+                creado_por: document.getElementById('permiso-creado-por').value.trim(),
+                tipo: document.getElementById('permiso-tipo').value,
+                fecha: document.getElementById('permiso-fecha').value,
+                horas: document.getElementById('permiso-horas').value.trim(),
+                nota: document.getElementById('permiso-nota').value.trim(),
+                firmantes,
+                estado: 'pendiente',
+                creado_en: new Date().toISOString()
+            };
+
+            const ref = doc(collection(db, 'permisos'));
+            await setDoc(ref, data);
+
+            mostrarEnlacesGenerados(ref.id, data);
+
+            // Reset del formulario
+            document.getElementById('permiso-trabajador').value = '';
+            document.getElementById('permiso-creado-por').value = '';
+            document.getElementById('permiso-tipo').value = '';
+            document.getElementById('permiso-fecha').value = getTodayStr();
+            document.getElementById('permiso-horas').value = '';
+            document.getElementById('permiso-nota').value = '';
+            SIGNANTES.forEach(s => { document.getElementById(`firmante-nombre-${s.key}`).value = ''; });
+            updateCrearSolicitudState();
+        }
+
+        document.getElementById('btn-guardar-permiso').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-guardar-permiso');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin text-xl"></i> Creando...';
+
+            try {
+                const nombreTrabajador = document.getElementById('permiso-trabajador').value.trim();
+                const cedulaTrabajador = empleadosNombreCedula[nombreTrabajador.toUpperCase()] || null;
+                const tipo = document.getElementById('permiso-tipo').value;
+                const fecha = document.getElementById('permiso-fecha').value;
+                const mesStr = fecha.slice(0, 7);
+                const limite = catalogosCache.limite_permisos_tipo_mes || 3;
+
+                const yaTiene = await contarPermisosTipoMes(cedulaTrabajador, nombreTrabajador, tipo, mesStr);
+                if (yaTiene >= limite) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    UI.showConfirm(
+                        "Límite de permisos alcanzado",
+                        `${nombreTrabajador} ya tiene ${yaTiene} solicitud(es) de "${tipo}" este mes (límite configurado: ${limite}). ¿Deseas crear esta solicitud de todas formas?`,
+                        async () => {
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin text-xl"></i> Creando...';
+                            try {
+                                await crearSolicitudPermiso();
+                            } catch (e) {
+                                console.error(e);
+                                UI.showAlert("Error", "No se pudo crear la solicitud. Verifica tu conexión e inténtalo de nuevo.", "error");
+                            } finally {
+                                btn.innerHTML = originalHTML;
+                                updateCrearSolicitudState();
+                            }
+                        }
+                    );
+                    return;
+                }
+
+                await crearSolicitudPermiso();
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo crear la solicitud. Verifica tu conexión e inténtalo de nuevo.", "error");
+            } finally {
+                btn.innerHTML = originalHTML;
+                updateCrearSolicitudState();
+            }
+        });
+
+        function mostrarEnlacesGenerados(permisoId, data) {
+            const cont = document.getElementById('enlaces-lista');
+            cont.innerHTML = SIGNANTES.map(s => {
+                const link = buildEnlacePermiso(permisoId, s.key);
+                const nombre = data.firmantes[s.key].nombre;
+                const waText = encodeURIComponent(`Hola ${nombre}, por favor firma este permiso de ${data.trabajador} (${data.tipo}, ${data.fecha}) en este enlace: ${link}`);
+                return `
+                <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold text-slate-800">${escapeHtml(s.label)} — ${escapeHtml(nombre)}</p>
+                        <p class="text-[10px] text-slate-400 truncate">${escapeHtml(link)}</p>
+                    </div>
+                    <div class="flex gap-1 flex-shrink-0">
+                        <button class="btn-copy-link btn-touch bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-2 rounded-lg text-xs font-bold" data-link="${escapeHtml(link)}" title="Copiar enlace"><i class="ph-bold ph-copy"></i></button>
+                        <a href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" class="btn-touch bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-2 rounded-lg text-xs font-bold" title="Enviar por WhatsApp"><i class="ph-bold ph-whatsapp-logo"></i></a>
+                    </div>
+                </div>`;
+            }).join('');
+
+            cont.querySelectorAll('.btn-copy-link').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText(btn.dataset.link);
+                        const original = btn.innerHTML;
+                        btn.innerHTML = '<i class="ph-bold ph-check"></i>';
+                        setTimeout(() => { btn.innerHTML = original; }, 1500);
+                    } catch (e) {
+                        UI.showAlert("Copiar enlace", "No se pudo copiar automáticamente. Mantén presionado el enlace para copiarlo.", "info");
+                    }
+                });
+            });
+
+            document.getElementById('permiso-view-nuevo').classList.add('hidden');
+            document.getElementById('permiso-view-enlaces').classList.remove('hidden');
+            document.getElementById('permiso-view-enlaces').classList.add('flex');
+        }
+
+        document.getElementById('btn-enlaces-terminar').addEventListener('click', () => {
+            document.getElementById('permiso-view-enlaces').classList.add('hidden');
+            document.getElementById('permiso-view-enlaces').classList.remove('flex');
+            document.getElementById('permiso-view-nuevo').classList.remove('hidden');
+        });
+
+        // ------------------------------- Sub-pestañas: Nueva Solicitud / Historial -------------------------------
+        function setPermisoSubtabActive(which) {
+            const nuevo = document.getElementById('btn-permisos-sub-nuevo');
+            const hist = document.getElementById('btn-permisos-sub-historial');
+            [nuevo, hist].forEach(b => b.classList.remove('bg-white', 'shadow-sm', 'text-slate-800'));
+            [nuevo, hist].forEach(b => b.classList.add('text-slate-500'));
+            const activo = which === 'nuevo' ? nuevo : hist;
+            activo.classList.add('bg-white', 'shadow-sm', 'text-slate-800');
+            activo.classList.remove('text-slate-500');
+        }
+
+        function ocultarTodasLasVistasPermisos() {
+            ['permiso-view-nuevo', 'permiso-view-enlaces', 'permiso-view-historial', 'permiso-view-firmar'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.add('hidden'); el.classList.remove('flex');
+            });
+        }
+
+        document.getElementById('btn-permisos-sub-nuevo').addEventListener('click', () => {
+            ocultarTodasLasVistasPermisos();
+            document.getElementById('permiso-view-nuevo').classList.remove('hidden');
+            setPermisoSubtabActive('nuevo');
+        });
+        document.getElementById('btn-permisos-sub-historial').addEventListener('click', () => {
+            ocultarTodasLasVistasPermisos();
+            document.getElementById('permiso-view-historial').classList.remove('hidden');
+            document.getElementById('permiso-view-historial').classList.add('flex');
+            setPermisoSubtabActive('historial');
+            cargarHistorialPermisos();
+        });
+
+        // ------------------------------- Historial -------------------------------
+        async function cargarHistorialPermisos() {
+            const cont = document.getElementById('permisos-historial-lista');
+            cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Cargando...</p>';
+            try {
+                const snap = await getDocs(collection(db, 'permisos'));
+                const permisos = [];
+                snap.forEach(d => permisos.push({ id: d.id, ...d.data() }));
+                permisos.sort((a, b) => (b.creado_en || '').localeCompare(a.creado_en || ''));
+                permisosCache = permisos;
+                renderHistorialPermisos();
+            } catch (e) {
+                console.error(e);
+                cont.innerHTML = '<p class="text-xs text-rose-400 text-center py-4">No se pudo cargar el historial.</p>';
+            }
+        }
+
+        function estaVencido(p) {
+            if (p.estado === 'aprobado') return false;
+            const dias = catalogosCache.dias_vencimiento_permiso || 5;
+            const creado = new Date(p.creado_en);
+            if (isNaN(creado.getTime())) return false;
+            const diasPasados = (Date.now() - creado.getTime()) / (1000 * 60 * 60 * 24);
+            return diasPasados > dias;
+        }
+
+        function renderHistorialPermisos() {
+            const filtro = document.getElementById('permiso-filtro-nombre').value.trim().toUpperCase();
+            const cont = document.getElementById('permisos-historial-lista');
+            const lista = permisosCache.filter(p => !filtro || (p.trabajador || '').toUpperCase().includes(filtro));
+
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay solicitudes registradas.</p>';
+                return;
+            }
+
+            cont.innerHTML = lista.map(p => {
+                const firmados = SIGNANTES.filter(s => p.firmantes?.[s.key]?.firmado).length;
+                const aprobado = p.estado === 'aprobado';
+                const vencido = estaVencido(p);
+                let badge;
+                if (aprobado) {
+                    badge = `<span class="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0"><i class="ph-bold ph-check-circle"></i> Aprobado</span>`;
+                } else if (vencido) {
+                    badge = `<span class="text-[10px] font-bold uppercase bg-rose-100 text-rose-700 px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0"><i class="ph-bold ph-warning"></i> Vencido (${firmados}/4)</span>`;
+                } else {
+                    badge = `<span class="text-[10px] font-bold uppercase bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0"><i class="ph-bold ph-clock"></i> Pendiente (${firmados}/4)</span>`;
+                }
+
+                return `
+                <div class="bg-white border border-slate-200 rounded-xl p-3">
+                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.togglePermisoDetalle('${p.id}')">
+                        <div class="min-w-0">
+                            <div class="text-sm font-bold text-slate-800 truncate">${escapeHtml(p.trabajador) || '—'}</div>
+                            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(p.tipo) || ''} · ${escapeHtml(p.fecha) || ''}${p.horas ? ' · ' + escapeHtml(p.horas) + 'h' : ''}</div>
+                        </div>
+                        ${badge}
+                    </div>
+                    <div id="detalle-permiso-${p.id}" class="hidden mt-3 pt-3 border-t border-slate-100">
+                        ${p.creado_por ? `<p class="text-[10px] text-slate-500 mb-2"><span class="font-bold">Creado por:</span> ${escapeHtml(p.creado_por)}</p>` : ''}
+                        ${p.nota ? `<p class="text-xs text-slate-600 mb-3"><span class="font-bold">Nota:</span> ${escapeHtml(p.nota)}</p>` : ''}
+                        <div class="grid grid-cols-2 gap-2">
+                            ${SIGNANTES.map(s => {
+                                const f = p.firmantes?.[s.key];
+                                const link = buildEnlacePermiso(p.id, s.key);
+                                const waTexto = encodeURIComponent(`Hola ${f?.nombre || ''}, te recuerdo que tienes pendiente firmar el permiso de ${p.trabajador} (${p.tipo}, ${p.fecha}). Enlace: ${link}`);
+                                return `
+                                <div class="bg-slate-50 rounded-lg p-2 border border-slate-100">
+                                    <p class="text-[9px] font-bold text-slate-500 uppercase">${s.label}</p>
+                                    <p class="text-[10px] font-semibold text-slate-700 mb-1 truncate">${escapeHtml(f?.nombre) || '—'}</p>
+                                    ${f?.firmado
+                                        ? `<img src="${f.firma}" class="w-full h-12 object-contain bg-white rounded border border-slate-200">`
+                                        : `<div class="flex gap-1">
+                                             <button class="btn-copy-link-hist btn-touch flex-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar</button>
+                                             <a href="https://wa.me/?text=${waTexto}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="btn-touch flex-1 text-center text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded py-1.5"><i class="ph-bold ph-whatsapp-logo"></i> Recordar</a>
+                                           </div>`
+                                    }
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            cont.querySelectorAll('.btn-copy-link-hist').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    try {
+                        await navigator.clipboard.writeText(btn.dataset.link);
+                        const original = btn.innerHTML;
+                        btn.innerHTML = '<i class="ph-bold ph-check"></i> Copiado';
+                        setTimeout(() => { btn.innerHTML = original; }, 1500);
+                    } catch (err) {
+                        UI.showAlert("Copiar enlace", "No se pudo copiar automáticamente.", "info");
+                    }
+                });
+            });
+        }
+
+        window.togglePermisoDetalle = (id) => {
+            const el = document.getElementById(`detalle-permiso-${id}`);
+            if (el) el.classList.toggle('hidden');
+        };
+
+
+        document.getElementById('permiso-filtro-nombre').addEventListener('input', renderHistorialPermisos);
+
+        document.getElementById('btn-exportar-permisos').addEventListener('click', () => {
+            if (permisosCache.length === 0) return UI.showAlert("Aviso", "No hay solicitudes de permiso para exportar.", "info");
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "TRABAJADOR;CEDULA;TIPO DE PERMISO;FECHA;HORAS;ESTADO;CREADO POR;CREADO EN;" +
+                SIGNANTES.map(s => `${s.label.toUpperCase()} - NOMBRE;${s.label.toUpperCase()} - FIRMADO`).join(';') + "\n";
+
+            permisosCache.forEach(p => {
+                const estado = p.estado === 'aprobado' ? 'Aprobado' : (estaVencido(p) ? 'Vencido' : 'Pendiente');
+                const row = [
+                    p.trabajador || '', p.trabajador_cedula || '', p.tipo || '', p.fecha || '', p.horas || 0,
+                    estado, p.creado_por || '', p.creado_en || '',
+                    ...SIGNANTES.flatMap(s => [p.firmantes?.[s.key]?.nombre || '', p.firmantes?.[s.key]?.firmado ? 'SI' : 'NO'])
+                ].map(sanitizeCsvField).join(";");
+                csvContent += row + "\n";
+            });
+
+            const nombreArchivo = `Permisos_INDIMON_${getTodayStr()}.csv`;
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", nombreArchivo);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // ------------------------------- Firma remota (abierta desde el enlace individual) -------------------------------
+        function checkFirmarReady() {
+            const btn = document.getElementById('btn-firmar-confirmar');
+            const nombreOk = document.getElementById('firmar-nombre-input').value.trim();
+            const firmaOk = firmarPad && !firmarPad.isEmpty();
+            btn.disabled = !(nombreOk && firmaOk);
+        }
+
+        async function loadFirmaStandalone(permisoId, rolKey) {
+            ocultarTodasLasVistasPermisos();
+            document.getElementById('permiso-view-firmar').classList.remove('hidden');
+            document.getElementById('permiso-view-firmar').classList.add('flex');
+            document.getElementById('permisos-subtabs').classList.add('hidden'); // oculta las sub-pestañas en este modo
+
+            const loading = document.getElementById('firmar-loading');
+            const errorBox = document.getElementById('firmar-error');
+            const contenido = document.getElementById('firmar-contenido');
+            loading.classList.remove('hidden'); errorBox.classList.add('hidden'); contenido.classList.add('hidden');
+
+            const rolInfo = SIGNANTES.find(s => s.key === rolKey);
+            if (!rolInfo) {
+                loading.classList.add('hidden');
+                errorBox.classList.remove('hidden');
+                errorBox.textContent = 'Este enlace no es válido.';
+                return;
+            }
+
+            try {
+                const ref = doc(db, 'permisos', permisoId);
+                const snap = await getDoc(ref);
+                if (!snap.exists()) {
+                    loading.classList.add('hidden');
+                    errorBox.classList.remove('hidden');
+                    errorBox.textContent = 'Esta solicitud no existe o el enlace ya no es válido.';
+                    return;
+                }
+
+                const data = snap.data();
+                document.getElementById('firmar-rol-label').textContent = rolInfo.label;
+                document.getElementById('firmar-trabajador').textContent = data.trabajador || '—';
+                document.getElementById('firmar-tipo').textContent = data.tipo || '—';
+                document.getElementById('firmar-fecha').textContent = data.fecha || '—';
+                document.getElementById('firmar-horas').textContent = data.horas ? `${data.horas}h` : '—';
+                if (data.nota) {
+                    document.getElementById('firmar-nota-wrap').classList.remove('hidden');
+                    document.getElementById('firmar-nota').textContent = data.nota;
+                }
+
+                const firmanteData = data.firmantes?.[rolKey];
+                const pendienteBox = document.getElementById('firmar-pendiente-box');
+                const yaFirmadoBox = document.getElementById('firmar-ya-firmado-box');
+
+                if (firmanteData?.firmado) {
+                    pendienteBox.classList.add('hidden');
+                    yaFirmadoBox.classList.remove('hidden');
+                    document.getElementById('firmar-ya-firmado-msg').textContent = data.estado === 'aprobado'
+                        ? 'Ya registraste tu firma. El permiso está completamente aprobado.'
+                        : 'Ya registraste tu firma en esta solicitud. Falta que firmen las demás personas.';
+                } else {
+                    pendienteBox.classList.remove('hidden');
+                    yaFirmadoBox.classList.add('hidden');
+                    document.getElementById('firmar-nombre-input').value = firmanteData?.nombre || '';
+
+                    const canvas = document.getElementById('firmar-canvas-standalone');
+                    firmarPad = createSignaturePad(canvas, checkFirmarReady);
+                    setTimeout(() => firmarPad.resize(), 50);
+
+                    document.getElementById('firmar-nombre-input').oninput = checkFirmarReady;
+                    document.getElementById('btn-firmar-clear').onclick = () => firmarPad.clear();
+                    document.getElementById('btn-firmar-confirmar').onclick = () => confirmarFirmaStandalone(permisoId, rolKey);
+                    checkFirmarReady();
+                }
+
+                loading.classList.add('hidden');
+                contenido.classList.remove('hidden');
+            } catch (e) {
+                console.error(e);
+                loading.classList.add('hidden');
+                errorBox.classList.remove('hidden');
+                errorBox.textContent = 'No se pudo cargar la solicitud. Verifica tu conexión e inténtalo de nuevo.';
+            }
+        }
+
+        // Punto 3: cuando un permiso queda aprobado (4 firmas), lo refleja en el registro de nómina de ese día
+        // usando los mismos campos (tipo_permiso / horas_permiso / nota_permiso) que ya usa el módulo de
+        // "Cargar Días Anteriores". Nunca toca horas_ordinarias/extras ya calculadas desde entrada-salida real:
+        // si el día ya tiene un registro de tiempo trabajado, solo añade la etiqueta del permiso como información
+        // adicional; si no existe ningún registro ese día, crea uno con horas_ordinarias en 0 (día 100% permiso),
+        // igual que hace el formulario manual — así el permiso nunca infla la nómina.
+        async function sincronizarPermisoConNomina(data) {
+            if (!data.trabajador_cedula) return; // no se pudo vincular con un colaborador conocido, se omite
+            try {
+                const ref = doc(db, 'empleados', data.trabajador_cedula, 'registros', data.fecha);
+                const existing = await getDoc(ref);
+                if (existing.exists()) {
+                    await updateDoc(ref, {
+                        tipo_permiso: data.tipo || null,
+                        horas_permiso: parseFloat(data.horas) || 0,
+                        nota_permiso: data.nota || null
+                    });
+                } else {
+                    await setDoc(ref, {
+                        fecha: data.fecha, empleado_nombre: data.trabajador, cedula: data.trabajador_cedula,
+                        cliente: null, obra: null, autoriza: null,
+                        entrada: null, salida: null, almuerzo_inicio: null, almuerzo_fin: null,
+                        tipo_permiso: data.tipo || null, horas_permiso: parseFloat(data.horas) || 0, nota_permiso: data.nota || null,
+                        estado: 'completado', loc_entrada: null, loc_salida: null,
+                        horas_ordinarias: 0, horas_extras_diurnas: 0, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0,
+                        es_dominical_festivo: esDominicalOFestivo(data.fecha)
+                    });
+                }
+            } catch (e) {
+                console.error('No se pudo sincronizar el permiso con el registro de nómina:', e);
+            }
+        }
+
+        async function confirmarFirmaStandalone(permisoId, rolKey) {
+            const btn = document.getElementById('btn-firmar-confirmar');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Guardando...';
+
+            try {
+                const nombre = document.getElementById('firmar-nombre-input').value.trim();
+                const firma = firmarPad.toDataURL();
+                const ref = doc(db, 'permisos', permisoId);
+
+                await updateDoc(ref, {
+                    [`firmantes.${rolKey}.nombre`]: nombre,
+                    [`firmantes.${rolKey}.firma`]: firma,
+                    [`firmantes.${rolKey}.firmado`]: true,
+                    [`firmantes.${rolKey}.firmado_en`]: new Date().toISOString()
+                });
+
+                // Revisa si con esta firma ya quedaron las 4 completas, para marcar aprobado y notificar.
+                const snap = await getDoc(ref);
+                const data = snap.data();
+                const todasFirmadas = SIGNANTES.every(s => data.firmantes?.[s.key]?.firmado);
+                let quedoAprobado = false;
+                if (todasFirmadas && data.estado !== 'aprobado') {
+                    await updateDoc(ref, { estado: 'aprobado' });
+                    await enviarNotificacionPermiso(data);
+                    await sincronizarPermisoConNomina(data);
+                    quedoAprobado = true;
+                }
+
+                document.getElementById('firmar-pendiente-box').classList.add('hidden');
+                document.getElementById('firmar-ya-firmado-box').classList.remove('hidden');
+                document.getElementById('firmar-ya-firmado-msg').textContent = quedoAprobado
+                    ? 'Firma registrada. El permiso quedó completamente aprobado y se notificó a RRHH y al coordinador de proyectos.'
+                    : 'Firma registrada correctamente. Falta que firmen las demás personas.';
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar tu firma. Verifica tu conexión e inténtalo de nuevo.", "error");
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+
+        // ------------------------------- Inicialización de la pestaña Permisos -------------------------------
+        renderFirmantesInputs();
+        (() => {
+            const fecha = document.getElementById('permiso-fecha');
+            if (fecha) fecha.value = getTodayStr();
+        })();
+        updateCrearSolicitudState();
+
+        // Si la URL trae ?permiso=ID&rol=CLAVE, abre directamente la vista de firma remota (enlace individual).
+        (() => {
+            const params = new URLSearchParams(window.location.search);
+            const permisoId = params.get('permiso');
+            const rol = params.get('rol');
+            if (permisoId && rol) {
+                UI.switchTab('tab-permisos');
+                loadFirmaStandalone(permisoId, rol);
+            }
+        })();
     </script>
 </body>
 </html>
