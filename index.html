@@ -108,7 +108,7 @@
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
                         <div class="flex justify-between items-center mb-3">
                             <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                                <i class="ph-bold ph-wallet"></i> Tu Salario Base (Mensual)
+                                <i class="ph-bold ph-wallet"></i> <span id="label-sueldo-tarifa">Tu Salario Base (Mensual)</span>
                             </label>
                             <button id="btn-toggle-eye" class="text-slate-400 hover:text-blue-600 transition-colors p-1"><i class="ph-bold ph-eye-closed text-lg"></i></button>
                         </div>
@@ -339,8 +339,12 @@
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Sueldo base (opcional)</label>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Sueldo base mensual (Planta)</label>
                             <input type="number" id="nuevo-colaborador-sueldo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1300000">
+                        </div>
+                        <div class="hidden" id="wrap-nuevo-colaborador-tarifa">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tarifa por hora (Contratista)</label>
+                            <input type="number" id="nuevo-colaborador-tarifa" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 12000">
                         </div>
                         <div class="md:col-span-2 flex gap-2">
                             <button id="btn-guardar-colaborador" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold">Guardar Colaborador</button>
@@ -536,6 +540,13 @@
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Motivo / Nota</label>
                                 <textarea id="permiso-nota" rows="2" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Describe brevemente el motivo del permiso"></textarea>
                             </div>
+                            <div class="md:col-span-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <input type="checkbox" id="permiso-es-emergencia" class="mt-0.5 w-4 h-4 accent-amber-600 flex-shrink-0">
+                                <label for="permiso-es-emergencia" class="text-xs text-amber-800 font-medium leading-snug">
+                                    Es una <span class="font-bold">calamidad doméstica o emergencia</span> — marca esta casilla para saltarte el aviso mínimo de 24 horas.
+                                </label>
+                            </div>
+                            <p class="md:col-span-2 text-[10px] text-slate-400 -mt-1">Regla general: todo permiso debe solicitarse con mínimo 24 horas de anticipación.</p>
                         </div>
                     </div>
 
@@ -581,7 +592,20 @@
                             <p id="firmar-nota-wrap" class="hidden text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100"><span class="font-bold">Motivo:</span> <span id="firmar-nota"></span></p>
                         </div>
 
-                        <div id="firmar-pendiente-box" class="bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-sm flex flex-col gap-3">
+                        <div id="firmar-verificacion-box" class="bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-sm flex flex-col gap-3">
+                            <div class="flex items-center gap-2 text-slate-700">
+                                <i class="ph-fill ph-shield-check text-xl text-blue-500"></i>
+                                <p class="text-sm font-bold">Verifica tu identidad para poder firmar</p>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
+                                <input type="text" inputmode="numeric" maxlength="15" id="firmar-verificacion-input" class="w-full bg-slate-50 border border-slate-300 text-lg rounded-lg p-2.5 font-mono font-bold tracking-[0.15em] text-center focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
+                            </div>
+                            <p id="firmar-verificacion-error" class="hidden text-[11px] font-bold text-rose-600">La cédula no coincide. Verifica e inténtalo de nuevo.</p>
+                            <button id="btn-firmar-verificar" class="btn-touch w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl">Verificar y Continuar</button>
+                        </div>
+
+                        <div id="firmar-pendiente-box" class="hidden bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-sm flex flex-col gap-3">
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
                                 <input type="text" id="firmar-nombre-input" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -1102,7 +1126,7 @@
         // ya ajustado por cuántas horas ordinarias lleva acumuladas el empleado esta semana
         // (el límite legal es 42h ordinarias/semana, no solo 8h/día).
         function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
-            if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false };
+            if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false, minutosTarde: 0, horasDescontadasTardanza: 0 };
 
             let hIn = timeStrToFloat(reg.entrada);
             let hOut = timeStrToFloat(reg.salida);
@@ -1112,10 +1136,17 @@
             // esa hora, el cálculo de horas empieza en la hora oficial (no se paga tiempo no autorizado
             // llegado antes de tiempo). La hora real marcada se sigue guardando tal cual para el registro.
             const horaEsperadaObra = getHoraEsperadaObra(reg.obra);
+            const hInReal = hIn; // se conserva la hora real marcada, antes de cualquier ajuste, para medir tardanza
+            let minutosTarde = 0;
             if (horaEsperadaObra) {
                 const horaEsperadaFloat = timeStrToFloat(horaEsperadaObra);
                 if (hIn < horaEsperadaFloat && horaEsperadaFloat < hOut) hIn = horaEsperadaFloat;
+                if (hInReal > horaEsperadaFloat) minutosTarde = Math.round((hInReal - horaEsperadaFloat) * 60);
             }
+            // Tolerancia de 15 minutos: por debajo de eso no se descuenta nada. De ahí en adelante,
+            // se descuentan los minutos de tardanza directamente de las horas ordinarias pagadas del día
+            // (no afecta el cálculo de horas extra, que sigue el horario realmente trabajado).
+            const horasDescontadasTardanza = minutosTarde >= 15 ? Number((minutosTarde / 60).toFixed(2)) : 0;
 
             // Intervalos efectivamente trabajados: se resta el almuerzo si hay horas EXPLÍCITAS.
             // Si no las hay: de lunes a viernes SIEMPRE se asume 1h de almuerzo a mitad de jornada
@@ -1150,15 +1181,17 @@
             if (efectivas < 0) efectivas = 0;
 
             const topeDia = Math.max(0, Math.min(LEY.JORNADA_ORDINARIA_DIARIA, topeOrdinarioDia));
-            const ord = Math.min(topeDia, efectivas);
+            const ordAntesDeTardanza = Math.min(topeDia, efectivas);
             const extras = Math.max(0, efectivas - topeDia);
 
             // Punto en el tiempo donde terminan las horas ordinarias y empiezan las extra
+            // (se calcula ANTES de aplicar el descuento por tardanza, para que las horas extra
+            // reales trabajadas no se vean afectadas por el descuento).
             let accum = 0;
             let ordinaryEndPoint = hOut;
             for (const [s, e] of intervals) {
                 const len = e - s;
-                if (accum + len >= ord) { ordinaryEndPoint = s + (ord - accum); break; }
+                if (accum + len >= ordAntesDeTardanza) { ordinaryEndPoint = s + (ordAntesDeTardanza - accum); break; }
                 accum += len;
             }
 
@@ -1177,17 +1210,21 @@
                 }
             }
 
+            const ord = Math.max(0, ordAntesDeTardanza - horasDescontadasTardanza);
+
             return {
                 ord: Number(ord.toFixed(2)),
                 extD: Number(extD.toFixed(2)),
                 extN: Number(extN.toFixed(2)),
                 recNoct: Number(recNoct.toFixed(2)),
-                dominical: esDominicalOFestivo(reg.fecha)
+                dominical: esDominicalOFestivo(reg.fecha),
+                minutosTarde,
+                horasDescontadasTardanza
             };
         }
 
-        function calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras) {
-            const valorHora = base / LEY.FACTOR_MENSUAL;
+        function calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras, valorHoraDirecto = null) {
+            const valorHora = valorHoraDirecto != null ? valorHoraDirecto : base / LEY.FACTOR_MENSUAL;
             let pago = 0;
             pago += totalExtD * valorHora * (1 + LEY.RECARGO_EXTRA_DIURNA);
             pago += totalExtN * valorHora * (1 + LEY.RECARGO_EXTRA_NOCTURNA);
@@ -1198,15 +1235,18 @@
 
         async function calculateMonthlyAccumulated() {
             if (!currentUserId) return;
+            const esContratista = currentUserProfile.tipo_vinculacion === 'Contratista';
             const base = currentUserProfile.sueldo_base;
+            const tarifaHora = currentUserProfile.tarifa_hora || 0;
             const currentMonthPrefix = getTodayStr().substring(0, 7);
 
-            let totalExtD = 0, totalExtN = 0, totalRecNoct = 0, totalDomHoras = 0;
+            let totalOrd = 0, totalExtD = 0, totalExtN = 0, totalRecNoct = 0, totalDomHoras = 0;
 
             const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
             snap.forEach(d => {
                 const reg = d.data();
                 if (reg.fecha && reg.fecha.startsWith(currentMonthPrefix) && reg.estado === 'completado') {
+                    totalOrd += (reg.horas_ordinarias || 0);
                     totalExtD += (reg.horas_extras_diurnas || 0);
                     totalExtN += (reg.horas_extras_nocturnas || 0);
                     totalRecNoct += (reg.horas_recargo_nocturno || 0);
@@ -1214,14 +1254,28 @@
                 }
             });
 
-            const pagoExtras = calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras);
-            const deducciones = base * LEY.DEDUCCIONES;
-            const netoEstimado = (base + pagoExtras) - deducciones;
-
             document.getElementById('ui-horas-mes').textContent = `${(totalExtD + totalExtN).toFixed(1)}h`;
-            document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
-            document.getElementById('ui-deducciones').textContent = "-" + UI.formatCOP(deducciones) + " (Seg.Social)";
-            document.getElementById('ui-total-neto').textContent = UI.formatCOP(netoEstimado);
+
+            if (esContratista) {
+                // Contratista: no hay salario fijo mensual, se paga cada hora ordinaria trabajada
+                // más los recargos de ley (extra diurna/nocturna, recargo nocturno, dominical/festivo)
+                // calculados sobre su tarifa por hora directamente (sin dividir por 210 como en nómina fija).
+                const pagoOrdinarias = totalOrd * tarifaHora;
+                const pagoExtras = calcularPagoExtras(null, totalExtD, totalExtN, totalRecNoct, totalDomHoras, tarifaHora);
+                const totalBruto = pagoOrdinarias + pagoExtras;
+
+                document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
+                document.getElementById('ui-deducciones').textContent = `${totalOrd.toFixed(1)}h ordinarias × ${UI.formatCOP(tarifaHora)}`;
+                document.getElementById('ui-total-neto').textContent = UI.formatCOP(totalBruto);
+            } else {
+                const pagoExtras = calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras);
+                const deducciones = base * LEY.DEDUCCIONES;
+                const netoEstimado = (base + pagoExtras) - deducciones;
+
+                document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
+                document.getElementById('ui-deducciones').textContent = "-" + UI.formatCOP(deducciones) + " (Seg.Social)";
+                document.getElementById('ui-total-neto').textContent = UI.formatCOP(netoEstimado);
+            }
         }
 
         // Historial del propio colaborador, filtrable por mes (lectura de sus propios registros).
@@ -1357,7 +1411,15 @@
 
                 document.getElementById('ui-user-name').textContent = perfil.nombre;
                 document.getElementById('ui-user-cargo').textContent = perfil.cargo + (perfil.tipo_vinculacion === 'Contratista' ? ' · Contratista' : '');
-                document.getElementById('input-sueldo').value = perfil.sueldo_base || '';
+                if (perfil.tipo_vinculacion === 'Contratista') {
+                    document.getElementById('label-sueldo-tarifa').textContent = 'Tu Tarifa por Hora';
+                    document.getElementById('input-sueldo').placeholder = 'Ej: 12000';
+                    document.getElementById('input-sueldo').value = perfil.tarifa_hora || '';
+                } else {
+                    document.getElementById('label-sueldo-tarifa').textContent = 'Tu Salario Base (Mensual)';
+                    document.getElementById('input-sueldo').placeholder = 'Ej: 1300000';
+                    document.getElementById('input-sueldo').value = perfil.sueldo_base || '';
+                }
 
                 document.querySelectorAll('.money-val').forEach(el => el.classList.add('blur-text'));
                 document.querySelector('#btn-toggle-eye i').className = "ph-bold ph-eye-closed text-lg";
@@ -1455,13 +1517,21 @@
 
         document.getElementById('btn-save-sueldo').addEventListener('click', async () => {
             const val = Number(document.getElementById('input-sueldo').value);
-            if (val < 1000000) return UI.showAlert("Error", "Ingresa un salario válido.", "error");
+            const esContratista = currentUserProfile.tipo_vinculacion === 'Contratista';
 
-            currentUserProfile.sueldo_base = val;
-            await updateDoc(doc(db, 'empleados', currentUserId), { sueldo_base: val });
-
-            await calculateMonthlyAccumulated();
-            UI.showAlert("Guardado", "Tu salario base ha sido actualizado.", "success");
+            if (esContratista) {
+                if (val < 1000) return UI.showAlert("Error", "Ingresa una tarifa por hora válida.", "error");
+                currentUserProfile.tarifa_hora = val;
+                await updateDoc(doc(db, 'empleados', currentUserId), { tarifa_hora: val });
+                await calculateMonthlyAccumulated();
+                UI.showAlert("Guardado", "Tu tarifa por hora ha sido actualizada.", "success");
+            } else {
+                if (val < 1000000) return UI.showAlert("Error", "Ingresa un salario válido.", "error");
+                currentUserProfile.sueldo_base = val;
+                await updateDoc(doc(db, 'empleados', currentUserId), { sueldo_base: val });
+                await calculateMonthlyAccumulated();
+                UI.showAlert("Guardado", "Tu salario base ha sido actualizado.", "success");
+            }
         });
 
         // ===================================== Registro diario (entrada/almuerzo/salida) =====================================
@@ -1576,6 +1646,8 @@
                     data.horas_extras_nocturnas = calc.extN;
                     data.horas_recargo_nocturno = calc.recNoct;
                     data.es_dominical_festivo = calc.dominical;
+                    data.minutos_tarde = calc.minutosTarde;
+                    data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                 }
 
                 await setDocConReintento(ref, data);
@@ -1840,15 +1912,25 @@
             document.getElementById('form-agregar-colaborador').classList.remove('grid');
         });
 
+        function toggleCampoSueldoContratista() {
+            const esContratista = document.getElementById('nuevo-colaborador-tipo').value === 'Contratista';
+            document.getElementById('wrap-nuevo-colaborador-tarifa').classList.toggle('hidden', !esContratista);
+        }
+        document.getElementById('nuevo-colaborador-tipo').addEventListener('change', toggleCampoSueldoContratista);
+
         document.getElementById('btn-guardar-colaborador').addEventListener('click', async () => {
             const cedula = document.getElementById('nuevo-colaborador-cedula').value.trim();
             const nombre = document.getElementById('nuevo-colaborador-nombre').value.trim().toUpperCase();
             const cargo = document.getElementById('nuevo-colaborador-cargo').value.trim();
             const tipoVinculacion = document.getElementById('nuevo-colaborador-tipo').value;
             const sueldo = document.getElementById('nuevo-colaborador-sueldo').value;
+            const tarifaHora = document.getElementById('nuevo-colaborador-tarifa').value;
 
             if (!cedula || !nombre || !cargo) {
                 return UI.showAlert("Datos incompletos", "Completa cédula, nombre y cargo.", "error");
+            }
+            if (tipoVinculacion === 'Contratista' && !tarifaHora) {
+                return UI.showAlert("Datos incompletos", "Ingresa la tarifa por hora del contratista.", "error");
             }
 
             const btn = document.getElementById('btn-guardar-colaborador');
@@ -1862,7 +1944,9 @@
 
                 await setDoc(ref, {
                     nombre, cargo, tipo_vinculacion: tipoVinculacion,
-                    sueldo_base: sueldo ? Number(sueldo) : 1300000, authUid: null
+                    sueldo_base: sueldo ? Number(sueldo) : 1300000,
+                    tarifa_hora: tarifaHora ? Number(tarifaHora) : 0,
+                    authUid: null
                 });
                 await setDoc(doc(db, 'empleados_publico', cedula), { nombre, authUid: null });
 
@@ -1870,7 +1954,9 @@
                 document.getElementById('nuevo-colaborador-nombre').value = '';
                 document.getElementById('nuevo-colaborador-cargo').value = '';
                 document.getElementById('nuevo-colaborador-sueldo').value = '';
+                document.getElementById('nuevo-colaborador-tarifa').value = '';
                 document.getElementById('nuevo-colaborador-tipo').value = 'Planta';
+                toggleCampoSueldoContratista();
                 document.getElementById('form-agregar-colaborador').classList.add('hidden');
                 document.getElementById('form-agregar-colaborador').classList.remove('grid');
 
@@ -1921,7 +2007,7 @@
                 <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 gap-2">
                     <div class="min-w-0">
                         <div class="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">${escapeHtml(c.nombre)} ${badge}</div>
-                        <div class="text-[10px] text-slate-500 truncate">${escapeHtml(c.cargo) || '—'} · CC ${escapeHtml(c.cedula)}</div>
+                        <div class="text-[10px] text-slate-500 truncate">${escapeHtml(c.cargo) || '—'} · CC ${escapeHtml(c.cedula)}${esContratista && c.tarifa_hora ? ` · ${UI.formatCOP(c.tarifa_hora)}/h` : ''}</div>
                     </div>
                     <button class="btn-eliminar-colaborador btn-touch bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0 flex items-center gap-1" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}">
                         <i class="ph-bold ph-trash"></i> Eliminar
@@ -2033,6 +2119,8 @@
                     data.horas_extras_nocturnas = calc.extN;
                     data.horas_recargo_nocturno = calc.recNoct;
                     data.es_dominical_festivo = calc.dominical;
+                    data.minutos_tarde = calc.minutosTarde;
+                    data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                 } else {
                     // Día 100% permiso, sin horario trabajado
                     data.horas_ordinarias = 0;
@@ -2040,6 +2128,8 @@
                     data.horas_extras_nocturnas = 0;
                     data.horas_recargo_nocturno = 0;
                     data.es_dominical_festivo = esDominicalOFestivo(fecha);
+                    data.minutos_tarde = 0;
+                    data.horas_descuento_tardanza = 0;
                 }
 
                 await setDoc(doc(db, 'empleados', cedula, 'registros', fecha), data);
@@ -2075,7 +2165,9 @@
                     horas_extras_diurnas: calc.extD,
                     horas_extras_nocturnas: calc.extN,
                     horas_recargo_nocturno: calc.recNoct,
-                    es_dominical_festivo: calc.dominical
+                    es_dominical_festivo: calc.dominical,
+                    minutos_tarde: calc.minutosTarde,
+                    horas_descuento_tardanza: calc.horasDescontadasTardanza
                 });
                 acumulada += calc.ord;
                 actualizados++;
@@ -2410,11 +2502,21 @@
                     <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5 flex items-center gap-1">
                         <i class="ph-bold ${s.icon} text-blue-500"></i> ${s.label}
                     </label>
-                    <input type="text" id="firmante-nombre-${s.key}" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre completo">
+                    <input type="text" id="firmante-nombre-${s.key}" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold mb-1.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre completo">
+                    <input type="text" id="firmante-cedula-${s.key}" maxlength="15" class="w-full bg-slate-50 border border-slate-300 text-xs rounded-lg p-2 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Cédula (para verificar identidad al firmar)">
                 </div>
             `).join('');
             SIGNANTES.forEach(s => {
-                document.getElementById(`firmante-nombre-${s.key}`).addEventListener('input', updateCrearSolicitudState);
+                const inputNombre = document.getElementById(`firmante-nombre-${s.key}`);
+                const inputCedula = document.getElementById(`firmante-cedula-${s.key}`);
+                inputNombre.addEventListener('input', updateCrearSolicitudState);
+                inputCedula.addEventListener('input', updateCrearSolicitudState);
+                // Autocompleta la cédula si el nombre coincide con un colaborador ya registrado; el campo
+                // sigue siendo editable a mano para firmantes externos (ej. RRHH que no marca tarjeta).
+                inputNombre.addEventListener('change', () => {
+                    const cedulaEncontrada = empleadosNombreCedula[inputNombre.value.trim().toUpperCase()];
+                    if (cedulaEncontrada) inputCedula.value = cedulaEncontrada;
+                });
             });
         }
 
@@ -2426,7 +2528,10 @@
         }
 
         function nombresFirmantesCompletos() {
-            return SIGNANTES.every(s => document.getElementById(`firmante-nombre-${s.key}`).value.trim());
+            return SIGNANTES.every(s =>
+                document.getElementById(`firmante-nombre-${s.key}`).value.trim() &&
+                document.getElementById(`firmante-cedula-${s.key}`).value.trim()
+            );
         }
 
         function updateCrearSolicitudState() {
@@ -2485,6 +2590,7 @@
             SIGNANTES.forEach(s => {
                 firmantes[s.key] = {
                     nombre: document.getElementById(`firmante-nombre-${s.key}`).value.trim(),
+                    cedula: document.getElementById(`firmante-cedula-${s.key}`).value.trim() || null,
                     firma: null,
                     firmado: false,
                     firmado_en: null
@@ -2499,6 +2605,7 @@
                 fecha: document.getElementById('permiso-fecha').value,
                 horas: document.getElementById('permiso-horas').value.trim(),
                 nota: document.getElementById('permiso-nota').value.trim(),
+                es_emergencia: document.getElementById('permiso-es-emergencia').checked,
                 firmantes,
                 estado: 'pendiente',
                 creado_en: new Date().toISOString()
@@ -2516,7 +2623,11 @@
             document.getElementById('permiso-fecha').value = getTodayStr();
             document.getElementById('permiso-horas').value = '';
             document.getElementById('permiso-nota').value = '';
-            SIGNANTES.forEach(s => { document.getElementById(`firmante-nombre-${s.key}`).value = ''; });
+            document.getElementById('permiso-es-emergencia').checked = false;
+            SIGNANTES.forEach(s => {
+                document.getElementById(`firmante-nombre-${s.key}`).value = '';
+                document.getElementById(`firmante-cedula-${s.key}`).value = '';
+            });
             updateCrearSolicitudState();
         }
 
@@ -2531,6 +2642,23 @@
                 const cedulaTrabajador = empleadosNombreCedula[nombreTrabajador.toUpperCase()] || null;
                 const tipo = document.getElementById('permiso-tipo').value;
                 const fecha = document.getElementById('permiso-fecha').value;
+                const esEmergencia = document.getElementById('permiso-es-emergencia').checked;
+
+                // Regla: todo permiso debe solicitarse con mínimo 24 horas de anticipación (es decir, no el mismo
+                // día ni para fechas ya pasadas), salvo que se marque como calamidad doméstica o emergencia.
+                if (!esEmergencia) {
+                    const hoyStr = getTodayStr();
+                    if (fecha <= hoyStr) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                        return UI.showAlert(
+                            "Aviso de 24 horas requerido",
+                            "Los permisos deben solicitarse con al menos 24 horas de anticipación (no el mismo día ni fechas pasadas). Si es una calamidad doméstica o una emergencia, marca la casilla correspondiente y vuelve a intentarlo.",
+                            "error"
+                        );
+                    }
+                }
+
                 const mesStr = fecha.slice(0, 7);
                 const limite = catalogosCache.limite_permisos_tipo_mes || 3;
 
@@ -2695,7 +2823,10 @@
                 <div class="bg-white border border-slate-200 rounded-xl p-3">
                     <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.togglePermisoDetalle('${p.id}')">
                         <div class="min-w-0">
-                            <div class="text-sm font-bold text-slate-800 truncate">${escapeHtml(p.trabajador) || '—'}</div>
+                            <div class="text-sm font-bold text-slate-800 truncate flex items-center gap-1.5">
+                                ${escapeHtml(p.trabajador) || '—'}
+                                ${p.es_emergencia ? '<span class="text-[9px] font-bold uppercase bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded flex-shrink-0">Emergencia</span>' : ''}
+                            </div>
                             <div class="text-[10px] text-slate-500 truncate">${escapeHtml(p.tipo) || ''} · ${escapeHtml(p.fecha) || ''}${p.horas ? ' · ' + escapeHtml(p.horas) + 'h' : ''}</div>
                         </div>
                         ${badge}
@@ -2722,9 +2853,19 @@
                                 </div>`;
                             }).join('')}
                         </div>
+                        <button class="btn-eliminar-permiso btn-touch w-full mt-3 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}" data-trabajador="${escapeHtml(p.trabajador)}">
+                            <i class="ph-bold ph-trash"></i> Eliminar esta solicitud (creada por error)
+                        </button>
                     </div>
                 </div>`;
             }).join('');
+
+            cont.querySelectorAll('.btn-eliminar-permiso').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    eliminarPermiso(btn.dataset.id, btn.dataset.trabajador);
+                });
+            });
 
             cont.querySelectorAll('.btn-copy-link-hist').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
@@ -2745,6 +2886,24 @@
             const el = document.getElementById(`detalle-permiso-${id}`);
             if (el) el.classList.toggle('hidden');
         };
+
+        function eliminarPermiso(permisoId, trabajador) {
+            UI.showConfirm(
+                "Eliminar Solicitud de Permiso",
+                `¿Seguro que quieres eliminar la solicitud de permiso de ${trabajador}? Esta acción no se puede deshacer. Úsalo solo si la solicitud se creó por error.`,
+                async () => {
+                    try {
+                        await deleteDoc(doc(db, 'permisos', permisoId));
+                        permisosCache = permisosCache.filter(p => p.id !== permisoId);
+                        renderHistorialPermisos();
+                        UI.showAlert("Eliminado", "La solicitud de permiso fue eliminada.", "success");
+                    } catch (e) {
+                        console.error(e);
+                        UI.showAlert("Error", "No se pudo eliminar la solicitud.", "error");
+                    }
+                }
+            );
+        }
 
 
         document.getElementById('permiso-filtro-nombre').addEventListener('input', renderHistorialPermisos);
@@ -2827,14 +2986,12 @@
                 const firmanteData = data.firmantes?.[rolKey];
                 const pendienteBox = document.getElementById('firmar-pendiente-box');
                 const yaFirmadoBox = document.getElementById('firmar-ya-firmado-box');
+                const verificacionBox = document.getElementById('firmar-verificacion-box');
+                const verificacionInput = document.getElementById('firmar-verificacion-input');
+                const verificacionError = document.getElementById('firmar-verificacion-error');
 
-                if (firmanteData?.firmado) {
-                    pendienteBox.classList.add('hidden');
-                    yaFirmadoBox.classList.remove('hidden');
-                    document.getElementById('firmar-ya-firmado-msg').textContent = data.estado === 'aprobado'
-                        ? 'Ya registraste tu firma. El permiso está completamente aprobado.'
-                        : 'Ya registraste tu firma en esta solicitud. Falta que firmen las demás personas.';
-                } else {
+                function habilitarFormularioFirma() {
+                    verificacionBox.classList.add('hidden');
                     pendienteBox.classList.remove('hidden');
                     yaFirmadoBox.classList.add('hidden');
                     document.getElementById('firmar-nombre-input').value = firmanteData?.nombre || '';
@@ -2847,6 +3004,38 @@
                     document.getElementById('btn-firmar-clear').onclick = () => firmarPad.clear();
                     document.getElementById('btn-firmar-confirmar').onclick = () => confirmarFirmaStandalone(permisoId, rolKey);
                     checkFirmarReady();
+                }
+
+                if (firmanteData?.firmado) {
+                    verificacionBox.classList.add('hidden');
+                    pendienteBox.classList.add('hidden');
+                    yaFirmadoBox.classList.remove('hidden');
+                    document.getElementById('firmar-ya-firmado-msg').textContent = data.estado === 'aprobado'
+                        ? 'Ya registraste tu firma. El permiso está completamente aprobado.'
+                        : 'Ya registraste tu firma en esta solicitud. Falta que firmen las demás personas.';
+                } else if (!firmanteData?.cedula) {
+                    // No hay cédula registrada para este firmante (ej. persona externa agregada sin ese dato):
+                    // no se puede verificar automáticamente, se deja pasar directo al formulario de firma.
+                    habilitarFormularioFirma();
+                } else {
+                    verificacionBox.classList.remove('hidden');
+                    pendienteBox.classList.add('hidden');
+                    yaFirmadoBox.classList.add('hidden');
+                    verificacionError.classList.add('hidden');
+                    verificacionInput.value = '';
+
+                    document.getElementById('btn-firmar-verificar').onclick = () => {
+                        const ingresado = verificacionInput.value.trim();
+                        const cedulaReal = String(firmanteData.cedula).trim();
+                        if (ingresado && ingresado === cedulaReal) {
+                            habilitarFormularioFirma();
+                        } else {
+                            verificacionError.classList.remove('hidden');
+                            verificacionInput.value = '';
+                            verificacionInput.focus();
+                        }
+                    };
+                    verificacionInput.onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('btn-firmar-verificar').click(); };
                 }
 
                 loading.classList.add('hidden');
