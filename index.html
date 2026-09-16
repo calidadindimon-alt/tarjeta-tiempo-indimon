@@ -879,6 +879,13 @@
         window.addEventListener('offline', actualizarBannerOffline);
         actualizarBannerOffline();
 
+        // Registra el Service Worker que guarda los estilos/íconos/librerías en el celular, para que la
+        // app se siga viendo con su diseño normal aunque se abra sin señal. Si falla (navegador viejo,
+        // o el archivo no está publicado todavía), la app sigue funcionando igual, solo sin ese beneficio.
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js').catch((e) => console.error('No se pudo registrar el service worker:', e));
+        }
+
         // Los empleados no usan un correo real: se les asigna uno técnico ligado a su cédula
         // únicamente para poder usar Firebase Authentication con PIN como contraseña.
         const AUTH_EMAIL_DOMAIN = "@indimon-tiempo.app";
