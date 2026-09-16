@@ -26,8 +26,14 @@
         .firma-canvas { touch-action: none; cursor: crosshair; background: #fdfdfa; display: block; width: 100%; height: 160px; border-radius: 0.75rem; }
         .firma-box.firmado { border-color: #10b981 !important; background: #ecfdf5; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col relative">
+
+    <div id="banner-offline" class="hidden bg-amber-500 text-white text-center text-xs font-bold py-2 px-3 sticky top-0 z-50">
+        <i class="ph-bold ph-wifi-slash"></i> Sin conexión — tus fichajes y acciones se guardan en el celular y se sincronizan solos cuando vuelva la señal.
+    </div>
 
     <header class="bg-slate-900 text-white p-4 sticky top-0 z-40 shadow-md">
         <div class="max-w-5xl mx-auto w-full flex justify-between items-center">
@@ -139,6 +145,12 @@
                     </div>
                 </div>
 
+                <div id="banner-incapacidad-activa" class="hidden bg-rose-50 border-2 border-rose-200 rounded-2xl p-5 text-center">
+                    <i class="ph-fill ph-first-aid-kit text-3xl text-rose-500 mb-2"></i>
+                    <h3 class="font-bold text-rose-800">Estás incapacitado</h3>
+                    <p id="banner-incapacidad-texto" class="text-xs text-rose-700 mt-1"></p>
+                </div>
+
                 <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
                     <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
                         <i class="ph-fill ph-clock-user text-blue-500"></i> Registro Diario
@@ -161,6 +173,7 @@
 
                     <div class="space-y-4">
                         <div id="state-1-entrada" class="hidden">
+                            <input type="file" id="input-selfie" accept="image/*" capture="user" class="hidden">
                             <button id="btn-punch-in" disabled class="btn-touch w-full bg-emerald-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-emerald-600 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all text-lg">
                                 <i class="ph-bold ph-sign-in text-2xl"></i> Registrar Entrada
                             </button>
@@ -306,6 +319,10 @@
                         <input type="number" min="1" id="input-dias-vencimiento" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="5">
                         <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Límite del mismo tipo de permiso al mes</label>
                         <input type="number" min="1" id="input-limite-permisos" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Tardanzas/mes para alertar</label>
+                        <input type="number" min="1" id="input-limite-tardanzas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">% de veces que se pide foto al fichar</label>
+                        <input type="number" min="0" max="100" id="input-probabilidad-selfie" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="33">
                         <button id="btn-save-config-permisos" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
                 </div>
@@ -356,6 +373,61 @@
                         <input type="text" id="filtro-colaborador-gestion" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Buscar colaborador...">
                     </div>
                     <div id="lista-colaboradores-admin" class="space-y-1.5 max-h-96 overflow-y-auto">
+                        <p class="text-xs text-slate-400 text-center py-4">Cargando...</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 mb-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                            <i class="ph-fill ph-first-aid-kit text-rose-500 text-lg"></i> Gestión de Incapacidades
+                        </h3>
+                        <button id="btn-mostrar-form-incapacidad" class="btn-touch bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-lg text-xs font-bold border border-rose-200"><i class="ph-bold ph-plus-circle"></i> Registrar Incapacidad</button>
+                    </div>
+
+                    <div id="form-agregar-incapacidad" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                        <div class="md:col-span-2">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
+                            <input type="text" id="incapacidad-trabajador" list="lista-empleados" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Nombre del colaborador">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha de inicio</label>
+                            <input type="date" id="incapacidad-fecha-inicio" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha de fin</label>
+                            <input type="date" id="incapacidad-fecha-fin" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tipo</label>
+                            <select id="incapacidad-tipo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
+                                <option value="Enfermedad General">Enfermedad General (EPS)</option>
+                                <option value="Laboral / ARL">Laboral / ARL (accidente o enfermedad de trabajo)</option>
+                                <option value="Maternidad">Licencia de Maternidad</option>
+                                <option value="Paternidad">Licencia de Paternidad</option>
+                                <option value="Otra">Otra</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Correo del supervisor directo (opcional)</label>
+                            <input type="email" id="incapacidad-correo-supervisor" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="supervisor@indimon.com">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Diagnóstico / Nota (opcional, confidencial)</label>
+                            <input type="text" id="incapacidad-diagnostico" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Solo si es necesario para el trámite">
+                        </div>
+                        <div class="md:col-span-2 flex gap-2">
+                            <button id="btn-guardar-incapacidad" class="btn-touch bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-xs font-bold">Guardar Incapacidad</button>
+                            <button id="btn-cancelar-incapacidad" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-bold">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="filtro-incapacidad" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Buscar por colaborador...">
+                        <button id="btn-exportar-incapacidades-excel" class="btn-touch bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg text-xs font-bold border border-emerald-200 flex items-center gap-1"><i class="ph-bold ph-file-xls"></i> Excel</button>
+                        <button id="btn-exportar-informe-pdf" class="btn-touch bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-lg text-xs font-bold border border-rose-200 flex items-center gap-1"><i class="ph-bold ph-file-pdf"></i> Informe PDF</button>
+                    </div>
+                    <div id="lista-incapacidades-admin" class="space-y-1.5 max-h-96 overflow-y-auto">
                         <p class="text-xs text-slate-400 text-center py-4">Cargando...</p>
                     </div>
                 </div>
@@ -414,6 +486,9 @@
                                 <option value="Diligencia judicial">Diligencia judicial/entidad pública</option>
                                 <option value="Obligación escolar">Obligación escolar (acudiente)</option>
                                 <option value="Personal">Permiso personal (según política interna)</option>
+                                <option value="Ausencia injustificada">Ausencia injustificada (no se presentó)</option>
+                                <option value="Ausencia justificada">Ausencia justificada</option>
+                                <option value="Se devolvió">Se devolvió sin completar la jornada</option>
                             </select>
                         </div>
                         <div class="col-span-1">
@@ -479,6 +554,27 @@
                                 <tr><td colspan="6" class="text-center py-10 text-slate-400 font-medium">Cargando...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 mb-2">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm mb-2">
+                        <i class="ph-fill ph-hard-drives text-blue-500 text-lg"></i> Backup Completo
+                    </h3>
+                    <p class="text-[11px] text-slate-500 mb-3">Descarga una copia completa de toda la base de datos (colaboradores, registros de tiempo, permisos y catálogos) en un archivo a tu computador. Firestore no hace backups automáticos en el plan gratuito — hazlo manualmente cada mes, o antes de cualquier cambio grande.</p>
+                    <button id="btn-descargar-backup" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1.5"><i class="ph-bold ph-download-simple"></i> Descargar Backup Completo (.json)</button>
+                </div>
+
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 mb-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                            <i class="ph-fill ph-clipboard-text text-blue-500 text-lg"></i> Auditoría de Acciones
+                        </h3>
+                        <button id="btn-cargar-auditoria" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1"><i class="ph-bold ph-arrow-clockwise"></i> Cargar</button>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mb-3">Registro de quién eliminó, agregó o cambió configuración desde este panel (los últimos 100 movimientos).</p>
+                    <div id="lista-auditoria" class="space-y-1.5 max-h-80 overflow-y-auto">
+                        <p class="text-xs text-slate-400 text-center py-4">Pulsa "Cargar" para ver los movimientos recientes.</p>
                     </div>
                 </div>
 
@@ -708,7 +804,8 @@
             signOut, onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
         import {
-            getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup,
+            getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager,
+            doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup,
             getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/+esm";
@@ -733,6 +830,14 @@
         // Si la dejas vacía, la app guarda el permiso igual, solo no envía el correo.
         const EMAILJS_TEMPLATE_PERMISOS_ID = "";
 
+        // Plantilla para el aviso de "3+ tardanzas en el mes". Variables: {{empleado}}, {{total_tardanzas_mes}},
+        // {{mes}}, {{to_email}}. Vacía por defecto: no se envía nada hasta que crees la plantilla y pegues su ID aquí.
+        const EMAILJS_TEMPLATE_TARDANZAS_REPETIDAS_ID = "";
+
+        // Plantilla para el aviso de "le queda 1 día de incapacidad". Variables: {{trabajador}}, {{fecha_fin}},
+        // {{tipo_incapacidad}}, {{to_email}}. Vacía por defecto: no se envía nada hasta que crees la plantilla.
+        const EMAILJS_TEMPLATE_INCAPACIDAD_ID = "";
+
         // =====================================================================================
         //  CONFIGURACIÓN DE FIREBASE
         //  1. Crea un proyecto en https://console.firebase.google.com
@@ -754,7 +859,25 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Persistencia offline: si el colaborador ficha sin señal (obra sin cobertura), el registro se
+        // guarda en el propio celular (vía IndexedDB del navegador) y se sincroniza solo con Firebase
+        // en cuanto vuelva a tener conexión — sin que el colaborador tenga que hacer nada especial.
+        let db;
+        try {
+            db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) }) });
+        } catch (e) {
+            console.error("No se pudo activar la persistencia offline, se sigue sin ella:", e);
+            db = getFirestore(app);
+        }
+
+        // Aviso visual de conexión: no bloquea nada (Firestore ya sincroniza solo en segundo plano),
+        // solo le avisa al colaborador para que no se preocupe si no ve confirmación inmediata.
+        function actualizarBannerOffline() {
+            document.getElementById('banner-offline').classList.toggle('hidden', navigator.onLine);
+        }
+        window.addEventListener('online', actualizarBannerOffline);
+        window.addEventListener('offline', actualizarBannerOffline);
+        actualizarBannerOffline();
 
         // Los empleados no usan un correo real: se les asigna uno técnico ligado a su cédula
         // únicamente para poder usar Firebase Authentication con PIN como contraseña.
@@ -817,7 +940,9 @@
             email_rrhh: "",                        // correo de RRHH que recibe notificación cuando un permiso queda aprobado (4 firmas)
             email_coordinador: "",                  // correo del coordinador de proyectos que recibe la misma notificación
             dias_vencimiento_permiso: 5,             // días sin completar las 4 firmas antes de marcar un permiso como "Vencido"
-            limite_permisos_tipo_mes: 3               // aviso si un colaborador supera esta cantidad del mismo tipo de permiso en un mes
+            limite_permisos_tipo_mes: 3,               // aviso si un colaborador supera esta cantidad del mismo tipo de permiso en un mes
+            limite_tardanzas_mes: 3,                   // aviso a RRHH/coordinador cuando un colaborador acumula esta cantidad de tardanzas en el mes
+            probabilidad_selfie_pct: 33                // % de probabilidad de que se pida foto de verificación al fichar (0 = nunca, 100 = siempre)
         };
 
         // ------------------------------- Normativa laboral (Colombia, vigente 2026) -------------------------------
@@ -914,11 +1039,18 @@
 
                     const cleanup = (val) => {
                         m.classList.add('opacity-0'); b.classList.add('scale-95');
-                        setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
                         btnOk.removeEventListener('click', onOk);
                         btnCancel.removeEventListener('click', onCancel);
-                        in1.type = 'password'; in1.classList.add('pin-input'); in1.maxLength = 6;
-                        resolve(val);
+                        // IMPORTANTE: resolver la promesa solo DESPUÉS de que el modal termine de ocultarse.
+                        // Si se resuelve antes (como estaba), un segundo showPrompt() encadenado (ej. "Horario
+                        // por Obra": primero pide la obra, luego la hora) abre el modal de nuevo mientras el
+                        // cierre del primero todavía está pendiente — y ese cierre pendiente termina ocultando
+                        // el segundo prompt apenas aparece, dando la sensación de que "desaparece solo".
+                        setTimeout(() => {
+                            m.classList.remove('flex'); m.classList.add('hidden');
+                            in1.type = 'password'; in1.classList.add('pin-input'); in1.maxLength = 6;
+                            resolve(val);
+                        }, 200);
                     };
                     const onOk = () => cleanup(in1.value.trim());
                     const onCancel = () => cleanup(null);
@@ -1015,6 +1147,8 @@
         async function initApp() {
             await cargarCatalogos();
             await cargarListaEmpleadosDatalist();
+            verificarIncapacidadesPorVencer(); // no se espera (await) a propósito: no debe demorar el arranque de la app
+            limpiarFotosAntiguas(); // idem: borra en segundo plano las fotos de verificación de más de 30 días
 
             let fecha = document.getElementById('manual-fecha');
             if (fecha) {
@@ -1098,7 +1232,7 @@
             const minEntrada = timeStrToFloat(horaEntradaStr) * 60;
             const minEsperado = timeStrToFloat(horaEsperada) * 60;
             const minutosTarde = Math.round(minEntrada - minEsperado);
-            return { tarde: minutosTarde > 15, minutos: minutosTarde, horaEsperada };
+            return { tarde: minutosTarde >= 15, minutos: minutosTarde, horaEsperada };
         }
 
         // Envía la alerta de tardanza por correo al administrador (vía EmailJS, sin backend).
@@ -1117,6 +1251,33 @@
                 });
             } catch (e) {
                 console.error("No se pudo enviar la alerta de tardanza por correo:", e);
+            }
+        }
+
+        // Cuenta cuántas veces ha llegado tarde este colaborador en el mes actual (incluyendo hoy) y,
+        // si alcanza el límite configurado (por defecto 3), envía una alerta aparte a RRHH y al
+        // coordinador — para que puedan hablar con la persona antes de que se vuelva un patrón.
+        async function verificarTardanzasRepetidasMes(cedula, nombre, fechaHoy) {
+            try {
+                const mesStr = fechaHoy.slice(0, 7);
+                const limite = catalogosCache.limite_tardanzas_mes || 3;
+                const snap = await getDocs(collection(db, 'empleados', cedula, 'registros'));
+                let total = 0;
+                snap.forEach(d => {
+                    const r = d.data();
+                    if (r.fecha && r.fecha.startsWith(mesStr) && r.llegada_tarde) total++;
+                });
+                if (total === limite) { // solo se avisa la primera vez que se alcanza el límite, no cada vez que se repite después
+                    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_TARDANZAS_REPETIDAS_ID) return;
+                    const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
+                    for (const destino of destinos) {
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_TARDANZAS_REPETIDAS_ID, {
+                            to_email: destino, empleado: nombre, total_tardanzas_mes: total, mes: mesStr
+                        }).catch(e => console.error('No se pudo enviar la alerta de tardanzas repetidas:', e));
+                    }
+                }
+            } catch (e) {
+                console.error('No se pudo verificar tardanzas repetidas del mes:', e);
             }
         }
 
@@ -1425,6 +1586,7 @@
                 document.querySelector('#btn-toggle-eye i').className = "ph-bold ph-eye-closed text-lg";
 
                 await checkTodayState();
+                await verificarIncapacidadActiva();
                 await calculateMonthlyAccumulated();
                 const mesActual = getTodayStr().substring(0, 7);
                 document.getElementById('historial-mes').value = mesActual;
@@ -1564,33 +1726,85 @@
                 }
                 if (!navigator.geolocation) return resolve(null);
 
-                // Primer intento: alta precisión (GPS del teléfono), hasta 9 segundos.
-                // Si falla o no hay señal GPS clara, se reintenta con precisión de red (más rápida,
-                // pero puede tener varios cientos de metros de margen de error).
+                // Los teléfonos suelen dar una primera lectura de GPS poco precisa justo al encenderlo
+                // (a veces con varios cientos de metros de margen), y mejoran notablemente unos segundos
+                // después a medida que el chip GPS "afina" la señal. En vez de quedarse con la primera
+                // lectura que llegue, se vigilan varias durante unos segundos y se usa la MEJOR (menor
+                // exactitud_m) que se haya visto — terminando antes si ya se logra una lectura muy precisa.
                 let isResolved = false;
-                const attemptLowAccuracy = () => {
+                let mejorLectura = null;
+                let watchId = null;
+
+                const finalizar = (resultado) => {
                     if (isResolved) return;
+                    isResolved = true;
+                    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                    clearTimeout(timerFinal);
+                    resolve(resultado);
+                };
+
+                const attemptLowAccuracy = () => {
                     navigator.geolocation.getCurrentPosition(
-                        (pos) => { if (!isResolved) { isResolved = true; resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'baja', exactitud_m: Math.round(pos.coords.accuracy || 0) }); } },
-                        () => { if (!isResolved) { isResolved = true; resolve(null); } },
+                        (pos) => finalizar({ lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'baja', exactitud_m: Math.round(pos.coords.accuracy || 0) }),
+                        () => finalizar(mejorLectura), // sin señal de red tampoco: se usa lo que sí se alcanzó a leer del GPS, o null
                         { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
                     );
                 };
 
-                const timerAlta = setTimeout(() => { if (!isResolved) attemptLowAccuracy(); }, 9000);
-
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => { if (!isResolved) { isResolved = true; clearTimeout(timerAlta); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'alta', exactitud_m: Math.round(pos.coords.accuracy || 0) }); } },
-                    (err) => {
-                        clearTimeout(timerAlta);
-                        if (err.code === 1) { // PERMISSION_DENIED
-                            if (!isResolved) { isResolved = true; resolve(null); }
-                        } else if (!isResolved) {
-                            attemptLowAccuracy();
+                watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        const exactitud = Math.round(pos.coords.accuracy || 999999);
+                        if (!mejorLectura || exactitud < mejorLectura.exactitud_m) {
+                            mejorLectura = { lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'alta', exactitud_m: exactitud };
                         }
+                        if (exactitud <= 15) finalizar(mejorLectura); // ya es lo bastante precisa, no hace falta esperar más
                     },
-                    { enableHighAccuracy: true, timeout: 9000 }
+                    (err) => {
+                        if (err.code === 1) finalizar(null); // PERMISSION_DENIED: no tiene sentido seguir esperando
+                        // otros códigos de error: se deja seguir intentando hasta el timeout de abajo
+                    },
+                    { enableHighAccuracy: true, timeout: 9000, maximumAge: 0 }
                 );
+
+                const timerFinal = setTimeout(() => {
+                    if (mejorLectura) finalizar(mejorLectura);
+                    else attemptLowAccuracy();
+                }, 8000);
+            });
+        }
+
+        // Selfie de verificación (anti-suplantación): abre la cámara frontal del celular, comprime la
+        // foto a un tamaño pequeño (máx. 480px de ancho, calidad reducida) para que no pese casi nada
+        // en la base de datos, y la devuelve como imagen lista para guardar junto al registro. Si el
+        // colaborador cancela la foto, devuelve null (el llamador decide si bloquea el registro).
+        function capturarSelfie() {
+            return new Promise((resolve) => {
+                const input = document.getElementById('input-selfie');
+                input.value = ''; // por si ya se había usado antes, para que 'change' dispare de nuevo
+                const onChange = () => {
+                    input.removeEventListener('change', onChange);
+                    const file = input.files && input.files[0];
+                    if (!file) return resolve(null);
+
+                    const img = new Image();
+                    const reader = new FileReader();
+                    reader.onload = (e) => { img.src = e.target.result; };
+                    reader.onerror = () => resolve(null);
+                    img.onload = () => {
+                        const maxAncho = 360;
+                        const escala = Math.min(1, maxAncho / img.width);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width * escala;
+                        canvas.height = img.height * escala;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.5));
+                    };
+                    img.onerror = () => resolve(null);
+                    reader.readAsDataURL(file);
+                };
+                input.addEventListener('change', onChange);
+                input.click();
             });
         }
 
@@ -1614,14 +1828,32 @@
                 };
 
                 let loc = null;
+                let selfieUrl = null;
                 if (action === 'in' || action === 'out') {
+                    // La foto de verificación no se pide siempre: sale al azar según el % configurado en
+                    // Admin (por defecto 33%), para no incomodar a todos en cada fichaje, pero sigue
+                    // siendo un disuasivo real porque nadie sabe cuándo le va a tocar.
+                    const probabilidad = (catalogosCache.probabilidad_selfie_pct ?? 33) / 100;
+                    if (Math.random() < probabilidad) {
+                        btn.innerHTML = '<i class="ph-bold ph-camera animate-pulse text-xl"></i> Toma tu foto...';
+                        const selfieDataUrl = await capturarSelfie();
+                        if (!selfieDataUrl) {
+                            btn.innerHTML = originalHTML; btn.disabled = false;
+                            return UI.showAlert("Foto requerida", "Hoy te tocó verificación por foto para este fichaje. Tómate la foto para poder continuar.", "error");
+                        }
+                        // Se guarda directamente en Firestore (comprimida, ~20-50KB) en vez de subirla a
+                        // Storage, para no necesitar plan de pago. Para que esto no acumule espacio sin
+                        // control, un proceso aparte borra automáticamente las fotos de más de 30 días
+                        // (ver limpiarFotosAntiguas), dejando el resto del registro intacto.
+                        selfieUrl = selfieDataUrl;
+                    }
                     btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Obteniendo ubicación...';
                     loc = await getSafeGPS();
                     btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Guardando...';
                 }
 
                 if (action === 'in') {
-                    data.entrada = tTime; data.loc_entrada = loc; data.estado = 'activo';
+                    data.entrada = tTime; data.loc_entrada = loc; data.foto_entrada = selfieUrl; data.estado = 'activo';
                     const evalTardanza = evaluarTardanza(data.obra, tTime);
                     if (evalTardanza) {
                         data.llegada_tarde = evalTardanza.tarde;
@@ -1631,13 +1863,14 @@
                                 empleado: currentUserProfile.nombre, obra: data.obra, fecha: tStr,
                                 horaEntrada: tTime, horaEsperada: evalTardanza.horaEsperada, minutos: evalTardanza.minutos
                             });
+                            verificarTardanzasRepetidasMes(currentUserId, currentUserProfile.nombre, tStr);
                         }
                     }
                 }
                 else if (action === 'lunch_in') { data.almuerzo_inicio = tTime; }
                 else if (action === 'lunch_out') { data.almuerzo_fin = tTime; }
                 else if (action === 'out') {
-                    data.salida = tTime; data.loc_salida = loc; data.estado = 'completado';
+                    data.salida = tTime; data.loc_salida = loc; data.foto_salida = selfieUrl; data.estado = 'completado';
                     const acumuladaSemana = await getOrdinariasAcumuladasSemana(currentUserId, tStr);
                     const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
                     const calc = calcularJornadaDiaria(data, topeDia);
@@ -1756,7 +1989,10 @@
                 document.getElementById('input-email-coordinador').value = catalogosCache.email_coordinador || '';
                 document.getElementById('input-dias-vencimiento').value = catalogosCache.dias_vencimiento_permiso ?? 5;
                 document.getElementById('input-limite-permisos').value = catalogosCache.limite_permisos_tipo_mes ?? 3;
+                document.getElementById('input-limite-tardanzas').value = catalogosCache.limite_tardanzas_mes ?? 3;
+                document.getElementById('input-probabilidad-selfie').value = catalogosCache.probabilidad_selfie_pct ?? 33;
                 renderGestionColaboradores();
+                renderGestionIncapacidades();
                 startAdminTableListener();
             } catch (e) {
                 console.error(e);
@@ -1801,6 +2037,7 @@
                         if (nuevos > 0 || reparados > 0) await batch.commit();
                         await cargarListaEmpleadosDatalist();
                         await initAdminManualEntry();
+                        registrarAuditoria('Importar plantilla de empleados', `${nuevos} nuevos, ${reparados} reparados`);
                         UI.showAlert("Listo", `${nuevos} empleados nuevos. ${reparados} registros públicos reparados/creados. Ya puedes buscar tu nombre en "Mi Tarjeta".`, "success");
                     } catch (e) {
                         console.error(e);
@@ -1862,6 +2099,7 @@
                 await updateDoc(doc(db, 'catalogos', 'listas'), { email_alertas: email });
                 await cargarCatalogos();
                 UI.showAlert("Guardado", `Las alertas de tardanza se enviarán a ${email}.`, "success");
+                registrarAuditoria('Cambiar correo de alertas de tardanza', email);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo guardar el correo.", "error");
@@ -1878,6 +2116,7 @@
                 await updateDoc(doc(db, 'catalogos', 'listas'), { email_rrhh: emailRrhh, email_coordinador: emailCoord });
                 await cargarCatalogos();
                 UI.showAlert("Guardado", "Las notificaciones de permisos aprobados se enviarán a estos correos.", "success");
+                registrarAuditoria('Cambiar correos de notificación de permisos', `RRHH: ${emailRrhh} · Coordinador: ${emailCoord}`);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo guardar los correos.", "error");
@@ -1887,13 +2126,19 @@
         document.getElementById('btn-save-config-permisos').addEventListener('click', async () => {
             const dias = parseInt(document.getElementById('input-dias-vencimiento').value, 10);
             const limite = parseInt(document.getElementById('input-limite-permisos').value, 10);
-            if (!dias || dias < 1 || !limite || limite < 1) {
-                return UI.showAlert("Datos inválidos", "Ingresa números mayores a 0 en ambos campos.", "error");
+            const limiteTardanzas = parseInt(document.getElementById('input-limite-tardanzas').value, 10);
+            const probSelfie = parseInt(document.getElementById('input-probabilidad-selfie').value, 10);
+            if (!dias || dias < 1 || !limite || limite < 1 || !limiteTardanzas || limiteTardanzas < 1 || isNaN(probSelfie) || probSelfie < 0 || probSelfie > 100) {
+                return UI.showAlert("Datos inválidos", "Revisa los campos: los tres primeros deben ser mayores a 0, y el % de foto debe estar entre 0 y 100.", "error");
             }
             try {
-                await updateDoc(doc(db, 'catalogos', 'listas'), { dias_vencimiento_permiso: dias, limite_permisos_tipo_mes: limite });
+                await updateDoc(doc(db, 'catalogos', 'listas'), {
+                    dias_vencimiento_permiso: dias, limite_permisos_tipo_mes: limite,
+                    limite_tardanzas_mes: limiteTardanzas, probabilidad_selfie_pct: probSelfie
+                });
                 await cargarCatalogos();
-                UI.showAlert("Guardado", "Configuración de permisos actualizada.", "success");
+                UI.showAlert("Guardado", "Configuración actualizada.", "success");
+                registrarAuditoria('Cambiar configuración de permisos/tardanzas/selfie', `Vencimiento: ${dias} días · Límite permisos: ${limite}/mes · Límite tardanzas: ${limiteTardanzas}/mes · Foto: ${probSelfie}%`);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo guardar la configuración.", "error");
@@ -1963,6 +2208,7 @@
                 await cargarListaEmpleadosDatalist();
                 await initAdminManualEntry();
                 await renderGestionColaboradores();
+                registrarAuditoria('Agregar colaborador', `${nombre} (CC ${cedula}, ${tipoVinculacion})`);
                 UI.showAlert("Colaborador agregado", `${nombre} ya puede ingresar desde "Mi Tarjeta" buscando su nombre.`, "success");
             } catch (e) {
                 console.error(e);
@@ -2001,22 +2247,63 @@
             cont.innerHTML = lista.map(c => {
                 const esContratista = c.tipo_vinculacion === 'Contratista';
                 const badge = esContratista
-                    ? '<span class="text-[9px] font-bold uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Contratista</span>'
-                    : '<span class="text-[9px] font-bold uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Planta</span>';
+                    ? '<span class="text-[9px] font-bold uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex-shrink-0">Contratista</span>'
+                    : '<span class="text-[9px] font-bold uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded flex-shrink-0">Planta</span>';
+                const tieneAcceso = !!c.authUid;
+                const idSafe = `col-${c.cedula}`;
+
                 return `
-                <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 gap-2">
-                    <div class="min-w-0">
-                        <div class="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">${escapeHtml(c.nombre)} ${badge}</div>
-                        <div class="text-[10px] text-slate-500 truncate">${escapeHtml(c.cargo) || '—'} · CC ${escapeHtml(c.cedula)}${esContratista && c.tarifa_hora ? ` · ${UI.formatCOP(c.tarifa_hora)}/h` : ''}</div>
-                    </div>
-                    <button class="btn-eliminar-colaborador btn-touch bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0 flex items-center gap-1" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}">
-                        <i class="ph-bold ph-trash"></i> Eliminar
+                <div class="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                    <button type="button" class="btn-toggle-colaborador w-full flex items-center justify-between px-3 py-2.5 gap-2 text-left" data-target="${idSafe}" aria-expanded="false">
+                        <div class="min-w-0 flex items-center gap-1.5">
+                            <span class="text-xs font-bold text-slate-800 truncate">${escapeHtml(c.nombre)}</span>
+                            ${badge}
+                        </div>
+                        <i class="ph-bold ph-caret-down text-slate-400 text-sm flex-shrink-0 transition-transform" id="caret-${idSafe}"></i>
                     </button>
+                    <div id="detalle-${idSafe}" class="hidden px-3 pb-3">
+                        <div class="bg-white border border-slate-200 rounded-lg p-3 grid grid-cols-2 gap-2.5 text-[11px]">
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase">Cédula</p>
+                                <p class="font-semibold text-slate-700 font-mono">${escapeHtml(c.cedula)}</p>
+                            </div>
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase">Cargo</p>
+                                <p class="font-semibold text-slate-700">${escapeHtml(c.cargo) || '—'}</p>
+                            </div>
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase">${esContratista ? 'Tarifa por hora' : 'Sueldo base mensual'}</p>
+                                <p class="font-semibold text-slate-700">${esContratista ? UI.formatCOP(c.tarifa_hora || 0) + '/h' : UI.formatCOP(c.sueldo_base || 0)}</p>
+                            </div>
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase">Acceso a "Mi Tarjeta"</p>
+                                <p class="font-semibold ${tieneAcceso ? 'text-emerald-600' : 'text-slate-400'}">${tieneAcceso ? 'PIN configurado' : 'Aún no ha ingresado'}</p>
+                            </div>
+                        </div>
+                        <button class="btn-eliminar-colaborador btn-touch w-full mt-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}">
+                            <i class="ph-bold ph-trash"></i> Eliminar Colaborador
+                        </button>
+                    </div>
                 </div>`;
             }).join('');
 
+            cont.querySelectorAll('.btn-toggle-colaborador').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.dataset.target;
+                    const detalle = document.getElementById(`detalle-${targetId}`);
+                    const caret = document.getElementById(`caret-${targetId}`);
+                    const abierto = !detalle.classList.contains('hidden');
+                    detalle.classList.toggle('hidden');
+                    caret.style.transform = abierto ? '' : 'rotate(180deg)';
+                    btn.setAttribute('aria-expanded', String(!abierto));
+                });
+            });
+
             cont.querySelectorAll('.btn-eliminar-colaborador').forEach(btn => {
-                btn.addEventListener('click', () => eliminarColaborador(btn.dataset.cedula, btn.dataset.nombre));
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    eliminarColaborador(btn.dataset.cedula, btn.dataset.nombre);
+                });
             });
         }
         document.getElementById('filtro-colaborador-gestion').addEventListener('input', pintarListaColaboradoresAdmin);
@@ -2032,6 +2319,7 @@
                         await cargarListaEmpleadosDatalist();
                         await initAdminManualEntry();
                         await renderGestionColaboradores();
+                        registrarAuditoria('Eliminar colaborador', `${nombre} (CC ${cedula})`);
                         UI.showAlert("Eliminado", `${nombre} fue eliminado de la lista de colaboradores activos.`, "success");
                     } catch (e) {
                         console.error(e);
@@ -2040,6 +2328,497 @@
                 }
             );
         }
+
+        // ===================================== Incapacidades =====================================
+        let incapacidadesAdminCache = [];
+
+        document.getElementById('btn-mostrar-form-incapacidad').addEventListener('click', () => {
+            document.getElementById('form-agregar-incapacidad').classList.toggle('hidden');
+            document.getElementById('form-agregar-incapacidad').classList.toggle('grid');
+        });
+        document.getElementById('btn-cancelar-incapacidad').addEventListener('click', () => {
+            document.getElementById('form-agregar-incapacidad').classList.add('hidden');
+            document.getElementById('form-agregar-incapacidad').classList.remove('grid');
+        });
+
+        document.getElementById('btn-guardar-incapacidad').addEventListener('click', async () => {
+            const nombre = document.getElementById('incapacidad-trabajador').value.trim();
+            const cedula = empleadosNombreCedula[nombre.toUpperCase()] || null;
+            const fechaInicio = document.getElementById('incapacidad-fecha-inicio').value;
+            const fechaFin = document.getElementById('incapacidad-fecha-fin').value;
+            const tipo = document.getElementById('incapacidad-tipo').value;
+            const correoSupervisor = document.getElementById('incapacidad-correo-supervisor').value.trim();
+            const diagnostico = document.getElementById('incapacidad-diagnostico').value.trim();
+
+            if (!nombre || !fechaInicio || !fechaFin) {
+                return UI.showAlert("Datos incompletos", "Completa colaborador, fecha de inicio y fecha de fin.", "error");
+            }
+            if (!cedula) {
+                return UI.showAlert("Colaborador no encontrado", "Ese nombre no coincide con ningún colaborador registrado. Escríbelo igual a como aparece en la lista.", "error");
+            }
+            if (fechaFin < fechaInicio) {
+                return UI.showAlert("Fechas inválidas", "La fecha de fin no puede ser anterior a la fecha de inicio.", "error");
+            }
+
+            const btn = document.getElementById('btn-guardar-incapacidad');
+            btn.disabled = true;
+            try {
+                const ref = doc(collection(db, 'incapacidades'));
+                await setDoc(ref, {
+                    trabajador: nombre, trabajador_cedula: cedula,
+                    fecha_inicio: fechaInicio, fecha_fin: fechaFin, tipo,
+                    correo_supervisor: correoSupervisor || null,
+                    diagnostico: diagnostico || null,
+                    creado_por: auth.currentUser?.email || 'desconocido',
+                    creado_en: new Date().toISOString(),
+                    alerta_ultimo_dia_enviada: false
+                });
+
+                document.getElementById('incapacidad-trabajador').value = '';
+                document.getElementById('incapacidad-fecha-inicio').value = '';
+                document.getElementById('incapacidad-fecha-fin').value = '';
+                document.getElementById('incapacidad-correo-supervisor').value = '';
+                document.getElementById('incapacidad-diagnostico').value = '';
+                document.getElementById('incapacidad-tipo').value = 'Enfermedad General';
+                document.getElementById('form-agregar-incapacidad').classList.add('hidden');
+                document.getElementById('form-agregar-incapacidad').classList.remove('grid');
+
+                await renderGestionIncapacidades();
+                registrarAuditoria('Registrar incapacidad', `${nombre}: ${fechaInicio} a ${fechaFin} (${tipo})`);
+                UI.showAlert("Guardado", `Incapacidad de ${nombre} registrada. Se verá reflejada en su "Mi Tarjeta".`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar la incapacidad.", "error");
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        async function renderGestionIncapacidades() {
+            const cont = document.getElementById('lista-incapacidades-admin');
+            cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Cargando...</p>';
+            try {
+                const snap = await getDocs(collection(db, 'incapacidades'));
+                const lista = [];
+                snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
+                lista.sort((a, b) => (b.fecha_inicio || '').localeCompare(a.fecha_inicio || ''));
+                incapacidadesAdminCache = lista;
+                pintarListaIncapacidadesAdmin();
+            } catch (e) {
+                console.error(e);
+                cont.innerHTML = '<p class="text-xs text-rose-400 text-center py-4">No se pudo cargar la lista de incapacidades.</p>';
+            }
+        }
+
+        function diasIncapacidad(inc) {
+            const [y1,m1,d1] = inc.fecha_inicio.split('-').map(Number);
+            const [y2,m2,d2] = inc.fecha_fin.split('-').map(Number);
+            return Math.round((new Date(y2,m2-1,d2) - new Date(y1,m1-1,d1)) / 86400000) + 1;
+        }
+
+        function pintarListaIncapacidadesAdmin() {
+            const filtro = document.getElementById('filtro-incapacidad').value.trim().toUpperCase();
+            const cont = document.getElementById('lista-incapacidades-admin');
+            const hoyStr = getTodayStr();
+            const lista = incapacidadesAdminCache.filter(i => !filtro || (i.trabajador || '').toUpperCase().includes(filtro));
+
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay incapacidades registradas.</p>';
+                return;
+            }
+
+            cont.innerHTML = lista.map(i => {
+                const activa = hoyStr >= i.fecha_inicio && hoyStr <= i.fecha_fin;
+                const badge = activa
+                    ? '<span class="text-[9px] font-bold uppercase bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded flex-shrink-0">Activa</span>'
+                    : '<span class="text-[9px] font-bold uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded flex-shrink-0">Finalizada</span>';
+                const idSafe = `inc-${i.id}`;
+                return `
+                <div class="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                    <button type="button" class="btn-toggle-incapacidad w-full flex items-center justify-between px-3 py-2.5 gap-2 text-left" data-target="${idSafe}">
+                        <div class="min-w-0 flex items-center gap-1.5">
+                            <span class="text-xs font-bold text-slate-800 truncate">${escapeHtml(i.trabajador)}</span>
+                            ${badge}
+                        </div>
+                        <i class="ph-bold ph-caret-down text-slate-400 text-sm flex-shrink-0 transition-transform" id="caret-${idSafe}"></i>
+                    </button>
+                    <div id="detalle-${idSafe}" class="hidden px-3 pb-3">
+                        <div class="bg-white border border-slate-200 rounded-lg p-3 grid grid-cols-2 gap-2.5 text-[11px]">
+                            <div><p class="text-[9px] font-bold text-slate-400 uppercase">Desde</p><p class="font-semibold text-slate-700">${escapeHtml(i.fecha_inicio)}</p></div>
+                            <div><p class="text-[9px] font-bold text-slate-400 uppercase">Hasta</p><p class="font-semibold text-slate-700">${escapeHtml(i.fecha_fin)}</p></div>
+                            <div><p class="text-[9px] font-bold text-slate-400 uppercase">Tipo</p><p class="font-semibold text-slate-700">${escapeHtml(i.tipo)}</p></div>
+                            <div><p class="text-[9px] font-bold text-slate-400 uppercase">Días</p><p class="font-semibold text-slate-700">${diasIncapacidad(i)}</p></div>
+                            ${i.diagnostico ? `<div class="col-span-2"><p class="text-[9px] font-bold text-slate-400 uppercase">Diagnóstico/Nota</p><p class="font-semibold text-slate-700">${escapeHtml(i.diagnostico)}</p></div>` : ''}
+                        </div>
+                        <button class="btn-eliminar-incapacidad btn-touch w-full mt-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5" data-id="${i.id}" data-trabajador="${escapeHtml(i.trabajador)}">
+                            <i class="ph-bold ph-trash"></i> Eliminar
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            cont.querySelectorAll('.btn-toggle-incapacidad').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.dataset.target;
+                    const detalle = document.getElementById(`detalle-${targetId}`);
+                    const caret = document.getElementById(`caret-${targetId}`);
+                    const abierto = !detalle.classList.contains('hidden');
+                    detalle.classList.toggle('hidden');
+                    caret.style.transform = abierto ? '' : 'rotate(180deg)';
+                });
+            });
+            cont.querySelectorAll('.btn-eliminar-incapacidad').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    UI.showConfirm("Eliminar Incapacidad", `¿Seguro que quieres eliminar el registro de incapacidad de ${btn.dataset.trabajador}?`, async () => {
+                        try {
+                            await deleteDoc(doc(db, 'incapacidades', btn.dataset.id));
+                            await renderGestionIncapacidades();
+                            registrarAuditoria('Eliminar incapacidad', btn.dataset.trabajador);
+                            UI.showAlert("Eliminado", "Registro de incapacidad eliminado.", "success");
+                        } catch (err) {
+                            console.error(err);
+                            UI.showAlert("Error", "No se pudo eliminar.", "error");
+                        }
+                    });
+                });
+            });
+        }
+        document.getElementById('filtro-incapacidad').addEventListener('input', pintarListaIncapacidadesAdmin);
+
+        document.getElementById('btn-exportar-incapacidades-excel').addEventListener('click', () => {
+            if (incapacidadesAdminCache.length === 0) return UI.showAlert("Aviso", "No hay incapacidades para exportar.", "info");
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "TRABAJADOR;CEDULA;TIPO;FECHA INICIO;FECHA FIN;DIAS;DIAGNOSTICO/NOTA\n";
+            incapacidadesAdminCache.forEach(i => {
+                const row = [i.trabajador, i.trabajador_cedula || '', i.tipo, i.fecha_inicio, i.fecha_fin, diasIncapacidad(i), i.diagnostico || '']
+                    .map(sanitizeCsvField).join(";");
+                csvContent += row + "\n";
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `Incapacidades_INDIMON_${getTodayStr()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Informe PDF con gráficos: junta ausencias (de los registros de tiempo, filtrando por tipo de
+        // permiso relacionado con ausencia) e incapacidades, agrupa por obra y por tipo, dibuja dos
+        // gráficos de barras (con Chart.js, en un canvas oculto) y arma un PDF con esas imágenes más
+        // tablas resumen (con jsPDF). Todo pasa en el navegador, no requiere backend.
+        const TIPOS_AUSENCIA = ['Ausencia injustificada', 'Ausencia justificada', 'Se devolvió'];
+
+        async function generarInformePDF() {
+            const btn = document.getElementById('btn-exportar-informe-pdf');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Generando...';
+
+            try {
+                // 1) Ausencias: se leen todos los registros de tiempo (de todos los colaboradores) y se
+                // filtran en el navegador los que tengan un tipo de permiso relacionado con ausencia,
+                // para no depender de un índice compuesto especial en Firestore.
+                const regsSnap = await getDocs(query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(5000)));
+                const ausencias = [];
+                regsSnap.forEach(d => {
+                    const r = d.data();
+                    if (TIPOS_AUSENCIA.includes(r.tipo_permiso)) ausencias.push(r);
+                });
+
+                const ausenciasPorObra = {};
+                ausencias.forEach(a => {
+                    const obra = a.obra || 'Sin obra';
+                    ausenciasPorObra[obra] = (ausenciasPorObra[obra] || 0) + 1;
+                });
+
+                // 2) Incapacidades: se reutiliza lo que ya está cargado en el panel de Admin.
+                if (incapacidadesAdminCache.length === 0) await renderGestionIncapacidades();
+                const diasPorTipo = {};
+                incapacidadesAdminCache.forEach(i => {
+                    diasPorTipo[i.tipo] = (diasPorTipo[i.tipo] || 0) + diasIncapacidad(i);
+                });
+
+                if (ausencias.length === 0 && incapacidadesAdminCache.length === 0) {
+                    UI.showAlert("Aviso", "No hay ausencias ni incapacidades registradas todavía para generar el informe.", "info");
+                    return;
+                }
+
+                // 3) Dibuja los dos gráficos en canvases ocultos y los convierte en imágenes.
+                const imgAusencias = Object.keys(ausenciasPorObra).length > 0
+                    ? await dibujarGraficoBarras('Ausencias por obra', Object.keys(ausenciasPorObra), Object.values(ausenciasPorObra), '#f43f5e')
+                    : null;
+                const imgIncapacidades = Object.keys(diasPorTipo).length > 0
+                    ? await dibujarGraficoBarras('Días de incapacidad por tipo', Object.keys(diasPorTipo), Object.values(diasPorTipo), '#3b82f6')
+                    : null;
+
+                // 4) Arma el PDF.
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+                let y = 18;
+
+                pdf.setFontSize(16); pdf.setFont(undefined, 'bold');
+                pdf.text('INDIMON S.A.S. — Informe de Ausencias e Incapacidades', 14, y);
+                pdf.setFontSize(9); pdf.setFont(undefined, 'normal');
+                y += 6;
+                pdf.text(`Generado el ${new Date().toLocaleString('es-CO')}`, 14, y);
+                y += 10;
+
+                if (imgAusencias) {
+                    pdf.setFontSize(12); pdf.setFont(undefined, 'bold');
+                    pdf.text('Ausencias por obra', 14, y); y += 4;
+                    pdf.addImage(imgAusencias, 'PNG', 14, y, 180, 80);
+                    y += 86;
+                    pdf.setFontSize(9); pdf.setFont(undefined, 'normal');
+                    Object.entries(ausenciasPorObra).forEach(([obra, cant]) => {
+                        pdf.text(`${obra}: ${cant} ausencia(s)`, 16, y); y += 5;
+                    });
+                    y += 6;
+                }
+
+                if (y > 220) { pdf.addPage(); y = 18; }
+
+                if (imgIncapacidades) {
+                    pdf.setFontSize(12); pdf.setFont(undefined, 'bold');
+                    pdf.text('Días de incapacidad por tipo', 14, y); y += 4;
+                    pdf.addImage(imgIncapacidades, 'PNG', 14, y, 180, 80);
+                    y += 86;
+                    pdf.setFontSize(9); pdf.setFont(undefined, 'normal');
+                    Object.entries(diasPorTipo).forEach(([tipo, dias]) => {
+                        pdf.text(`${tipo}: ${dias} día(s)`, 16, y); y += 5;
+                    });
+                    y += 6;
+                }
+
+                if (incapacidadesAdminCache.length > 0) {
+                    if (y > 250) { pdf.addPage(); y = 18; }
+                    pdf.setFontSize(12); pdf.setFont(undefined, 'bold');
+                    pdf.text('Detalle de incapacidades por colaborador', 14, y); y += 6;
+                    pdf.setFontSize(8); pdf.setFont(undefined, 'normal');
+                    incapacidadesAdminCache.forEach(i => {
+                        if (y > 285) { pdf.addPage(); y = 18; }
+                        pdf.text(`${i.trabajador} — ${i.tipo} — ${i.fecha_inicio} a ${i.fecha_fin} (${diasIncapacidad(i)} día(s))`, 14, y);
+                        y += 5;
+                    });
+                }
+
+                pdf.save(`Informe_Ausencias_Incapacidades_INDIMON_${getTodayStr()}.pdf`);
+                registrarAuditoria('Exportar informe PDF de ausencias/incapacidades', `${ausencias.length} ausencias, ${incapacidadesAdminCache.length} incapacidades`);
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo generar el informe PDF.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        // Dibuja un gráfico de barras simple con Chart.js sobre un canvas oculto en el DOM, espera a que
+        // termine de renderizar, y devuelve la imagen como dataURL (PNG) lista para meter en el PDF.
+        function dibujarGraficoBarras(titulo, labels, valores, color) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 900; canvas.height = 450;
+                canvas.style.position = 'fixed'; canvas.style.left = '-9999px';
+                document.body.appendChild(canvas);
+
+                const chart = new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels, datasets: [{ label: titulo, data: valores, backgroundColor: color }] },
+                    options: {
+                        responsive: false, animation: false,
+                        plugins: { legend: { display: false }, title: { display: true, text: titulo, font: { size: 18 } } },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+
+                setTimeout(() => {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    chart.destroy();
+                    document.body.removeChild(canvas);
+                    resolve(dataUrl);
+                }, 250);
+            });
+        }
+
+        document.getElementById('btn-exportar-informe-pdf').addEventListener('click', generarInformePDF);
+
+
+        // avisó; si es así, notifica a RRHH/coordinador/supervisor. NOTA IMPORTANTE: como esta app no
+        // tiene servidor ni tareas programadas, este chequeo solo corre cuando alguien tiene la app
+        // abierta (cualquier colaborador o el admin) — no es una alarma en tiempo real 24/7, pero como
+        // la app se usa a diario para fichar, en la práctica cubre casi todos los días.
+        // Borra las fotos de verificación (foto_entrada/foto_salida) de registros con más de 30 días,
+        // para que no se acumulen sin control dentro de Firestore (las fotos viven ahí, no en Storage,
+        // por decisión de no requerir tarjeta/plan de pago). El resto del registro del día (horas,
+        // entrada/salida, GPS, etc.) NUNCA se toca ni se borra — solo se limpia el campo de la foto.
+        // Corre como mucho una vez al día (se guarda la fecha en este mismo navegador) para no hacer
+        // este barrido pesado cada vez que alguien abre la app.
+        async function limpiarFotosAntiguas() {
+            const hoyStr = getTodayStr();
+            if (localStorage.getItem('ultima_limpieza_fotos') === hoyStr) return; // ya corrió hoy en este dispositivo
+
+            try {
+                const limiteFecha = new Date(hoyStr + 'T00:00:00');
+                limiteFecha.setDate(limiteFecha.getDate() - 30);
+                const limiteStr = `${limiteFecha.getFullYear()}-${String(limiteFecha.getMonth()+1).padStart(2,'0')}-${String(limiteFecha.getDate()).padStart(2,'0')}`;
+
+                const snap = await getDocs(query(collectionGroup(db, 'registros'), orderBy('fecha', 'asc'), fsLimit(3000)));
+                let borradas = 0;
+                for (const d of snap.docs) {
+                    const r = d.data();
+                    if (r.fecha && r.fecha < limiteStr && (r.foto_entrada || r.foto_salida)) {
+                        await updateDoc(d.ref, { foto_entrada: null, foto_salida: null });
+                        borradas++;
+                    }
+                    if (r.fecha && r.fecha >= limiteStr) break; // están ordenados por fecha, ya no hay más viejas
+                }
+                localStorage.setItem('ultima_limpieza_fotos', hoyStr);
+                if (borradas > 0) console.log(`Limpieza automática: ${borradas} foto(s) de más de 30 días eliminadas.`);
+            } catch (e) {
+                console.error('No se pudo ejecutar la limpieza automática de fotos:', e);
+            }
+        }
+
+        async function verificarIncapacidadesPorVencer() {
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_INCAPACIDAD_ID) return;
+            try {
+                const hoy = new Date(getTodayStr() + 'T00:00:00');
+                const manana = new Date(hoy.getTime() + 86400000);
+                const mananaStr = `${manana.getFullYear()}-${String(manana.getMonth()+1).padStart(2,'0')}-${String(manana.getDate()).padStart(2,'0')}`;
+
+                const snap = await getDocs(query(collection(db, 'incapacidades'), where('fecha_fin', '==', mananaStr)));
+                for (const d of snap.docs) {
+                    const inc = d.data();
+                    if (inc.alerta_ultimo_dia_enviada) continue;
+                    const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador, inc.correo_supervisor].filter(Boolean);
+                    for (const destino of destinos) {
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_INCAPACIDAD_ID, {
+                            to_email: destino, trabajador: inc.trabajador, fecha_fin: inc.fecha_fin, tipo_incapacidad: inc.tipo
+                        }).catch(e => console.error('No se pudo enviar alerta de incapacidad:', e));
+                    }
+                    await updateDoc(doc(db, 'incapacidades', d.id), { alerta_ultimo_dia_enviada: true });
+                }
+            } catch (e) {
+                console.error('No se pudo verificar incapacidades por vencer:', e);
+            }
+        }
+
+        // Revisa si el colaborador que acaba de entrar a "Mi Tarjeta" tiene una incapacidad activa HOY;
+        // si es así, muestra el aviso y bloquea el registro de tiempo (no debería fichar mientras está
+        // incapacitado).
+        async function verificarIncapacidadActiva() {
+            const banner = document.getElementById('banner-incapacidad-activa');
+            try {
+                const hoyStr = getTodayStr();
+                const snap = await getDocs(query(collection(db, 'incapacidades'), where('trabajador_cedula', '==', currentUserId)));
+                let activa = null;
+                snap.forEach(d => {
+                    const inc = d.data();
+                    if (hoyStr >= inc.fecha_inicio && hoyStr <= inc.fecha_fin) activa = inc;
+                });
+                if (activa) {
+                    document.getElementById('banner-incapacidad-texto').textContent =
+                        `Tu incapacidad (${activa.tipo}) va hasta el ${activa.fecha_fin}. No puedes registrar tiempo mientras estés incapacitado. Si ya te recuperaste antes de esa fecha, avisa a RRHH.`;
+                    banner.classList.remove('hidden');
+                    document.getElementById('btn-punch-in').disabled = true;
+                } else {
+                    banner.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('No se pudo verificar incapacidad activa:', e);
+            }
+        }
+
+
+        async function registrarAuditoria(accion, detalle) {
+            try {
+                const adminEmail = auth.currentUser?.email || 'desconocido';
+                await setDoc(doc(collection(db, 'auditoria')), {
+                    accion, detalle, admin_email: adminEmail, fecha: new Date().toISOString()
+                });
+            } catch (e) {
+                console.error('No se pudo registrar en la auditoría:', e);
+            }
+        }
+
+        document.getElementById('btn-cargar-auditoria').addEventListener('click', async () => {
+            const cont = document.getElementById('lista-auditoria');
+            cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Cargando...</p>';
+            try {
+                const snap = await getDocs(query(collection(db, 'auditoria'), orderBy('fecha', 'desc'), fsLimit(100)));
+                const movimientos = [];
+                snap.forEach(d => movimientos.push(d.data()));
+                if (movimientos.length === 0) {
+                    cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Todavía no hay movimientos registrados.</p>';
+                    return;
+                }
+                cont.innerHTML = movimientos.map(m => `
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-slate-800">${escapeHtml(m.accion)}</span>
+                            <span class="text-[9px] text-slate-400 font-mono flex-shrink-0">${m.fecha ? new Date(m.fecha).toLocaleString('es-CO') : ''}</span>
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(m.detalle) || ''}</div>
+                        <div class="text-[9px] text-blue-500 font-semibold mt-0.5">${escapeHtml(m.admin_email)}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error(e);
+                cont.innerHTML = '<p class="text-xs text-rose-400 text-center py-4">No se pudo cargar la auditoría.</p>';
+            }
+        });
+
+        // Backup completo: descarga toda la base de datos (colaboradores, sus registros de tiempo,
+        // permisos y catálogos) como un único archivo .json al computador del admin. Es la alternativa
+        // gratuita a los backups automáticos de Firestore (que solo existen en el plan de pago Blaze).
+        document.getElementById('btn-descargar-backup').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-descargar-backup');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Generando backup...';
+            try {
+                const backup = { generado_en: new Date().toISOString(), empleados: [], permisos: [], catalogos: null, auditoria: [] };
+
+                const empleadosSnap = await getDocs(collection(db, 'empleados'));
+                for (const empDoc of empleadosSnap.docs) {
+                    const registrosSnap = await getDocs(collection(db, 'empleados', empDoc.id, 'registros'));
+                    backup.empleados.push({
+                        cedula: empDoc.id,
+                        datos: empDoc.data(),
+                        registros: registrosSnap.docs.map(r => ({ fecha: r.id, ...r.data() }))
+                    });
+                }
+
+                const permisosSnap = await getDocs(collection(db, 'permisos'));
+                backup.permisos = permisosSnap.docs.map(p => ({ id: p.id, ...p.data() }));
+
+                const catalogosSnap = await getDoc(doc(db, 'catalogos', 'listas'));
+                backup.catalogos = catalogosSnap.exists() ? catalogosSnap.data() : null;
+
+                const auditoriaSnap = await getDocs(collection(db, 'auditoria'));
+                backup.auditoria = auditoriaSnap.docs.map(a => a.data());
+
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Backup_INDIMON_${getTodayStr()}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                registrarAuditoria('Descargar backup completo', `${backup.empleados.length} colaboradores, ${backup.permisos.length} permisos`);
+                UI.showAlert("Backup Listo", `Se descargó el backup con ${backup.empleados.length} colaboradores y ${backup.permisos.length} permisos. Guárdalo en un lugar seguro (Google Drive, USB, etc.).`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo generar el backup completo.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        });
 
         async function initAdminManualEntry() {
             const selEmp = document.getElementById('manual-empleado');
@@ -2247,6 +3026,11 @@
             aplicarFiltrosYRenderizar();
         });
 
+        window.verFotoCompleta = (dataUrl) => {
+            const w = window.open('', '_blank');
+            if (w) w.document.write(`<title>Foto de verificación</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${dataUrl}" style="max-width:100%;max-height:100vh"></body>`);
+        };
+
         function renderAdminTable(regs) {
             const tbody = document.getElementById('admin-table-body');
             tbody.innerHTML = '';
@@ -2259,15 +3043,26 @@
             regs.forEach(r => {
                 const mapBtn = (loc) => {
                     if (!loc) return `<span class="text-slate-300">-</span>`;
-                    const avisoBaja = loc.precision === 'baja' ? ` <span class="text-amber-600" title="Ubicación aproximada por red, puede tener varios cientos de metros de margen de error">⚠️${loc.exactitud_m ? '±' + loc.exactitud_m + 'm' : ''}</span>` : '';
-                    return `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoBaja}`;
+                    let avisoExactitud = '';
+                    if (loc.exactitud_m) {
+                        const colorClase = loc.exactitud_m <= 20 ? 'text-emerald-600' : (loc.exactitud_m <= 100 ? 'text-amber-600' : 'text-rose-600');
+                        const tituloAviso = loc.precision === 'baja'
+                            ? 'Ubicación aproximada por red (sin señal GPS clara), puede tener varios cientos de metros de margen de error'
+                            : 'Margen de error aproximado de esta lectura GPS';
+                        avisoExactitud = ` <span class="${colorClase} font-mono" title="${tituloAviso}">±${loc.exactitud_m}m</span>`;
+                    }
+                    return `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoExactitud}`;
+                };
+                const fotoBtn = (foto) => {
+                    if (!foto) return '';
+                    return `<img src="${foto}" class="w-6 h-6 rounded-full object-cover border border-slate-300 cursor-pointer flex-shrink-0" title="Ver foto de verificación en tamaño completo" onclick="window.verFotoCompleta('${foto}')">`;
                 };
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-4 border-b border-slate-100">
                         <div class="font-mono font-bold text-slate-700">${escHtml(r.fecha)} ${r.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
                         <div class="text-[10px] flex gap-2 mt-1 items-center">
-                            IN: ${mapBtn(r.loc_entrada)} <span class="text-slate-200">|</span> OUT: ${mapBtn(r.loc_salida)}
+                            IN: ${mapBtn(r.loc_entrada)} ${fotoBtn(r.foto_entrada)} <span class="text-slate-200">|</span> OUT: ${mapBtn(r.loc_salida)} ${fotoBtn(r.foto_salida)}
                         </div>
                     </td>
                     <td class="p-4 border-b border-slate-100">
@@ -2896,6 +3691,7 @@
                         await deleteDoc(doc(db, 'permisos', permisoId));
                         permisosCache = permisosCache.filter(p => p.id !== permisoId);
                         renderHistorialPermisos();
+                        registrarAuditoria('Eliminar permiso', `Trabajador: ${trabajador} (ID ${permisoId})`);
                         UI.showAlert("Eliminado", "La solicitud de permiso fue eliminada.", "success");
                     } catch (e) {
                         console.error(e);
