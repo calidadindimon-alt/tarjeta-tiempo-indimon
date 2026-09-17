@@ -2971,7 +2971,7 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Generando backup...';
             try {
-                const backup = { generado_en: new Date().toISOString(), empleados: [], permisos: [], catalogos: null, auditoria: [] };
+                const backup = { generado_en: new Date().toISOString(), empleados: [], permisos: [], desprendibles: [], incapacidades: [], catalogos: null, auditoria: [] };
 
                 const empleadosSnap = await getDocs(collection(db, 'empleados'));
                 for (const empDoc of empleadosSnap.docs) {
@@ -2985,6 +2985,12 @@
 
                 const permisosSnap = await getDocs(collection(db, 'permisos'));
                 backup.permisos = permisosSnap.docs.map(p => ({ id: p.id, ...p.data() }));
+
+                const desprendiblesSnap = await getDocs(collection(db, 'desprendibles'));
+                backup.desprendibles = desprendiblesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const incapacidadesSnap = await getDocs(collection(db, 'incapacidades'));
+                backup.incapacidades = incapacidadesSnap.docs.map(i => ({ id: i.id, ...i.data() }));
 
                 const catalogosSnap = await getDoc(doc(db, 'catalogos', 'listas'));
                 backup.catalogos = catalogosSnap.exists() ? catalogosSnap.data() : null;
@@ -3002,8 +3008,8 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
 
-                registrarAuditoria('Descargar backup completo', `${backup.empleados.length} colaboradores, ${backup.permisos.length} permisos`);
-                UI.showAlert("Backup Listo", `Se descargó el backup con ${backup.empleados.length} colaboradores y ${backup.permisos.length} permisos. Guárdalo en un lugar seguro (Google Drive, USB, etc.).`, "success");
+                registrarAuditoria('Descargar backup completo', `${backup.empleados.length} colaboradores, ${backup.permisos.length} permisos, ${backup.desprendibles.length} desprendibles, ${backup.incapacidades.length} incapacidades`);
+                UI.showAlert("Backup Listo", `Se descargó el backup con ${backup.empleados.length} colaboradores, ${backup.permisos.length} permisos y ${backup.desprendibles.length} desprendibles (con sus firmas incluidas). Guárdalo en un lugar seguro (Google Drive, USB, etc.).`, "success");
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo generar el backup completo.", "error");
