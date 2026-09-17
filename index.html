@@ -59,6 +59,9 @@
                     <button class="nav-tab text-slate-400 hover:text-white px-4 py-2 rounded-md text-xs font-semibold transition-all" data-target="tab-permisos">
                         <i class="ph-bold ph-signature mr-1"></i> Permisos
                     </button>
+                    <button class="nav-tab text-slate-400 hover:text-white px-4 py-2 rounded-md text-xs font-semibold transition-all" data-target="tab-desprendibles">
+                        <i class="ph-bold ph-receipt mr-1"></i> Desprendibles
+                    </button>
                     <button class="nav-tab text-slate-400 hover:text-white px-4 py-2 rounded-md text-xs font-semibold transition-all" data-target="tab-admin">
                         <i class="ph-bold ph-shield-check mr-1"></i> Admin SSTA
                     </button>
@@ -149,6 +152,13 @@
                     <i class="ph-fill ph-first-aid-kit text-3xl text-rose-500 mb-2"></i>
                     <h3 class="font-bold text-rose-800">Estás incapacitado</h3>
                     <p id="banner-incapacidad-texto" class="text-xs text-rose-700 mt-1"></p>
+                </div>
+
+                <div id="mis-desprendibles-card" class="hidden bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
+                    <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2 text-lg">
+                        <i class="ph-fill ph-receipt text-blue-500"></i> Mis Desprendibles de Pago
+                    </h3>
+                    <div id="mis-desprendibles-lista" class="space-y-2"></div>
                 </div>
 
                 <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
@@ -301,10 +311,11 @@
                         <button id="btn-add-horario-obra" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Horario por Obra</button>
                     </div>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo para alertas de tardanza</label>
-                        <input type="email" id="input-email-alertas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="admin@indimon.com">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alertas de tardanza</label>
+                        <input type="text" id="input-email-alertas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="admin@indimon.com; otro@indimon.com">
                         <button id="btn-save-email-alertas" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
+                    <p class="text-[10px] text-slate-400 -mt-1">Si son varios correos, sepáralos con punto y coma ( ; ).</p>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
                         <label class="text-[10px] font-bold text-slate-500 uppercase">Correo de RRHH (notificación de permisos)</label>
                         <input type="email" id="input-email-rrhh" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="rrhh@indimon.com">
@@ -741,6 +752,170 @@
 
             </div>
         </section>
+
+        <section id="tab-desprendibles" class="tab-content">
+
+            <div class="max-w-2xl mx-auto">
+
+                <div id="desp-login-view" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mt-4 md:mt-10">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="ph-fill ph-lock-key text-3xl text-slate-500"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-slate-800">Acceso Desprendibles</h2>
+                        <p class="text-xs text-slate-500 mt-1">Solo RRHH / Administración</p>
+                    </div>
+                    <input type="email" id="desp-admin-email" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-center font-semibold focus:ring-2 focus:ring-slate-500 outline-none" placeholder="correo@indimon.com" autocomplete="username">
+                    <input type="password" id="desp-admin-pass" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-4 text-center tracking-widest font-bold focus:ring-2 focus:ring-slate-500 outline-none" placeholder="Contraseña" autocomplete="current-password">
+                    <button id="btn-desp-admin-login" class="btn-touch w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-md">Ingresar</button>
+                    <p class="text-[10px] text-center text-slate-400 mt-4">Es la misma cuenta que usas para entrar a "Admin SSTA".</p>
+                </div>
+
+                <!-- ============================ FIRMA REMOTA (vía enlace individual) — SIN necesidad de login ============================ -->
+                <div id="desp-view-firmar" class="hidden flex-col gap-4 mb-8">
+                    <div id="desp-firmar-loading" class="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm">Cargando desprendible...</div>
+                    <div id="desp-firmar-error" class="hidden bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center text-rose-700 font-semibold text-sm"></div>
+                    <div id="desp-firmar-contenido" class="hidden flex-col gap-4">
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Desprendible de Pago</p>
+                            <h3 id="desp-firmar-trabajador" class="text-lg font-bold text-slate-800 mb-3"></h3>
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">N° Nómina</span><span id="desp-firmar-numero" class="font-semibold text-slate-700"></span></div>
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">Período</span><span id="desp-firmar-periodo" class="font-semibold text-slate-700"></span></div>
+                            </div>
+                            <a id="desp-firmar-link-doc" href="#" target="_blank" rel="noopener" class="btn-touch w-full mt-4 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3 rounded-xl flex items-center justify-center gap-2 border border-blue-200">
+                                <i class="ph-bold ph-file-text"></i> Ver mi Desprendible de Pago
+                            </a>
+                        </div>
+
+                        <div id="desp-verificacion-box" class="bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-sm flex flex-col gap-3">
+                            <div class="flex items-center gap-2 text-slate-700">
+                                <i class="ph-fill ph-shield-check text-xl text-blue-500"></i>
+                                <p class="text-sm font-bold">Verifica tu identidad para poder firmar</p>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
+                                <input type="text" inputmode="numeric" maxlength="15" id="desp-verificacion-input" class="w-full bg-slate-50 border border-slate-300 text-lg rounded-lg p-2.5 font-mono font-bold tracking-[0.15em] text-center focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
+                            </div>
+                            <p id="desp-verificacion-error" class="hidden text-[11px] font-bold text-rose-600">La cédula no coincide. Verifica e inténtalo de nuevo.</p>
+                            <button id="btn-desp-verificar" class="btn-touch w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl">Verificar y Continuar</button>
+                        </div>
+
+                        <div id="desp-pendiente-box" class="hidden bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-sm flex flex-col gap-3">
+                            <div class="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <input type="checkbox" id="desp-confirmo-revision" class="mt-0.5 w-4 h-4 accent-amber-600 flex-shrink-0">
+                                <label for="desp-confirmo-revision" class="text-xs text-amber-800 font-medium leading-snug">
+                                    Confirmo que revisé el documento de mi desprendible de pago (botón de arriba) y estoy de acuerdo con la información.
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
+                                <input type="text" id="desp-firmar-nombre-input" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden">
+                                <canvas id="desp-firmar-canvas" class="firma-canvas"></canvas>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-[10px] text-slate-400 flex items-center gap-1"><i class="ph-bold ph-info"></i> Gira el celular para firmar con más espacio</p>
+                                <button type="button" id="btn-desp-firmar-clear" class="btn-touch text-xs font-bold text-rose-500 hover:text-rose-700 px-2 py-1 flex-shrink-0">Borrar</button>
+                            </div>
+                            <button id="btn-desp-firmar-confirmar" disabled class="btn-touch w-full bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md">Firmar y Confirmar</button>
+                        </div>
+
+                        <div id="desp-ya-firmado-box" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center">
+                            <i class="ph-fill ph-check-circle text-4xl text-emerald-500 mb-2"></i>
+                            <p class="font-bold text-emerald-800">Ya firmaste este desprendible.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="desp-panel-view" class="hidden flex-col gap-2">
+
+                <div class="flex items-center justify-end mb-1">
+                    <button id="btn-desp-admin-logout" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                        <i class="ph-bold ph-sign-out"></i> Salir
+                    </button>
+                </div>
+
+                <div id="desprendibles-subtabs" class="flex gap-2 bg-slate-100 p-1 rounded-xl mb-4 mt-2">
+                    <button id="btn-desp-sub-nuevo" class="desp-subtab flex-1 py-2.5 rounded-lg text-xs font-bold transition-all bg-white shadow-sm text-slate-800">
+                        <i class="ph-bold ph-plus-circle mr-1"></i> Nuevo Desprendible
+                    </button>
+                    <button id="btn-desp-sub-historial" class="desp-subtab flex-1 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-500">
+                        <i class="ph-bold ph-clock-counter-clockwise mr-1"></i> Historial
+                    </button>
+                </div>
+
+                <!-- ============================ NUEVO DESPRENDIBLE ============================ -->
+                <div id="desp-view-nuevo" class="flex flex-col gap-4">
+                    <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-1 flex items-center gap-2 text-lg">
+                            <i class="ph-fill ph-receipt text-blue-500"></i> Datos del Desprendible
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">El archivo del desprendible (PDF o foto) debe estar subido a Google Drive u otro lugar donde ya lo tengan — aquí solo se pega el enlace para compartirlo, no se sube el archivo directamente.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Colaborador</label>
+                                <input type="text" id="desp-trabajador" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre del colaborador">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">N° de Nómina (opcional)</label>
+                                <input type="text" id="desp-nomina-numero" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 842">
+                            </div>
+                            <div></div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Desde</label>
+                                <input type="date" id="desp-periodo-inicio" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Hasta</label>
+                                <input type="date" id="desp-periodo-fin" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Enlace al documento (Google Drive u otro)</label>
+                                <input type="url" id="desp-enlace-documento" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://drive.google.com/...">
+                                <p class="text-[10px] text-slate-400 mt-1">En Google Drive: clic derecho en el archivo → Compartir → \"Cualquiera con el enlace\" → Copiar enlace.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-crear-desprendible" disabled class="btn-touch w-full bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all text-base mb-8">
+                        <i class="ph-bold ph-link text-xl"></i> Generar Enlace de Firma
+                    </button>
+                    <p id="desp-progreso" class="text-[11px] text-center text-slate-400 -mt-6 mb-8">Completa los datos y el enlace del documento.</p>
+                </div>
+
+                <!-- ============================ ENLACE GENERADO ============================ -->
+                <div id="desp-view-enlace" class="hidden flex-col gap-3 mb-8">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+                        <i class="ph-fill ph-check-circle text-3xl text-emerald-500 mb-2"></i>
+                        <h3 class="font-bold text-emerald-800">Desprendible creado</h3>
+                        <p class="text-xs text-emerald-700 mt-1">Envíale al colaborador su enlace para que revise el documento y firme desde su celular.</p>
+                    </div>
+                    <div id="desp-enlace-card" class="flex flex-col gap-2"></div>
+                    <button id="btn-desp-enlace-terminar" class="btn-touch w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl">Listo, volver</button>
+                </div>
+
+                <!-- ============================ HISTORIAL ============================ -->
+                <div id="desp-view-historial" class="hidden flex-col gap-3 mb-8">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                            <i class="ph-fill ph-clipboard-text text-indigo-500 text-lg"></i> Desprendibles de Pago
+                        </h3>
+                        <div class="flex gap-2 flex-wrap">
+                            <input type="text" id="desp-filtro-nombre" class="border border-slate-300 rounded-lg p-2 text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Filtrar por nombre...">
+                            <button id="btn-exportar-desprendibles" class="btn-touch bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg text-xs font-bold border border-emerald-200 flex items-center gap-1"><i class="ph-bold ph-file-xls"></i> Excel</button>
+                        </div>
+                    </div>
+                    <div id="desprendibles-historial-lista" class="space-y-2">
+                        <p class="text-xs text-slate-400 text-center py-4">Cargando...</p>
+                    </div>
+                </div>
+
+                </div><!-- /desp-panel-view -->
+
+            </div>
+        </section>
     </main>
 
     <nav class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around p-2 pb-safe z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
@@ -751,6 +926,10 @@
         <button class="nav-tab flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-slate-600" data-target="tab-permisos">
             <i class="ph-fill ph-signature text-2xl mb-1 transition-transform"></i>
             <span class="text-[10px] font-bold">Permisos</span>
+        </button>
+        <button class="nav-tab flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-slate-600" data-target="tab-desprendibles">
+            <i class="ph-fill ph-receipt text-2xl mb-1 transition-transform"></i>
+            <span class="text-[10px] font-bold">Nómina</span>
         </button>
         <button class="nav-tab flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-slate-600" data-target="tab-admin">
             <i class="ph-fill ph-shield-check text-2xl mb-1 transition-transform"></i>
@@ -824,19 +1003,18 @@
         const EMAILJS_TEMPLATE_ID = "template_yp97zz6";
         if (EMAILJS_PUBLIC_KEY) emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 
-        // Plantilla SEPARADA para la notificación de "Permiso aprobado" (4 firmas completas).
-        // Crea otra plantilla en tu cuenta de EmailJS con estas variables en el cuerpo:
-        // {{trabajador}}, {{tipo_permiso}}, {{fecha_permiso}}, {{horas}}, {{nota}}, {{to_email}}
-        // Si la dejas vacía, la app guarda el permiso igual, solo no envía el correo.
-        const EMAILJS_TEMPLATE_PERMISOS_ID = "";
-
-        // Plantilla para el aviso de "3+ tardanzas en el mes". Variables: {{empleado}}, {{total_tardanzas_mes}},
-        // {{mes}}, {{to_email}}. Vacía por defecto: no se envía nada hasta que crees la plantilla y pegues su ID aquí.
-        const EMAILJS_TEMPLATE_TARDANZAS_REPETIDAS_ID = "";
-
-        // Plantilla para el aviso de "le queda 1 día de incapacidad". Variables: {{trabajador}}, {{fecha_fin}},
-        // {{tipo_incapacidad}}, {{to_email}}. Vacía por defecto: no se envía nada hasta que crees la plantilla.
-        const EMAILJS_TEMPLATE_INCAPACIDAD_ID = "";
+        // ===================================== Plantilla genérica compartida =====================================
+        // El plan gratis de EmailJS permite solo 2 plantillas en total. Ya se usó una para la tardanza
+        // individual (EMAILJS_TEMPLATE_ID) — esta segunda plantilla se REUTILIZA para las otras 4
+        // notificaciones (tardanzas repetidas, permiso aprobado, incapacidad por vencer, desprendible
+        // firmado), cada una con su propio asunto y cuerpo de texto armados aquí en el código.
+        //
+        // En EmailJS, configura esta plantilla con SOLO 3 variables:
+        //   To Email: {{to_email}}
+        //   Subject:  {{asunto}}
+        //   Content:  {{cuerpo}}
+        // Pega aquí el Template ID de esa plantilla (la misma que ya creaste como "Patrón de Tardanzas"):
+        const EMAILJS_TEMPLATE_GENERAL_ID = "template_q7nomyb";
 
         // =====================================================================================
         //  CONFIGURACIÓN DE FIREBASE
@@ -1244,20 +1422,23 @@
 
         // Envía la alerta de tardanza por correo al administrador (vía EmailJS, sin backend).
         // Si EmailJS no está configurado, o falla el envío, no interrumpe el registro del empleado.
+        // El campo "Correo para alertas de tardanza" admite uno o VARIOS correos separados por ";"
         async function enviarAlertaTardanza({ empleado, obra, fecha, horaEntrada, horaEsperada, minutos }) {
             if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) return;
-            const destino = catalogosCache.email_alertas;
-            if (!destino) return;
-            try {
-                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                    to_email: destino,
-                    empleado, obra, fecha,
-                    hora_entrada: horaEntrada,
-                    hora_esperada: horaEsperada,
-                    minutos_tarde: minutos
-                });
-            } catch (e) {
-                console.error("No se pudo enviar la alerta de tardanza por correo:", e);
+            const destinos = (catalogosCache.email_alertas || '').split(';').map(e => e.trim()).filter(Boolean);
+            if (destinos.length === 0) return;
+            for (const destino of destinos) {
+                try {
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                        to_email: destino,
+                        empleado, obra, fecha,
+                        hora_entrada: horaEntrada,
+                        hora_esperada: horaEsperada,
+                        minutos_tarde: minutos
+                    });
+                } catch (e) {
+                    console.error(`No se pudo enviar la alerta de tardanza a ${destino}:`, e);
+                }
             }
         }
 
@@ -1275,11 +1456,13 @@
                     if (r.fecha && r.fecha.startsWith(mesStr) && r.llegada_tarde) total++;
                 });
                 if (total === limite) { // solo se avisa la primera vez que se alcanza el límite, no cada vez que se repite después
-                    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_TARDANZAS_REPETIDAS_ID) return;
+                    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
                     const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
                     for (const destino of destinos) {
-                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_TARDANZAS_REPETIDAS_ID, {
-                            to_email: destino, empleado: nombre, total_tardanzas_mes: total, mes: mesStr
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
+                            to_email: destino,
+                            asunto: `Alerta — ${nombre} acumula tardanzas`,
+                            cuerpo: `${nombre} lleva ${total} tardanzas registradas en ${mesStr}.\nSe sugiere seguimiento disciplinario.`
                         }).catch(e => console.error('No se pudo enviar la alerta de tardanzas repetidas:', e));
                     }
                 }
@@ -1594,6 +1777,7 @@
 
                 await checkTodayState();
                 await verificarIncapacidadActiva();
+                cargarMisDesprendibles();
                 await calculateMonthlyAccumulated();
                 const mesActual = getTodayStr().substring(0, 7);
                 document.getElementById('historial-mes').value = mesActual;
@@ -2688,7 +2872,7 @@
         }
 
         async function verificarIncapacidadesPorVencer() {
-            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_INCAPACIDAD_ID) return;
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
             try {
                 const hoy = new Date(getTodayStr() + 'T00:00:00');
                 const manana = new Date(hoy.getTime() + 86400000);
@@ -2700,8 +2884,10 @@
                     if (inc.alerta_ultimo_dia_enviada) continue;
                     const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador, inc.correo_supervisor].filter(Boolean);
                     for (const destino of destinos) {
-                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_INCAPACIDAD_ID, {
-                            to_email: destino, trabajador: inc.trabajador, fecha_fin: inc.fecha_fin, tipo_incapacidad: inc.tipo
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
+                            to_email: destino,
+                            asunto: `Incapacidad por terminar — ${inc.trabajador}`,
+                            cuerpo: `A ${inc.trabajador} le queda 1 día de incapacidad (${inc.tipo}).\nFecha de reintegro: ${inc.fecha_fin}\nPlanea la prórroga o el regreso a la obra.`
                         }).catch(e => console.error('No se pudo enviar alerta de incapacidad:', e));
                     }
                     await updateDoc(doc(db, 'incapacidades', d.id), { alerta_ultimo_dia_enviada: true });
@@ -3369,17 +3555,14 @@
         // Envía la notificación de "permiso aprobado" a RRHH y al coordinador de proyectos (vía EmailJS).
         // Si no hay plantilla configurada, o no hay correos guardados, o falla el envío, no interrumpe el guardado.
         async function enviarNotificacionPermiso(data) {
-            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_PERMISOS_ID) return;
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
             const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
             for (const destino of destinos) {
                 try {
-                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_PERMISOS_ID, {
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
                         to_email: destino,
-                        trabajador: data.trabajador,
-                        tipo_permiso: data.tipo,
-                        fecha_permiso: data.fecha,
-                        horas: data.horas || '',
-                        nota: data.nota || ''
+                        asunto: `Permiso aprobado — ${data.trabajador}`,
+                        cuerpo: `El permiso de ${data.trabajador} quedó aprobado con las 4 firmas.\n\nTipo: ${data.tipo}\nFecha: ${data.fecha}\nHoras: ${data.horas || '-'}\nNota: ${data.nota || '-'}`
                     });
                 } catch (e) {
                     console.error(`No se pudo enviar la notificación de permiso a ${destino}:`, e);
@@ -3927,7 +4110,454 @@
             }
         }
 
-        // ------------------------------- Inicialización de la pestaña Permisos -------------------------------
+        // ===================================== Desprendibles de Pago (firma remota, 1 solo firmante) =====================================
+        let desprendiblesCache = [];
+
+        // ------------------------------- Acceso protegido de la pestaña Desprendibles -------------------------------
+        // Usa la misma cuenta y la misma colección "admins" que el panel de Admin SSTA — no es una clave
+        // aparte, es el mismo inicio de sesión.
+        async function mostrarPanelDesprendibles() {
+            document.getElementById('desp-login-view').classList.add('hidden');
+            document.getElementById('desp-panel-view').classList.remove('hidden');
+            document.getElementById('desp-panel-view').classList.add('flex');
+            cargarHistorialDesprendibles();
+        }
+        function mostrarLoginDesprendibles() {
+            document.getElementById('desp-panel-view').classList.add('hidden');
+            document.getElementById('desp-panel-view').classList.remove('flex');
+            document.getElementById('desp-login-view').classList.remove('hidden');
+        }
+
+        document.getElementById('btn-desp-admin-login').addEventListener('click', async () => {
+            const email = document.getElementById('desp-admin-email').value.trim();
+            const pass = document.getElementById('desp-admin-pass').value;
+            if (!email || !pass) return UI.showAlert("Datos incompletos", "Ingresa correo y contraseña.", "error");
+
+            const btn = document.getElementById('btn-desp-admin-login');
+            btn.disabled = true;
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, pass);
+                const adminSnap = await getDoc(doc(db, 'admins', cred.user.uid));
+                if (!adminSnap.exists()) {
+                    await signOut(auth);
+                    return UI.showAlert("Acceso Denegado", "Esta cuenta no tiene permisos de administrador.", "error");
+                }
+                document.getElementById('desp-admin-pass').value = '';
+                await mostrarPanelDesprendibles();
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Acceso Denegado", "Correo o contraseña incorrectos.", "error");
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('btn-desp-admin-logout').addEventListener('click', async () => {
+            await signOut(auth).catch(() => {});
+            mostrarLoginDesprendibles();
+        });
+
+        let despFirmarPad = null;
+
+        function buildEnlaceDesprendible(id) {
+            const base = window.location.origin + window.location.pathname;
+            return `${base}?desprendible=${encodeURIComponent(id)}`;
+        }
+
+        function datosBasicosDesprendibleCompletos() {
+            return document.getElementById('desp-trabajador').value.trim() &&
+                   document.getElementById('desp-periodo-inicio').value.trim() &&
+                   document.getElementById('desp-periodo-fin').value.trim() &&
+                   document.getElementById('desp-enlace-documento').value.trim();
+        }
+
+        function updateCrearDesprendibleState() {
+            const btn = document.getElementById('btn-crear-desprendible');
+            const progreso = document.getElementById('desp-progreso');
+            const ok = datosBasicosDesprendibleCompletos();
+            btn.disabled = !ok;
+            progreso.textContent = ok ? 'Todo listo. Se generará un enlace de firma para el colaborador.' : 'Completa colaborador, período y el enlace del documento.';
+        }
+        ['desp-trabajador', 'desp-periodo-inicio', 'desp-periodo-fin', 'desp-enlace-documento'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateCrearDesprendibleState);
+            document.getElementById(id).addEventListener('change', updateCrearDesprendibleState);
+        });
+
+        async function enviarNotificacionDesprendible(data) {
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
+            const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
+            for (const destino of destinos) {
+                try {
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
+                        to_email: destino,
+                        asunto: `Desprendible firmado — ${data.trabajador}`,
+                        cuerpo: `${data.trabajador} firmó su desprendible de pago.\n\nPeríodo: ${data.periodo_inicio} a ${data.periodo_fin}\nN° de Nómina: ${data.nomina_numero || '-'}`
+                    });
+                } catch (e) {
+                    console.error(`No se pudo enviar la notificación de desprendible firmado a ${destino}:`, e);
+                }
+            }
+        }
+
+        document.getElementById('btn-crear-desprendible').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-crear-desprendible');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin text-xl"></i> Creando...';
+
+            try {
+                const nombreTrabajador = document.getElementById('desp-trabajador').value.trim();
+                const data = {
+                    trabajador: nombreTrabajador,
+                    trabajador_cedula: empleadosNombreCedula[nombreTrabajador.toUpperCase()] || null,
+                    nomina_numero: document.getElementById('desp-nomina-numero').value.trim(),
+                    periodo_inicio: document.getElementById('desp-periodo-inicio').value,
+                    periodo_fin: document.getElementById('desp-periodo-fin').value,
+                    enlace_documento: document.getElementById('desp-enlace-documento').value.trim(),
+                    firma: null, firmado: false, firmado_en: null,
+                    estado: 'pendiente',
+                    creado_por: auth.currentUser?.email || 'desconocido',
+                    creado_en: new Date().toISOString()
+                };
+
+                const ref = doc(collection(db, 'desprendibles'));
+                await setDoc(ref, data);
+
+                const link = buildEnlaceDesprendible(ref.id);
+                const waText = encodeURIComponent(`Hola ${nombreTrabajador}, tu desprendible de pago (período ${data.periodo_inicio} a ${data.periodo_fin}) ya está disponible para revisar y firmar en este enlace: ${link}`);
+                document.getElementById('desp-enlace-card').innerHTML = `
+                    <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-slate-800">${escapeHtml(nombreTrabajador)}</p>
+                            <p class="text-[10px] text-slate-400 truncate">${escapeHtml(link)}</p>
+                        </div>
+                        <div class="flex gap-1 flex-shrink-0">
+                            <button id="btn-copiar-enlace-desp" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-2 rounded-lg text-xs font-bold" data-link="${escapeHtml(link)}" title="Copiar enlace"><i class="ph-bold ph-copy"></i></button>
+                            <a href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" class="btn-touch bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-2 rounded-lg text-xs font-bold" title="Enviar por WhatsApp"><i class="ph-bold ph-whatsapp-logo"></i></a>
+                        </div>
+                    </div>`;
+                document.getElementById('btn-copiar-enlace-desp').addEventListener('click', async (e) => {
+                    try {
+                        await navigator.clipboard.writeText(e.currentTarget.dataset.link);
+                        const original = e.currentTarget.innerHTML;
+                        e.currentTarget.innerHTML = '<i class="ph-bold ph-check"></i>';
+                        setTimeout(() => { e.currentTarget.innerHTML = original; }, 1500);
+                    } catch (err) {
+                        UI.showAlert("Copiar enlace", "No se pudo copiar automáticamente. Mantén presionado el enlace para copiarlo.", "info");
+                    }
+                });
+
+                document.getElementById('desp-view-nuevo').classList.add('hidden');
+                document.getElementById('desp-view-enlace').classList.remove('hidden');
+                document.getElementById('desp-view-enlace').classList.add('flex');
+
+                registrarAuditoria('Crear desprendible de pago', `${nombreTrabajador} — período ${data.periodo_inicio} a ${data.periodo_fin}`);
+
+                document.getElementById('desp-trabajador').value = '';
+                document.getElementById('desp-nomina-numero').value = '';
+                document.getElementById('desp-periodo-inicio').value = '';
+                document.getElementById('desp-periodo-fin').value = '';
+                document.getElementById('desp-enlace-documento').value = '';
+                updateCrearDesprendibleState();
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo crear el desprendible. Verifica tu conexión e inténtalo de nuevo.", "error");
+            } finally {
+                btn.innerHTML = originalHTML;
+                updateCrearDesprendibleState();
+            }
+        });
+
+        document.getElementById('btn-desp-enlace-terminar').addEventListener('click', () => {
+            document.getElementById('desp-view-enlace').classList.add('hidden');
+            document.getElementById('desp-view-enlace').classList.remove('flex');
+            document.getElementById('desp-view-nuevo').classList.remove('hidden');
+        });
+
+        // ------------------------------- Sub-pestañas: Nuevo Desprendible / Historial -------------------------------
+        function ocultarTodasLasVistasDesprendibles() {
+            ['desp-view-nuevo', 'desp-view-enlace', 'desp-view-historial', 'desp-view-firmar'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.add('hidden'); el.classList.remove('flex');
+            });
+        }
+        function setDespSubtabActive(which) {
+            const nuevo = document.getElementById('btn-desp-sub-nuevo');
+            const hist = document.getElementById('btn-desp-sub-historial');
+            [nuevo, hist].forEach(b => b.classList.remove('bg-white', 'shadow-sm', 'text-slate-800'));
+            [nuevo, hist].forEach(b => b.classList.add('text-slate-500'));
+            const activo = which === 'nuevo' ? nuevo : hist;
+            activo.classList.add('bg-white', 'shadow-sm', 'text-slate-800');
+            activo.classList.remove('text-slate-500');
+        }
+        document.getElementById('btn-desp-sub-nuevo').addEventListener('click', () => {
+            ocultarTodasLasVistasDesprendibles();
+            document.getElementById('desp-view-nuevo').classList.remove('hidden');
+            setDespSubtabActive('nuevo');
+        });
+        document.getElementById('btn-desp-sub-historial').addEventListener('click', () => {
+            ocultarTodasLasVistasDesprendibles();
+            document.getElementById('desp-view-historial').classList.remove('hidden');
+            document.getElementById('desp-view-historial').classList.add('flex');
+            setDespSubtabActive('historial');
+            cargarHistorialDesprendibles();
+        });
+
+        // ------------------------------- Historial -------------------------------
+        async function cargarHistorialDesprendibles() {
+            const cont = document.getElementById('desprendibles-historial-lista');
+            cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Cargando...</p>';
+            try {
+                const snap = await getDocs(collection(db, 'desprendibles'));
+                const lista = [];
+                snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
+                lista.sort((a, b) => (b.creado_en || '').localeCompare(a.creado_en || ''));
+                desprendiblesCache = lista;
+                renderHistorialDesprendibles();
+            } catch (e) {
+                console.error(e);
+                cont.innerHTML = '<p class="text-xs text-rose-400 text-center py-4">No se pudo cargar el historial.</p>';
+            }
+        }
+
+        function renderHistorialDesprendibles() {
+            const filtro = document.getElementById('desp-filtro-nombre').value.trim().toUpperCase();
+            const cont = document.getElementById('desprendibles-historial-lista');
+            const lista = desprendiblesCache.filter(d => !filtro || (d.trabajador || '').toUpperCase().includes(filtro));
+
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay desprendibles registrados.</p>';
+                return;
+            }
+
+            cont.innerHTML = lista.map(d => {
+                const firmado = d.estado === 'firmado';
+                const badge = firmado
+                    ? `<span class="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0"><i class="ph-bold ph-check-circle"></i> Firmado</span>`
+                    : `<span class="text-[10px] font-bold uppercase bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0"><i class="ph-bold ph-clock"></i> Pendiente</span>`;
+                const link = buildEnlaceDesprendible(d.id);
+                return `
+                <div class="bg-white border border-slate-200 rounded-xl p-3">
+                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.toggleDesprendibleDetalle('${d.id}')">
+                        <div class="min-w-0">
+                            <div class="text-sm font-bold text-slate-800 truncate">${escapeHtml(d.trabajador) || '—'}</div>
+                            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(d.periodo_inicio)} a ${escapeHtml(d.periodo_fin)}${d.nomina_numero ? ' · N° ' + escapeHtml(d.nomina_numero) : ''}</div>
+                        </div>
+                        ${badge}
+                    </div>
+                    <div id="detalle-desp-${d.id}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
+                        <a href="${escapeHtml(d.enlace_documento)}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 underline flex items-center gap-1"><i class="ph-bold ph-file-text"></i> Ver documento original</a>
+                        ${firmado
+                            ? `<img src="${d.firma}" class="w-full h-16 object-contain bg-slate-50 rounded border border-slate-200 mt-1">
+                               <p class="text-[10px] text-slate-500">Firmado por ${escapeHtml(d.firmado_por) || escapeHtml(d.trabajador)} el ${d.firmado_en ? new Date(d.firmado_en).toLocaleString('es-CO') : ''}</p>`
+                            : `<button class="btn-copy-link-desp-hist btn-touch w-full text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar enlace de firma</button>`
+                        }
+                    </div>
+                </div>`;
+            }).join('');
+
+            cont.querySelectorAll('.btn-copy-link-desp-hist').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    try {
+                        await navigator.clipboard.writeText(btn.dataset.link);
+                        const original = btn.innerHTML;
+                        btn.innerHTML = '<i class="ph-bold ph-check"></i> Copiado';
+                        setTimeout(() => { btn.innerHTML = original; }, 1500);
+                    } catch (err) {
+                        UI.showAlert("Copiar enlace", "No se pudo copiar automáticamente.", "info");
+                    }
+                });
+            });
+        }
+        window.toggleDesprendibleDetalle = (id) => {
+            const el = document.getElementById(`detalle-desp-${id}`);
+            if (el) el.classList.toggle('hidden');
+        };
+        document.getElementById('desp-filtro-nombre').addEventListener('input', renderHistorialDesprendibles);
+
+        document.getElementById('btn-exportar-desprendibles').addEventListener('click', () => {
+            if (desprendiblesCache.length === 0) return UI.showAlert("Aviso", "No hay desprendibles para exportar.", "info");
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "TRABAJADOR;CEDULA;N NOMINA;PERIODO INICIO;PERIODO FIN;ESTADO;FIRMADO EN;ENLACE DOCUMENTO\n";
+            desprendiblesCache.forEach(d => {
+                const row = [
+                    d.trabajador || '', d.trabajador_cedula || '', d.nomina_numero || '',
+                    d.periodo_inicio || '', d.periodo_fin || '', d.estado === 'firmado' ? 'Firmado' : 'Pendiente',
+                    d.firmado_en || '', d.enlace_documento || ''
+                ].map(sanitizeCsvField).join(";");
+                csvContent += row + "\n";
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `Desprendibles_INDIMON_${getTodayStr()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // ------------------------------- Firma remota (abierta desde el enlace individual) -------------------------------
+        function checkDespFirmarReady() {
+            const btn = document.getElementById('btn-desp-firmar-confirmar');
+            const nombreOk = document.getElementById('desp-firmar-nombre-input').value.trim();
+            const firmaOk = despFirmarPad && !despFirmarPad.isEmpty();
+            const revisoOk = document.getElementById('desp-confirmo-revision').checked;
+            btn.disabled = !(nombreOk && firmaOk && revisoOk);
+        }
+
+        async function loadFirmaDesprendibleStandalone(despId) {
+            ocultarTodasLasVistasDesprendibles();
+            document.getElementById('desp-login-view').classList.add('hidden');
+            document.getElementById('desp-panel-view').classList.add('hidden');
+            document.getElementById('desp-panel-view').classList.remove('flex');
+            document.getElementById('desp-view-firmar').classList.remove('hidden');
+            document.getElementById('desp-view-firmar').classList.add('flex');
+
+            const loading = document.getElementById('desp-firmar-loading');
+            const errorBox = document.getElementById('desp-firmar-error');
+            const contenido = document.getElementById('desp-firmar-contenido');
+            loading.classList.remove('hidden'); errorBox.classList.add('hidden'); contenido.classList.add('hidden');
+
+            try {
+                const ref = doc(db, 'desprendibles', despId);
+                const snap = await getDoc(ref);
+                if (!snap.exists()) {
+                    loading.classList.add('hidden');
+                    errorBox.classList.remove('hidden');
+                    errorBox.textContent = 'Este desprendible no existe o el enlace ya no es válido.';
+                    return;
+                }
+
+                const data = snap.data();
+                document.getElementById('desp-firmar-trabajador').textContent = data.trabajador || '—';
+                document.getElementById('desp-firmar-numero').textContent = data.nomina_numero || '—';
+                document.getElementById('desp-firmar-periodo').textContent = `${data.periodo_inicio || ''} a ${data.periodo_fin || ''}`;
+                document.getElementById('desp-firmar-link-doc').href = data.enlace_documento || '#';
+
+                const verificacionBox = document.getElementById('desp-verificacion-box');
+                const pendienteBox = document.getElementById('desp-pendiente-box');
+                const yaFirmadoBox = document.getElementById('desp-ya-firmado-box');
+                const verificacionInput = document.getElementById('desp-verificacion-input');
+                const verificacionError = document.getElementById('desp-verificacion-error');
+
+                function habilitarFormularioFirmaDesp() {
+                    verificacionBox.classList.add('hidden');
+                    pendienteBox.classList.remove('hidden');
+                    yaFirmadoBox.classList.add('hidden');
+                    document.getElementById('desp-firmar-nombre-input').value = data.trabajador || '';
+
+                    const canvas = document.getElementById('desp-firmar-canvas');
+                    despFirmarPad = createSignaturePad(canvas, checkDespFirmarReady);
+                    setTimeout(() => despFirmarPad.resize(), 50);
+
+                    document.getElementById('desp-firmar-nombre-input').oninput = checkDespFirmarReady;
+                    document.getElementById('desp-confirmo-revision').onchange = checkDespFirmarReady;
+                    document.getElementById('btn-desp-firmar-clear').onclick = () => despFirmarPad.clear();
+                    document.getElementById('btn-desp-firmar-confirmar').onclick = () => confirmarFirmaDesprendible(despId);
+                    checkDespFirmarReady();
+                }
+
+                if (data.estado === 'firmado') {
+                    verificacionBox.classList.add('hidden');
+                    pendienteBox.classList.add('hidden');
+                    yaFirmadoBox.classList.remove('hidden');
+                } else if (!data.trabajador_cedula) {
+                    habilitarFormularioFirmaDesp();
+                } else {
+                    verificacionBox.classList.remove('hidden');
+                    pendienteBox.classList.add('hidden');
+                    yaFirmadoBox.classList.add('hidden');
+                    verificacionError.classList.add('hidden');
+                    verificacionInput.value = '';
+
+                    document.getElementById('btn-desp-verificar').onclick = () => {
+                        const ingresado = verificacionInput.value.trim();
+                        const cedulaReal = String(data.trabajador_cedula).trim();
+                        if (ingresado && ingresado === cedulaReal) {
+                            habilitarFormularioFirmaDesp();
+                        } else {
+                            verificacionError.classList.remove('hidden');
+                            verificacionInput.value = '';
+                            verificacionInput.focus();
+                        }
+                    };
+                    verificacionInput.onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('btn-desp-verificar').click(); };
+                }
+
+                loading.classList.add('hidden');
+                contenido.classList.remove('hidden');
+            } catch (e) {
+                console.error(e);
+                loading.classList.add('hidden');
+                errorBox.classList.remove('hidden');
+                errorBox.textContent = 'No se pudo cargar el desprendible. Verifica tu conexión e inténtalo de nuevo.';
+            }
+        }
+
+        async function confirmarFirmaDesprendible(despId) {
+            const btn = document.getElementById('btn-desp-firmar-confirmar');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Guardando...';
+
+            try {
+                const nombre = document.getElementById('desp-firmar-nombre-input').value.trim();
+                const firma = despFirmarPad.toDataURL();
+                const ref = doc(db, 'desprendibles', despId);
+
+                await updateDoc(ref, {
+                    firmado_por: nombre, firma, estado: 'firmado', firmado_en: new Date().toISOString()
+                });
+
+                const snap = await getDoc(ref);
+                await enviarNotificacionDesprendible(snap.data());
+
+                document.getElementById('desp-pendiente-box').classList.add('hidden');
+                document.getElementById('desp-ya-firmado-box').classList.remove('hidden');
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar tu firma. Verifica tu conexión e inténtalo de nuevo.", "error");
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+
+        // ------------------------------- "Mis Desprendibles" dentro de Mi Tarjeta -------------------------------
+        async function cargarMisDesprendibles() {
+            const cont = document.getElementById('mis-desprendibles-lista');
+            if (!cont) return;
+            try {
+                const snap = await getDocs(query(collection(db, 'desprendibles'), where('trabajador_cedula', '==', currentUserId)));
+                const lista = [];
+                snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
+                lista.sort((a, b) => (b.creado_en || '').localeCompare(a.creado_en || ''));
+
+                if (lista.length === 0) {
+                    document.getElementById('mis-desprendibles-card').classList.add('hidden');
+                    return;
+                }
+                document.getElementById('mis-desprendibles-card').classList.remove('hidden');
+                cont.innerHTML = lista.map(d => {
+                    const link = buildEnlaceDesprendible(d.id);
+                    const firmado = d.estado === 'firmado';
+                    return `
+                    <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 gap-2">
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-700">${escapeHtml(d.periodo_inicio)} a ${escapeHtml(d.periodo_fin)}</div>
+                            <div class="text-[10px] text-slate-500">${d.nomina_numero ? 'N° ' + escapeHtml(d.nomina_numero) : ''}</div>
+                        </div>
+                        ${firmado
+                            ? '<span class="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex-shrink-0">Firmado</span>'
+                            : `<a href="${link}" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0">Revisar y Firmar</a>`
+                        }
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('No se pudieron cargar los desprendibles del colaborador:', e);
+            }
+        }
+
+
         renderFirmantesInputs();
         (() => {
             const fecha = document.getElementById('permiso-fecha');
@@ -3935,14 +4565,18 @@
         })();
         updateCrearSolicitudState();
 
-        // Si la URL trae ?permiso=ID&rol=CLAVE, abre directamente la vista de firma remota (enlace individual).
+        // Si la URL trae ?permiso=ID&rol=CLAVE o ?desprendible=ID, abre directamente la vista de firma remota correspondiente.
         (() => {
             const params = new URLSearchParams(window.location.search);
             const permisoId = params.get('permiso');
             const rol = params.get('rol');
+            const despId = params.get('desprendible');
             if (permisoId && rol) {
                 UI.switchTab('tab-permisos');
                 loadFirmaStandalone(permisoId, rol);
+            } else if (despId) {
+                UI.switchTab('tab-desprendibles');
+                loadFirmaDesprendibleStandalone(despId);
             }
         })();
     </script>
