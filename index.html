@@ -1050,8 +1050,35 @@
 
         // Aviso visual de conexión: no bloquea nada (Firestore ya sincroniza solo en segundo plano),
         // solo le avisa al colaborador para que no se preocupe si no ve confirmación inmediata.
-        function actualizarBannerOffline() {
-            document.getElementById('banner-offline').classList.toggle('hidden', navigator.onLine);
+        //
+        // navigator.onLine NO es confiable por sí sola: en varios celulares, justo al abrir la
+        // página, el navegador reporta "sin conexión" por un instante aunque sí haya señal (el
+        // teléfono todavía está "despertando" la red). Por eso, antes de mostrar el aviso, hacemos
+        // una prueba real: pedirle al propio sitio un archivo pequeño. Si esa petición funciona,
+        // es que sí hay internet de verdad, sin importar lo que diga navigator.onLine.
+        let bannerOfflineTimer = null;
+        async function hayConexionReal() {
+            try {
+                await fetch('./service-worker.js?chk=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        async function actualizarBannerOffline() {
+            let conectado = navigator.onLine;
+            if (!conectado) {
+                conectado = await hayConexionReal();
+            }
+            document.getElementById('banner-offline').classList.toggle('hidden', conectado);
+
+            // Si sigue "sin conexión", seguimos probando solos cada 5 segundos para que el aviso
+            // se quite automáticamente apenas vuelva la señal, sin que el colaborador tenga que
+            // hacer nada (ni recargar, ni volver a copiar el enlace).
+            clearTimeout(bannerOfflineTimer);
+            if (!conectado) {
+                bannerOfflineTimer = setTimeout(actualizarBannerOffline, 5000);
+            }
         }
         window.addEventListener('online', actualizarBannerOffline);
         window.addEventListener('offline', actualizarBannerOffline);
@@ -2090,7 +2117,12 @@
                 if (e.code === 'unavailable' || e.message?.includes('offline')) {
                     UI.showAlert("Sin Conexión", "No hay señal de internet suficiente para guardar. Espera a tener mejor señal (WiFi o datos) e inténtalo de nuevo — no cierres la app.", "error");
                 } else {
-                    UI.showAlert("Error", "No se pudo guardar el registro. Verifica tu conexión a internet e intenta de nuevo. Si el problema persiste, prueba desde Safari o Chrome en vez de otro navegador.", "error");
+                    // Se incluye el código/mensaje técnico del error para poder diagnosticar casos
+                    // repetidos (ej. datos guardados corruptos en un celular específico): si esto
+                    // vuelve a pasar, una foto de esta pantalla ya trae la pista real, no solo
+                    // "algo falló".
+                    const detalleTecnico = e.code ? `Código: ${e.code}` : (e.message || 'sin detalle');
+                    UI.showAlert("Error", `No se pudo guardar el registro. Verifica tu conexión a internet e intenta de nuevo. Si el problema persiste, en Ajustes del celular borra los "Datos de sitios web" de esta app y vuelve a intentar.\n\n(Detalle técnico: ${detalleTecnico})`, "error");
                 }
             }
         }
@@ -3075,6 +3107,27 @@
             }
             if ((almuerzoInicio && !almuerzoFin) || (!almuerzoInicio && almuerzoFin)) {
                 return UI.showAlert("Almuerzo incompleto", "Si registras almuerzo, completa tanto la hora de inicio como la de fin (o deja ambas en blanco).", "error");
+            }
+            // Detecta el error típico de marcar el almuerzo en AM cuando se quería decir PM (ej. "12:00
+            // a.m." en vez de "12:00 p.m."): si la hora de almuerzo queda ANTES de la entrada Y no hay
+            // ninguna razón para pensar en un turno nocturno real (la entrada es de día, 4am-8pm), es
+            // casi seguro un error de digitación, no un turno real cruzando la medianoche.
+            if (entrada && almuerzoInicio) {
+                const hEntrada = timeStrToFloat(entrada);
+                const hAlmuerzo = timeStrToFloat(almuerzoInicio);
+                const pareceTurnoDiurno = hEntrada >= 4 && hEntrada <= 20;
+                if (pareceTurnoDiurno && hAlmuerzo < hEntrada) {
+                    const continuar = await new Promise(resolve => {
+                        UI.showConfirm(
+                            "Revisa la hora de almuerzo",
+                            `El almuerzo (${almuerzoInicio}) queda ANTES de la entrada (${entrada}). Esto suele pasar cuando se selecciona a.m. en vez de p.m. por error (por ejemplo, "12:00 a.m." en vez de "12:00 p.m."). ¿Seguro que la hora de almuerzo está bien puesta?`,
+                            () => resolve(true)
+                        );
+                        // Si el usuario cierra el cuadro sin confirmar, se asume que quiere revisar el dato y no continuar.
+                        setTimeout(() => resolve(false), 60000);
+                    });
+                    if (!continuar) return;
+                }
             }
 
             try {
