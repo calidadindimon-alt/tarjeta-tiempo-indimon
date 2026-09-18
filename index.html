@@ -1037,15 +1037,42 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+
+        // NOTA: se evaluó usar una segunda "app" de Firebase separada para los logins de Admin/
+        // Desprendibles (para que no pisaran la sesión del colaborador), pero como TODO el panel
+        // Admin usa la misma conexión a la base de datos (`db`, más abajo) y las reglas de
+        // Firestore verifican el admin por su sesión de autenticación, separar la sesión de login
+        // sin separar también cada lectura/escritura del panel Admin habría roto el panel Admin
+        // completo. En su lugar, se optó por DETECTAR cuándo la sesión del colaborador se invalidó
+        // (función sesionColaboradorValida() más abajo) y avisarle de inmediato con un mensaje
+        // claro para que vuelva a entrar con su PIN — sin necesidad de tocar todo el panel Admin.
+
         // Persistencia offline: si el colaborador ficha sin señal (obra sin cobertura), el registro se
         // guarda en el propio celular (vía IndexedDB del navegador) y se sincroniza solo con Firebase
         // en cuanto vuelva a tener conexión — sin que el colaborador tenga que hacer nada especial.
         let db;
+        const OPCIONES_FIRESTORE = {
+            // En redes móviles con proxy del operador (4G/datos), o en navegadores alternativos, el
+            // canal de streaming de Firestore se puede romper y todo queda en "unavailable" o
+            // colgado. Esta opción detecta ese caso y cambia sola a un modo de conexión más
+            // compatible (long-polling) en vez de fallar.
+            experimentalAutoDetectLongPolling: true,
+            // Evita que un campo vacío/indefinido (ej. un perfil que no alcanzó a cargar del todo)
+            // tumbe toda la escritura con error de "dato inválido". Ese campo simplemente no se guarda.
+            ignoreUndefinedProperties: true
+        };
         try {
-            db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) }) });
+            db = initializeFirestore(app, {
+                ...OPCIONES_FIRESTORE,
+                localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) })
+            });
         } catch (e) {
             console.error("No se pudo activar la persistencia offline, se sigue sin ella:", e);
-            db = getFirestore(app);
+            try {
+                db = initializeFirestore(app, OPCIONES_FIRESTORE);
+            } catch (e2) {
+                db = getFirestore(app);
+            }
         }
 
         // Aviso visual de conexión: no bloquea nada (Firestore ya sincroniza solo en segundo plano),
@@ -1318,6 +1345,103 @@
         }
 
         const getTodayStr = () => new Date().toLocaleDateString('en-CA');
+
+        // ===================================== Diagnóstico de errores =====================================
+        // Traduce el código técnico de Firebase a una instrucción concreta para el colaborador.
+        // Antes, cualquier fallo que no fuera "sin conexión" caía en el mismo mensaje genérico
+        // ("verifica tu conexión"), incluso con señal llena — eso hacía imposible resolver el
+        // problema en obra sin adivinar. Ahora cada código conocido tiene su propia explicación.
+        const DIAGNOSTICO_ERRORES = {
+            'permission-denied': {
+                titulo: 'Tu sesión ya no es válida',
+                msg: 'Tu sesión se cerró (pasa cuando alguien entra a Admin en este mismo celular, o después de muchas horas con la app abierta). Pulsa el botón de salir arriba a la derecha, vuelve a buscar tu nombre e ingresa con tu PIN. No perdiste nada de lo ya registrado.'
+            },
+            'unauthenticated': {
+                titulo: 'Tu sesión ya no es válida',
+                msg: 'Debes volver a ingresar con tu PIN para poder registrar. Pulsa el botón de salir arriba a la derecha y vuelve a entrar.'
+            },
+            'unavailable': {
+                titulo: 'Sin conexión con el servidor',
+                msg: 'Tu registro QUEDÓ GUARDADO en este celular y se enviará solo cuando vuelva la señal. No borres la app ni limpies el navegador; al volver la señal verás el indicador "En línea".'
+            },
+            'deadline-exceeded': {
+                titulo: 'La señal está muy lenta',
+                msg: 'Tu registro quedó guardado en este celular y se enviará solo cuando mejore la señal. Puedes seguir trabajando normalmente.'
+            },
+            'failed-precondition': {
+                titulo: 'El navegador está bloqueando el guardado',
+                msg: 'Estás en modo privado/incógnito, o el navegador tiene bloqueado el almacenamiento. Abre la app en Safari o Chrome normales (sin modo privado) y vuelve a intentarlo.'
+            },
+            'resource-exhausted': {
+                titulo: 'Sistema saturado',
+                msg: 'La cuota diaria del sistema se agotó. Avisa a SSTA con una foto de esta pantalla; tu registro se debe cargar manualmente.'
+            },
+            'invalid-argument': {
+                titulo: 'Dato inválido en el registro',
+                msg: 'Hay un dato mal formado en este registro. Avisa a SSTA con una foto de esta pantalla indicando la hora exacta.'
+            },
+            'not-found': {
+                titulo: 'Tu perfil no aparece',
+                msg: 'Tu perfil de colaborador no está en la base de datos. Avisa a SSTA para que lo cree de nuevo.'
+            }
+        };
+
+        function describirError(e) {
+            const code = String(e?.code || '').replace(/^firestore\//, '');
+            const info = DIAGNOSTICO_ERRORES[code];
+            const detalle = code || e?.message || 'desconocido';
+            if (info) return { ...info, detalle };
+            return {
+                titulo: 'No se pudo guardar',
+                msg: 'Ocurrió un error inesperado. Toma una foto de esta pantalla y envíala a SSTA con el código técnico que aparece abajo.',
+                detalle
+            };
+        }
+
+        // Guarda los últimos 20 errores en el propio celular, para poder diagnosticar después
+        // aunque el colaborador no recuerde qué decía la pantalla.
+        function logError(contexto, e) {
+            try {
+                const previos = JSON.parse(localStorage.getItem('errores_app') || '[]');
+                previos.unshift({
+                    fecha: new Date().toISOString(),
+                    contexto,
+                    usuario: (typeof currentUserProfile !== 'undefined' && currentUserProfile?.nombre) || (typeof currentUserId !== 'undefined' && currentUserId) || 'sin sesión',
+                    code: e?.code || null,
+                    mensaje: String(e?.message || e).slice(0, 300),
+                    online: navigator.onLine,
+                    autenticado: !!auth.currentUser
+                });
+                localStorage.setItem('errores_app', JSON.stringify(previos.slice(0, 20)));
+            } catch (_) { /* si el navegador bloquea localStorage, no pasa nada */ }
+        }
+
+        function mostrarErrorDiagnosticado(contexto, e) {
+            logError(contexto, e);
+            const d = describirError(e);
+            UI.showAlert(d.titulo, `${d.msg}\n\nCódigo técnico: ${d.detalle}`, 'error');
+        }
+
+        // La app usa UNA sola sesión de Firebase para colaboradores. Si alguien entra a Admin o a
+        // Desprendibles en este mismo celular con la instancia vieja, la sesión del colaborador se
+        // pierde. Esto lo detecta y avisa a tiempo, en vez de dejar que falle al momento de fichar.
+        function sesionColaboradorValida() {
+            return !!(typeof currentUserId !== 'undefined' && currentUserId && auth.currentUser && auth.currentUser.uid === currentUserProfile?.authUid);
+        }
+
+        function forzarReingresoColaborador(motivo) {
+            UI.showAlert(
+                'Vuelve a ingresar',
+                `${motivo}\n\nBusca tu nombre e ingresa de nuevo con tu PIN. Lo que ya habías registrado no se pierde.`,
+                'error'
+            );
+            const vId = document.getElementById('view-identidad');
+            const vT = document.getElementById('view-tarjeta');
+            if (vId) vId.classList.remove('hidden');
+            if (vT) { vT.classList.add('hidden'); vT.classList.remove('flex'); }
+            currentUserId = null;
+            currentUserProfile = null;
+        }
 
         async function cargarCatalogos() {
             try {
@@ -2026,8 +2150,20 @@
             });
         }
 
-        async function registrarEvento(action) {
-            const btn = document.activeElement;
+        async function registrarEvento(action, btnRecibido) {
+            // BUG CORREGIDO: antes se usaba document.activeElement para saber cuál botón tocó el
+            // colaborador. En iPhone (Safari, Chrome, cualquier navegador — todos usan el motor de
+            // Apple), tocar un botón NO le da el "foco" como en computador, así que activeElement
+            // terminaba siendo el fondo de toda la página. La línea siguiente (btn.innerHTML =
+            // "Procesando...") entonces BORRABA VISUALMENTE TODA LA PANTALLA en vez de solo el
+            // botón — esto explica el error "No se pudo guardar" que solo pasaba en iPhone.
+            const btn = (btnRecibido && btnRecibido.tagName === 'BUTTON') ? btnRecibido : null;
+            if (!btn) return UI.showAlert('Error', 'No se pudo identificar el botón. Recarga la página e inténtalo de nuevo.', 'error');
+
+            if (!sesionColaboradorValida()) {
+                return forzarReingresoColaborador('Tu sesión se cerró mientras la app estaba abierta.');
+            }
+
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Procesando...';
             btn.disabled = true;
@@ -2101,50 +2237,63 @@
                     data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                 }
 
-                await setDocConReintento(ref, data);
+                const resultado = await guardarConConfirmacion(ref, data);
 
                 btn.innerHTML = originalHTML; btn.disabled = false;
                 await checkTodayState();
                 await calculateMonthlyAccumulated();
 
-                if (action === 'out') {
+                if (resultado === 'pendiente') {
+                    // No se cierra sesión automáticamente aquí a propósito: no conviene salir de
+                    // la app mientras hay un registro pendiente de sincronizar con el servidor.
+                    UI.showAlert(
+                        "Guardado en tu celular",
+                        "La señal está lenta, así que tu registro quedó guardado aquí en el celular y se enviará solo cuando mejore. Puedes seguir trabajando; NO tienes que volver a marcar.",
+                        "info"
+                    );
+                } else if (action === 'out') {
                     UI.showAlert("Jornada Finalizada", "Tus horas de hoy han sido guardadas. Cerrando sesión...", "success");
                     setTimeout(() => document.getElementById('btn-logout').click(), 3000);
                 }
             } catch (e) {
                 console.error(e);
                 btn.innerHTML = originalHTML; btn.disabled = false;
-                if (e.code === 'unavailable' || e.message?.includes('offline')) {
-                    UI.showAlert("Sin Conexión", "No hay señal de internet suficiente para guardar. Espera a tener mejor señal (WiFi o datos) e inténtalo de nuevo — no cierres la app.", "error");
-                } else {
-                    // Se incluye el código/mensaje técnico del error para poder diagnosticar casos
-                    // repetidos (ej. datos guardados corruptos en un celular específico): si esto
-                    // vuelve a pasar, una foto de esta pantalla ya trae la pista real, no solo
-                    // "algo falló".
-                    const detalleTecnico = e.code ? `Código: ${e.code}` : (e.message || 'sin detalle');
-                    UI.showAlert("Error", `No se pudo guardar el registro. Verifica tu conexión a internet e intenta de nuevo. Si el problema persiste, en Ajustes del celular borra los "Datos de sitios web" de esta app y vuelve a intentar.\n\n(Detalle técnico: ${detalleTecnico})`, "error");
+                mostrarErrorDiagnosticado(`fichaje-${action}`, e);
+                if (e?.code === 'permission-denied' || e?.code === 'unauthenticated') {
+                    setTimeout(() => forzarReingresoColaborador('Tu sesión se cerró mientras la app estaba abierta.'), 300);
                 }
             }
         }
 
-        // Reintenta guardar hasta 2 veces más si falla por temas de red (común en señal débil de obra),
-        // con una pequeña espera entre intentos, antes de rendirse y mostrar el error al usuario.
-        async function setDocConReintento(ref, data, intentos = 3) {
-            for (let i = 1; i <= intentos; i++) {
-                try {
-                    await setDoc(ref, data);
-                    return;
-                } catch (e) {
-                    if (i === intentos) throw e;
-                    await new Promise(r => setTimeout(r, 1200 * i));
+        // Con persistencia offline activa, setDoc() aplica la escritura al celular DE INMEDIATO,
+        // pero la promesa (await) solo se resuelve cuando el SERVIDOR confirma. Sin señal, ese
+        // await puede quedar colgado indefinidamente y el colaborador cree que perdió el fichaje,
+        // aunque ya esté guardado en el teléfono.
+        //
+        // Aquí esperamos como máximo 6 segundos la confirmación del servidor. Si no llega a tiempo,
+        // damos el fichaje por bueno (porque YA está guardado localmente) y avisamos que se está
+        // sincronizando. Si el servidor de verdad rechaza el guardado (permisos, dato inválido), el
+        // error sube igual al catch con su código real, así llegue tarde.
+        function guardarConConfirmacion(ref, data, segundos = 6) {
+            const promesaServidor = setDoc(ref, data, { merge: true });
+            let yaRespondimos = false;
+
+            promesaServidor.catch((e) => {
+                if (yaRespondimos) {
+                    mostrarErrorDiagnosticado('guardado-diferido', e);
                 }
-            }
+            });
+
+            return Promise.race([
+                promesaServidor.then(() => { yaRespondimos = true; return 'confirmado'; }),
+                new Promise((r) => setTimeout(() => { yaRespondimos = true; r('pendiente'); }, segundos * 1000))
+            ]);
         }
 
-        document.getElementById('btn-punch-in').addEventListener('click', () => registrarEvento('in'));
-        document.getElementById('btn-punch-lunch-in').addEventListener('click', () => registrarEvento('lunch_in'));
-        document.getElementById('btn-punch-lunch-out').addEventListener('click', () => registrarEvento('lunch_out'));
-        document.getElementById('btn-punch-out').addEventListener('click', () => registrarEvento('out'));
+        document.getElementById('btn-punch-in').addEventListener('click', (e) => registrarEvento('in', e.currentTarget));
+        document.getElementById('btn-punch-lunch-in').addEventListener('click', (e) => registrarEvento('lunch_in', e.currentTarget));
+        document.getElementById('btn-punch-lunch-out').addEventListener('click', (e) => registrarEvento('lunch_out', e.currentTarget));
+        document.getElementById('btn-punch-out').addEventListener('click', (e) => registrarEvento('out', e.currentTarget));
 
         function setPunchUI(state, data = null) {
             const s1 = document.getElementById('state-1-entrada');
