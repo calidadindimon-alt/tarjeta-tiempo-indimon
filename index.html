@@ -1046,12 +1046,6 @@
         //  5. Crea al menos un usuario administrador en Authentication y agrega su UID
         //     como documento en la colección "admins" (ver README.md).
         // =====================================================================================
-        // MEJORA: versión de este archivo. Cámbiala (fecha + número consecutivo del día basta) cada
-        // vez que publiques un cambio — verificarNuevaVersion() la compara contra la que está publicada
-        // en el servidor para saber si mostrar el aviso de "hay una versión nueva". Si se te olvida
-        // subir el número, el aviso simplemente no aparece (no rompe nada), pero no avisará del cambio.
-        const APP_VERSION = "2026-09-18-1";
-
         const firebaseConfig = {
             apiKey: "AIzaSyD-HeNd2lmAEC_sX1AKI1S1xCllNptHOek",
             authDomain: "tarjeta-de-tiempo-indimon.firebaseapp.com",
@@ -1527,19 +1521,30 @@
             return snap;
         }
 
-        // MEJORA: compara APP_VERSION (la de este archivo ya cargado en el celular) contra la que
-        // está publicada AHORA MISMO en el servidor. Se pide el propio index.html con cache: 'no-store'
-        // (para no comparar contra una copia vieja guardada en caché) y se busca el mismo patrón
-        // `const APP_VERSION = "..."`. Si son distintas, alguien publicó un cambio después de que este
-        // celular cargó la página — se muestra el banner para que actualice con un toque, en vez de
-        // quedarse sin saberlo con una versión vieja (que puede no tener correcciones importantes).
+        // MEJORA (v2 — corrige un bug real): la primera versión de esto comparaba un número de versión
+        // escrito a mano en el código (APP_VERSION). El problema: si al publicar un cambio alguien se
+        // olvidaba de subir ese número (algo fácil de olvidar), el archivo publicado quedaba distinto
+        // pero con el MISMO número de versión, y el aviso nunca aparecía — que es justo lo que pasó.
+        // Ahora ya no depende de que nadie recuerde subir un número: en vez de eso, se guarda una
+        // "fotografía" del propio archivo tal como quedó cargado en el celular (htmlVersionBase, más
+        // abajo) y cada chequeo vuelve a pedir el archivo (con cache:'no-store', para no comparar contra
+        // una copia vieja guardada en caché) y compara el TEXTO COMPLETO contra esa fotografía. Si son
+        // distintos —aunque sea un solo carácter— es porque alguien publicó un cambio, y se muestra el
+        // banner. Así funciona automáticamente con cualquier edición futura, se acuerden o no de tocar
+        // un número de versión.
+        let htmlVersionBase = null;
         async function verificarNuevaVersion() {
             try {
                 const res = await fetch(window.location.pathname, { cache: 'no-store' });
                 if (!res.ok) return;
                 const texto = await res.text();
-                const m = texto.match(/const APP_VERSION = "([^"]+)"/);
-                if (m && m[1] && m[1] !== APP_VERSION) {
+                if (htmlVersionBase === null) {
+                    // Primera vez que se revisa en esta sesión: esto ES la versión actual, se guarda
+                    // como referencia para comparar contra ella en los próximos chequeos.
+                    htmlVersionBase = texto;
+                    return;
+                }
+                if (texto !== htmlVersionBase) {
                     document.getElementById('banner-nueva-version').classList.remove('hidden');
                 }
             } catch (e) {
