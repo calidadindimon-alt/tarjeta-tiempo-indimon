@@ -41,6 +41,16 @@
         <i class="ph-bold ph-wifi-slash"></i> Sin conexión — tus fichajes y acciones se guardan en el celular y se sincronizan solos cuando vuelva la señal.
     </div>
 
+    <!-- MEJORA (sugerida por el usuario): cada vez que se publica un cambio, la gente que ya tenía la
+         página abierta (o cargada de una visita anterior) se queda con la versión vieja en el navegador
+         hasta que la cierre y la vuelva a abrir. Este banner avisa cuando hay una versión más nueva
+         publicada y deja recargar con un solo toque, en vez de depender de que cada quien sepa cerrar y
+         reabrir la pestaña. Ver verificarNuevaVersion() más abajo. -->
+    <div id="banner-nueva-version" class="hidden bg-indigo-600 text-white text-center text-xs font-bold py-2 px-3 sticky top-0 z-50 flex items-center justify-center gap-2 flex-wrap">
+        <span><i class="ph-bold ph-arrow-clockwise"></i> Hay una versión nueva de la app disponible.</span>
+        <button id="btn-actualizar-version" class="bg-white text-indigo-700 px-3 py-1 rounded-full font-bold">Actualizar ahora</button>
+    </div>
+
     <header class="bg-slate-900 text-white p-4 sticky top-0 z-40 shadow-md">
         <div class="max-w-5xl mx-auto w-full flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -992,7 +1002,7 @@
             signOut, onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
         import {
-            getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager,
+            getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
             doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup,
             getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId,
             serverTimestamp
@@ -1036,6 +1046,12 @@
         //  5. Crea al menos un usuario administrador en Authentication y agrega su UID
         //     como documento en la colección "admins" (ver README.md).
         // =====================================================================================
+        // MEJORA: versión de este archivo. Cámbiala (fecha + número consecutivo del día basta) cada
+        // vez que publiques un cambio — verificarNuevaVersion() la compara contra la que está publicada
+        // en el servidor para saber si mostrar el aviso de "hay una versión nueva". Si se te olvida
+        // subir el número, el aviso simplemente no aparece (no rompe nada), pero no avisará del cambio.
+        const APP_VERSION = "2026-09-18-1";
+
         const firebaseConfig = {
             apiKey: "AIzaSyD-HeNd2lmAEC_sX1AKI1S1xCllNptHOek",
             authDomain: "tarjeta-de-tiempo-indimon.firebaseapp.com",
@@ -1071,10 +1087,17 @@
             // tumbe toda la escritura con error de "dato inválido". Ese campo simplemente no se guarda.
             ignoreUndefinedProperties: true
         };
+        // BUG CORREGIDO: antes se usaba persistentSingleTabManager, que exige que el sitio esté
+        // abierto en UNA sola pestaña/ventana del navegador — si quedaba abierta otra (aunque fuera
+        // una vieja, de una visita anterior nunca cerrada), la pestaña nueva fallaba con el error
+        // 'failed-precondition' ("no se pudo validar tu identidad"). En la práctica, la gente de
+        // campo deja muchas pestañas abiertas (se vieron celulares con 10-11 pestañas abiertas a la
+        // vez), así que pedirles que las cierren cada vez no es realista. persistentMultipleTabManager
+        // sí permite que varias pestañas compartan la misma persistencia offline sin chocar entre sí.
         try {
             db = initializeFirestore(app, {
                 ...OPCIONES_FIRESTORE,
-                localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) })
+                localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
             });
         } catch (e) {
             console.error("No se pudo activar la persistencia offline, se sigue sin ella:", e);
@@ -1277,7 +1300,7 @@
             },
 
             // Pide un texto simple al usuario mediante el modal de PIN (reutilizado como input genérico)
-            showPrompt: (title, subtitle, placeholder) => {
+            showPrompt: (title, subtitle, placeholder, opts = {}) => {
                 return new Promise((resolve) => {
                     const m = document.getElementById('modal-pin');
                     const b = document.getElementById('modal-pin-box');
@@ -1285,7 +1308,10 @@
                     const in2 = document.getElementById('pin-input-2');
                     document.getElementById('pin-title').textContent = title;
                     document.getElementById('pin-subtitle').textContent = subtitle;
-                    in1.type = 'text'; in1.classList.remove('pin-input'); in1.value = '';
+                    // opts.type permite pedir un tipo de dato distinto a texto libre (ej. "time" para que
+                    // el celular muestre su selector nativo de hora); opts.valorInicial precarga un valor
+                    // sugerido en vez de dejar el campo vacío.
+                    in1.type = opts.type || 'text'; in1.classList.remove('pin-input'); in1.value = opts.valorInicial || '';
                     in1.placeholder = placeholder; in1.maxLength = 60;
                     in2.classList.add('hidden');
 
@@ -1385,14 +1411,13 @@
                 msg: 'Tu registro quedó guardado en este celular y se enviará solo cuando mejore la señal. Puedes seguir trabajando normalmente.'
             },
             'failed-precondition': {
-                // BUG CORREGIDO (diagnóstico): este mensaje decía "modo privado/incógnito", pero la
-                // causa real y más común de 'failed-precondition' en esta app es otra: la persistencia
-                // offline está configurada como "de una sola pestaña" (persistentSingleTabManager), así
-                // que si el sitio queda abierto en OTRA pestaña o ventana al mismo tiempo (aunque sea en
-                // segundo plano, de una prueba anterior), la pestaña nueva no puede tomar control de los
-                // datos guardados sin conexión y falla con este código exacto.
-                titulo: 'La app está abierta en otra pestaña',
-                msg: 'Este sitio ya está abierto en otra pestaña o ventana del navegador (aunque esté en segundo plano), y eso bloquea el guardado sin conexión. Cierra las demás pestañas donde tengas esta página abierta, deja solo una, y vuelve a intentarlo.\n\nSi ya revisaste eso y sigue igual, puede ser que el navegador esté en modo privado/incógnito o tenga el almacenamiento bloqueado — en ese caso, ábrelo en Safari o Chrome normales.'
+                // NOTA: hasta hace poco, la causa más común de este código era tener el sitio abierto
+                // en más de una pestaña a la vez (la app usaba persistencia "de una sola pestaña"). Eso
+                // ya se corrigió (ahora usa persistentMultipleTabManager, que sí soporta varias
+                // pestañas), así que si este mensaje vuelve a aparecer, lo más probable ahora es modo
+                // privado/incógnito o almacenamiento bloqueado por el navegador.
+                titulo: 'El navegador está bloqueando el guardado',
+                msg: 'Estás en modo privado/incógnito, o el navegador tiene bloqueado el almacenamiento local. Abre la app en Safari o Chrome normales (sin modo privado) y vuelve a intentarlo. Si ya lo intentaste así y sigue igual, avísale a SSTA con este código.'
             },
             'resource-exhausted': {
                 titulo: 'Sistema saturado',
@@ -1502,11 +1527,43 @@
             return snap;
         }
 
+        // MEJORA: compara APP_VERSION (la de este archivo ya cargado en el celular) contra la que
+        // está publicada AHORA MISMO en el servidor. Se pide el propio index.html con cache: 'no-store'
+        // (para no comparar contra una copia vieja guardada en caché) y se busca el mismo patrón
+        // `const APP_VERSION = "..."`. Si son distintas, alguien publicó un cambio después de que este
+        // celular cargó la página — se muestra el banner para que actualice con un toque, en vez de
+        // quedarse sin saberlo con una versión vieja (que puede no tener correcciones importantes).
+        async function verificarNuevaVersion() {
+            try {
+                const res = await fetch(window.location.pathname, { cache: 'no-store' });
+                if (!res.ok) return;
+                const texto = await res.text();
+                const m = texto.match(/const APP_VERSION = "([^"]+)"/);
+                if (m && m[1] && m[1] !== APP_VERSION) {
+                    document.getElementById('banner-nueva-version').classList.remove('hidden');
+                }
+            } catch (e) {
+                // Sin conexión o falló la verificación: no se avisa, pero tampoco se rompe nada.
+                console.error('No se pudo verificar si hay una versión nueva:', e);
+            }
+        }
+        document.getElementById('btn-actualizar-version').addEventListener('click', () => {
+            window.location.reload();
+        });
+        // Revisa al abrir la app, cada vez que el celular vuelve a esta pestaña (lo más común: alguien
+        // reabre una pestaña que llevaba horas/días en segundo plano), y cada 20 minutos si la deja
+        // abierta todo el día.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') verificarNuevaVersion();
+        });
+        setInterval(verificarNuevaVersion, 20 * 60 * 1000);
+
         async function initApp() {
             await cargarCatalogos();
             await cargarListaEmpleadosDatalist();
             verificarIncapacidadesPorVencer(); // no se espera (await) a propósito: no debe demorar el arranque de la app
             limpiarFotosAntiguas(); // idem: borra en segundo plano las fotos de verificación de más de 30 días
+            verificarNuevaVersion(); // idem: no debe demorar el arranque de la app
 
             let fecha = document.getElementById('manual-fecha');
             if (fecha) {
@@ -2437,7 +2494,7 @@
             });
         }
 
-        async function registrarEvento(action, btnRecibido) {
+        async function registrarEvento(action, btnRecibido, horaManualOverride = null) {
             // BUG CORREGIDO: antes se usaba document.activeElement para saber cuál botón tocó el
             // colaborador. En iPhone (Safari, Chrome, cualquier navegador — todos usan el motor de
             // Apple), tocar un botón NO le da el "foco" como en computador, así que activeElement
@@ -2586,7 +2643,7 @@
                     verificarCumplimientoSemanal(currentUserId, currentUserProfile.nombre, tStr);
                 }
                 else if (action === 'lunch_in') { data.almuerzo_inicio = tTime; }
-                else if (action === 'lunch_out') { data.almuerzo_fin = tTime; }
+                else if (action === 'lunch_out') { data.almuerzo_fin = horaManualOverride || tTime; }
                 else if (action === 'out') {
                     data.salida = tTime; data.loc_salida = loc; data.gps_motivo_salida = gpsMotivo;
                     data.foto_salida = selfieUrl;
@@ -2690,7 +2747,41 @@
 
         document.getElementById('btn-punch-in').addEventListener('click', (e) => registrarEvento('in', e.currentTarget));
         document.getElementById('btn-punch-lunch-in').addEventListener('click', (e) => registrarEvento('lunch_in', e.currentTarget));
-        document.getElementById('btn-punch-lunch-out').addEventListener('click', (e) => registrarEvento('lunch_out', e.currentTarget));
+        // MEJORA: antes, tocar "Retomar Trabajo" siempre grababa la hora ACTUAL como fin de almuerzo,
+        // sin importar cuánto tiempo llevara abierta la pausa. Si al colaborador se le pasó tocarlo a
+        // tiempo (se le olvidó, o se quedó trabajando sin darse cuenta de que seguía "en almuerzo"),
+        // eso inflaba su tiempo de almuerzo y le descontaba horas de más — y antes la única forma de
+        // corregirlo era que un Admin editara el registro a mano después. Ahora, si pasaron más de
+        // UMBRAL_ALMUERZO_LARGO_MIN desde que empezó el almuerzo, se le pregunta la hora REAL en que
+        // terminó (con el selector nativo de hora del celular) antes de guardar, en vez de asumir que
+        // fue justo ahora. Si el almuerzo fue de duración normal, no se pregunta nada — sigue igual de
+        // rápido que antes.
+        const UMBRAL_ALMUERZO_LARGO_MIN = 90;
+        document.getElementById('btn-punch-lunch-out').addEventListener('click', async (e) => {
+            const horaInicioAlmuerzo = document.getElementById('display-hora-almuerzo').textContent;
+            const btnRef = e.currentTarget;
+            let horaOverride = null;
+
+            if (/^\d{2}:\d{2}$/.test(horaInicioAlmuerzo)) {
+                const ahora = new Date();
+                const ahoraStr = ahora.toLocaleTimeString('es-CO', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                let minutos = (timeStrToFloat(ahoraStr) - timeStrToFloat(horaInicioAlmuerzo)) * 60;
+                if (minutos < 0) minutos += 24 * 60; // por si el almuerzo cruzó la medianoche (turno nocturno real)
+
+                if (minutos > UMBRAL_ALMUERZO_LARGO_MIN) {
+                    const respuesta = await UI.showPrompt(
+                        "¿A qué hora terminaste el almuerzo?",
+                        `Han pasado ${(minutos / 60).toFixed(1)}h desde que empezó tu almuerzo (${horaInicioAlmuerzo}). Si se te olvidó tocar este botón a tiempo, escribe la hora REAL en que terminaste (no la hora de ahora), para que tus horas trabajadas queden correctas.`,
+                        "Hora real de fin de almuerzo",
+                        { type: 'time', valorInicial: ahoraStr }
+                    );
+                    if (respuesta === null) return; // canceló, no se guarda nada todavía
+                    if (/^\d{2}:\d{2}$/.test(respuesta)) horaOverride = respuesta;
+                }
+            }
+
+            registrarEvento('lunch_out', btnRef, horaOverride);
+        });
         document.getElementById('btn-punch-out').addEventListener('click', (e) => registrarEvento('out', e.currentTarget));
 
         function setPunchUI(state, data = null, esTurnoDeAyer = false) {
