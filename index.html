@@ -2075,12 +2075,29 @@
 
             } catch (e) {
                 console.error(e);
+                logError('login-colaborador', e);
                 if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') {
                     UI.showAlert("PIN Incorrecto", "El PIN ingresado no coincide con tu registro.", "error");
                 } else if (e.code === 'auth/email-already-in-use') {
                     UI.showAlert("Error", "Ya existe un PIN registrado para este usuario. Si lo olvidaste, pide a un administrador que lo restablezca.", "error");
+                } else if (e.code === 'auth/unauthorized-domain') {
+                    // BUG CORREGIDO (diagnóstico): esto pasa cuando la app se abre desde una dirección
+                    // (dominio) que NO está en la lista de "Authorized domains" de Firebase
+                    // Authentication (Firebase Console → Authentication → Settings → Authorized
+                    // domains). Antes esto caía en el mensaje genérico de "verifica tu conexión", que
+                    // confundía porque el problema no es la conexión del colaborador — es que hay que
+                    // agregar el dominio en la consola de Firebase, una sola vez.
+                    UI.showAlert("Este sitio no está autorizado en Firebase", `Avísale a SSTA/Admin: hay que entrar a Firebase Console → Authentication → Settings → Authorized domains, y agregar "${window.location.hostname}". Mientras eso no se haga, nadie puede iniciar sesión desde esta dirección.`, "error");
+                } else if (e.code === 'auth/network-request-failed') {
+                    UI.showAlert("Sin conexión", "No se pudo comunicar con el servidor. Verifica tu conexión a internet e inténtalo de nuevo.", "error");
+                } else if (e.code === 'auth/too-many-requests') {
+                    UI.showAlert("Demasiados intentos", "Se bloquearon los intentos temporalmente por seguridad. Espera unos minutos y vuelve a intentarlo.", "error");
                 } else {
-                    UI.showAlert("Error de Conexión", "No se pudo validar tu identidad. Verifica tu conexión a internet.", "error");
+                    // BUG CORREGIDO (diagnóstico): antes este mensaje genérico no mostraba el código
+                    // técnico del error, así que un problema real (ej. dominio no autorizado, regla de
+                    // Firestore, configuración) se veía idéntico a "sin señal" y era imposible saber
+                    // cuál de los dos era sin acceso a la consola del navegador.
+                    UI.showAlert("Error de Conexión", `No se pudo validar tu identidad. Verifica tu conexión a internet. Si el problema persiste, avísale a SSTA con este código: ${e.code || e.message || 'desconocido'}`, "error");
                 }
             } finally {
                 btn.disabled = false;
