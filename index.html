@@ -22,7 +22,13 @@
         .btn-touch { transition: all 0.15s ease; }
         .btn-touch:active { transform: scale(0.97); }
         .btn-touch:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .pin-input { letter-spacing: 0.5em; text-align: center; font-weight: 800; }
+        /* BUG CORREGIDO: los campos de PIN usaban type="password" para ocultar los dígitos, pero
+           Safari en iOS ignora inputmode="numeric" en campos type="password" y muestra el teclado
+           alfanumérico completo. Se cambió a type="tel" (que sí abre el teclado numérico en iOS y
+           Android) y aquí se recupera el efecto de "ocultar" el PIN con -webkit-text-security
+           (soportado en Safari/Chrome; en navegadores donde no aplica, el PIN queda visible, lo cual
+           es aceptable porque es solo el PIN local del colaborador, no una contraseña real). */
+        .pin-input { letter-spacing: 0.5em; text-align: center; font-weight: 800; -webkit-text-security: disc; }
         .firma-canvas { touch-action: none; cursor: crosshair; background: #fdfdfa; display: block; width: 100%; height: 160px; border-radius: 0.75rem; }
         .firma-box.firmado { border-color: #10b981 !important; background: #ecfdf5; }
     </style>
@@ -191,6 +197,9 @@
                         </div>
 
                         <div id="state-2-turno" class="hidden space-y-4">
+                            <div id="aviso-turno-ayer" class="hidden bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 text-xs font-semibold">
+                                <i class="ph-bold ph-warning-circle"></i> Este turno quedó abierto desde ayer. Si de verdad trabajaste toda la noche, pulsa "Fin de Jornada" para cerrarlo con la hora real. Si fue un olvido (no trabajaste toda la noche), avísale a SSTA para que lo corrija.
+                            </div>
                             <div class="bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-200 flex justify-between items-center text-sm font-medium shadow-sm">
                                 <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> En Turno desde:</span>
                                 <span id="display-hora-entrada" class="font-bold font-mono text-emerald-900 bg-white px-2 py-0.5 rounded shadow-sm border border-emerald-100">--:--</span>
@@ -968,8 +977,8 @@
             <p id="pin-subtitle" class="text-xs text-center text-slate-500 mb-5">Protege tu tarjeta de tiempo.</p>
 
             <input type="text" id="pin-verif-cedula" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input hidden w-full bg-amber-50 border border-amber-300 rounded-xl p-3.5 mb-3 text-lg focus:ring-2 focus:ring-amber-500 outline-none" placeholder="Últimos 4 dígitos de tu cédula">
-            <input type="password" id="pin-input-1" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="pin-input w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••">
-            <input type="password" id="pin-input-2" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="pin-input hidden w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Confirma tu PIN">
+            <input type="tel" id="pin-input-1" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="6" class="pin-input w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••">
+            <input type="tel" id="pin-input-2" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="6" class="pin-input hidden w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Confirma tu PIN">
 
             <button id="btn-pin-confirm" class="btn-touch w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md mb-2">Continuar</button>
             <button id="btn-pin-cancel" class="btn-touch w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-3 rounded-xl text-sm">Cancelar</button>
@@ -1205,6 +1214,12 @@
 
         let currentUserId = null;
         let currentUserProfile = null;
+        // Fecha (YYYY-MM-DD) del registro que está actualmente "abierto" para fichar (entrada sin
+        // salida). Normalmente es HOY, pero si el colaborador dejó un turno sin cerrar desde AYER
+        // (turno nocturno real, u olvido), checkTodayState() lo detecta y apunta aquí a la fecha de
+        // AYER, para que "Iniciar Almuerzo"/"Fin de Jornada" se guarden en el registro correcto en
+        // vez de crear uno nuevo vacío para hoy y dejar el de ayer perdido para siempre.
+        let fechaRegistroActivo = null;
         let empleadosNombreCedula = {}; // "NOMBRE EN MAYÚSCULAS" -> cédula, usado para vincular permisos al historial del colaborador
         let currentEmployeeIsNew = false;
         let catalogosCache = { clientes: [], obras: [], supervisores: [], festivos: [] };
@@ -1287,7 +1302,7 @@
                         // el segundo prompt apenas aparece, dando la sensación de que "desaparece solo".
                         setTimeout(() => {
                             m.classList.remove('flex'); m.classList.add('hidden');
-                            in1.type = 'password'; in1.classList.add('pin-input'); in1.maxLength = 6;
+                            in1.type = 'tel'; in1.classList.add('pin-input'); in1.maxLength = 6;
                             resolve(val);
                         }, 200);
                     };
@@ -1490,6 +1505,11 @@
             if (fecha) {
                 let ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
                 fecha.value = ayer.toLocaleDateString('en-CA');
+                // BUG CORREGIDO: el campo no tenía tope, así que se podía registrar por error un
+                // tiempo en una fecha futura (ej. escribir 2028 sin querer). El navegador ya bloquea
+                // fechas después de "max" en el selector, pero además se revalida al guardar (más
+                // abajo) por si el navegador no lo respeta o el valor llega manipulado.
+                fecha.max = getTodayStr();
             }
         }
 
@@ -1538,6 +1558,9 @@
                 let total = 0;
                 snap.forEach(d => {
                     if (d.id !== fechaActual && d.data().estado === 'completado') {
+                        // Nota: horas_ordinarias ya NO se reduce por tardanza (ver calcularJornadaDiaria
+                        // — la tardanza dejó de descontarse automáticamente del día), así que aquí
+                        // horas_ordinarias ya refleja las horas físicamente trabajadas directamente.
                         total += (d.data().horas_ordinarias || 0);
                     }
                 });
@@ -1622,13 +1645,80 @@
             }
         }
 
+        // CAMBIO DE REGLA: la tardanza ya NO se descuenta sola del pago del día (ver
+        // calcularJornadaDiaria). En vez de eso, cada vez que un colaborador marca ENTRADA un
+        // LUNES (o sea, empieza una semana nueva), se revisa la semana que ACABA DE TERMINAR: si en
+        // total trabajó menos de las 42 horas reglamentarias Y hubo algún día con tardanza esa
+        // semana, se le avisa por correo a RRHH/Coordinador con el detalle — la decisión de aplicar
+        // o no un descuento queda en sus manos, revisando el Consolidado de Tiempos.
+        async function verificarCumplimientoSemanal(cedula, nombre, fechaHoy) {
+            try {
+                const [y, m, d] = fechaHoy.split('-').map(Number);
+                const diaSemana = new Date(y, m - 1, d).getDay(); // 0=domingo, 1=lunes...
+                if (diaSemana !== 1) return; // solo se revisa al marcar entrada un lunes
+
+                const [lunesAnterior, domingoAnterior] = getRangoSemana(fechaAnterior(fechaHoy));
+
+                // Evita mandar el aviso más de una vez por la misma semana (ej. si el colaborador
+                // marca entrada varias veces ese lunes por algún reintento).
+                const marcaRef = doc(db, 'avisos_semana_incumplida', `${cedula}_${lunesAnterior}`);
+                const yaAvisado = await getDoc(marcaRef);
+                if (yaAvisado.exists()) return;
+
+                const snap = await getDocs(query(
+                    collection(db, 'empleados', cedula, 'registros'),
+                    where(documentId(), '>=', lunesAnterior),
+                    where(documentId(), '<=', domingoAnterior)
+                ));
+                let totalHoras = 0, totalTardanzaMin = 0, diasConTardanza = 0;
+                snap.forEach(d2 => {
+                    const r = d2.data();
+                    if (r.estado !== 'completado') return;
+                    totalHoras += (r.horas_ordinarias || 0) + (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0);
+                    if (r.minutos_tarde) { totalTardanzaMin += r.minutos_tarde; diasConTardanza++; }
+                });
+
+                if (totalHoras < LEY.JORNADA_ORDINARIA_SEMANAL && diasConTardanza > 0) {
+                    await setDoc(marcaRef, { cedula, nombre, semana_lunes: lunesAnterior, horas_trabajadas: Number(totalHoras.toFixed(2)), enviado_en: new Date().toISOString() });
+                    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
+                    const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
+                    const faltante = (LEY.JORNADA_ORDINARIA_SEMANAL - totalHoras).toFixed(1);
+                    for (const destino of destinos) {
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
+                            to_email: destino,
+                            asunto: `Revisar semana de ${nombre} — no completó las 42h`,
+                            cuerpo: `${nombre} trabajó ${totalHoras.toFixed(1)}h en la semana del ${lunesAnterior} al ${domingoAnterior} (le faltaron ${faltante}h para las 42h reglamentarias), con ${diasConTardanza} día(s) de tardanza esa semana (${totalTardanzaMin} min en total).\n\nLa app YA NO descuenta esto del pago automáticamente. Revisa el detalle en el Consolidado de Tiempos y decide si corresponde algún ajuste.`
+                        }).catch(e => console.error('No se pudo enviar el aviso de semana incompleta:', e));
+                    }
+                }
+            } catch (e) {
+                console.error('No se pudo verificar el cumplimiento semanal:', e);
+            }
+        }
 
         // siguiendo el orden cronológico real del turno (entrada -> almuerzo -> salida).
         // "topeOrdinarioDia" es el máximo de horas ordinarias que puede tener ESTE día,
         // ya ajustado por cuántas horas ordinarias lleva acumuladas el empleado esta semana
         // (el límite legal es 42h ordinarias/semana, no solo 8h/día).
+        // Fecha del día calendario siguiente a fechaStr ("YYYY-MM-DD" + 1 día), para poder saber si
+        // un turno que cruza la medianoche entra a un domingo/festivo distinto al del día en que
+        // empezó.
+        function fechaSiguiente(fechaStr) {
+            const [y, m, d] = fechaStr.split('-').map(Number);
+            const f = new Date(y, m - 1, d);
+            f.setDate(f.getDate() + 1);
+            return f.toLocaleDateString('en-CA');
+        }
+
+        function fechaAnterior(fechaStr) {
+            const [y, m, d] = fechaStr.split('-').map(Number);
+            const f = new Date(y, m - 1, d);
+            f.setDate(f.getDate() - 1);
+            return f.toLocaleDateString('en-CA');
+        }
+
         function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
-            if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false, minutosTarde: 0, horasDescontadasTardanza: 0 };
+            if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 };
 
             let hIn = timeStrToFloat(reg.entrada);
             let hOut = timeStrToFloat(reg.salida);
@@ -1697,29 +1787,60 @@
                 accum += len;
             }
 
-            let extD = 0, extN = 0, recNoct = 0;
+            // BUG CORREGIDO (punto ciego de la madrugada): la ventana nocturna se definía solo como
+            // [19.0, 30.0] (7pm de hoy a 6am de mañana, en escala continua). Eso cubre bien los turnos
+            // que EMPIEZAN de noche y cruzan la medianoche, pero si un turno EMPIEZA de madrugada
+            // (ej. 3:00 a.m. a 11:00 a.m.), su intervalo queda como [3, 11] — sin ningún cruce con
+            // [19, 30] — y esas 3 horas de madrugada (3am-6am), que sí son nocturnas por ley, no se
+            // contaban. Se agrega también la ventana [0, 6] para cubrir ese caso.
+            const overlapNocturno = (s, e) => {
+                const madrugada = overlap(s, e, 0.0, LEY.HORA_FIN_NOCTURNA - 24); // 00:00–06:00 de hoy
+                const noche = overlap(s, e, LEY.HORA_INICIO_NOCTURNA, LEY.HORA_FIN_NOCTURNA); // 19:00 de hoy–06:00 de mañana
+                return madrugada + noche;
+            };
+
+            // BUG CORREGIDO (dominical/festivo por todo o nada): antes, si el turno cruzaba la
+            // medianoche, se marcaba el día ENTERO como dominical o no según únicamente la fecha de
+            // entrada — un turno sábado 8pm a domingo 6am perdía 6 horas de recargo, y uno domingo 8pm
+            // a lunes 6am cobraba de más 6 horas que en realidad eran de lunes. Ahora se cuentan por
+            // separado las horas que caen en el día de hoy y las que caen en el día calendario
+            // siguiente, y solo se recarga cada una si ESE día específico es domingo/festivo.
+            const hoyEsDomFest = esDominicalOFestivo(reg.fecha);
+            const mananaEsDomFest = reg.fecha ? esDominicalOFestivo(fechaSiguiente(reg.fecha)) : false;
+
+            let extD = 0, extN = 0, recNoct = 0, horasDominicales = 0;
             for (const [s, e] of intervals) {
                 const ordPartEnd = Math.min(e, ordinaryEndPoint);
                 if (ordPartEnd > s) {
                     // Porción ordinaria de este intervalo -> puede generar recargo nocturno ordinario (35%)
-                    recNoct += overlap(s, ordPartEnd, LEY.HORA_INICIO_NOCTURNA, LEY.HORA_FIN_NOCTURNA);
+                    recNoct += overlapNocturno(s, ordPartEnd);
+                    // El recargo dominical/festivo (90%) solo se paga sobre horas ordinarias, igual que
+                    // antes — lo que cambia es que ahora se reparte según el día calendario real.
+                    if (hoyEsDomFest) horasDominicales += overlap(s, ordPartEnd, 0, 24);
+                    if (mananaEsDomFest) horasDominicales += overlap(s, ordPartEnd, 24, 48);
                 }
                 const extraPartStart = Math.max(s, ordinaryEndPoint);
                 if (e > extraPartStart) {
-                    const nocturnaExtra = overlap(extraPartStart, e, LEY.HORA_INICIO_NOCTURNA, LEY.HORA_FIN_NOCTURNA);
+                    const nocturnaExtra = overlapNocturno(extraPartStart, e);
                     extN += nocturnaExtra;
                     extD += (e - extraPartStart) - nocturnaExtra;
                 }
             }
 
-            const ord = Math.max(0, ordAntesDeTardanza - horasDescontadasTardanza);
+            // CAMBIO DE REGLA: antes, la tardanza se descontaba automáticamente del pago de ESE día
+            // (ord = horas físicas - tardanza). Ahora se paga el día completo tal como se trabajó, y
+            // la tardanza queda solo como dato informativo (minutos_tarde, horasDescontadasTardanza)
+            // para las alertas y para el aviso semanal — es Admin/RRHH quien decide si corresponde
+            // descontar, revisando si la semana completa no alcanzó las 42 horas reglamentarias.
+            const ord = ordAntesDeTardanza;
 
             return {
                 ord: Number(ord.toFixed(2)),
                 extD: Number(extD.toFixed(2)),
                 extN: Number(extN.toFixed(2)),
                 recNoct: Number(recNoct.toFixed(2)),
-                dominical: esDominicalOFestivo(reg.fecha),
+                dominical: hoyEsDomFest, // se conserva como etiqueta informativa del día (para el badge en pantalla)
+                horas_dominicales: Number(horasDominicales.toFixed(2)),
                 minutosTarde,
                 horasDescontadasTardanza
             };
@@ -1752,7 +1873,18 @@
                     totalExtD += (reg.horas_extras_diurnas || 0);
                     totalExtN += (reg.horas_extras_nocturnas || 0);
                     totalRecNoct += (reg.horas_recargo_nocturno || 0);
-                    if (reg.es_dominical_festivo) totalDomHoras += (reg.horas_ordinarias || 0);
+                    // BUG CORREGIDO: antes, si el día quedaba marcado como dominical/festivo, se
+                    // pagaban TODAS las horas ordinarias del día como recargo dominical, aunque el
+                    // turno cruzara la medianoche y una parte real fuera de otro día (ej. sábado 8pm a
+                    // domingo 6am solo pagaba 0h de recargo; domingo 8pm a lunes 6am pagaba 8h cuando
+                    // solo 6h eran realmente del domingo). Los registros nuevos ya traen el reparto
+                    // correcto en horas_dominicales; para registros antiguos (de antes de esta
+                    // corrección) que no tienen ese campo, se usa el cálculo anterior como respaldo.
+                    if (reg.horas_dominicales != null) {
+                        totalDomHoras += reg.horas_dominicales;
+                    } else if (reg.es_dominical_festivo) {
+                        totalDomHoras += (reg.horas_ordinarias || 0);
+                    }
                 }
             });
 
@@ -1955,7 +2087,7 @@
                 const in1 = document.getElementById('pin-input-1');
                 const in2 = document.getElementById('pin-input-2');
                 const inCedula = document.getElementById('pin-verif-cedula');
-                in1.type = 'password'; in1.classList.add('pin-input'); in1.maxLength = 6;
+                in1.type = 'tel'; in1.classList.add('pin-input'); in1.maxLength = 6;
                 in1.value = ''; in2.value = ''; inCedula.value = '';
                 document.getElementById('pin-title').textContent = esNuevo ? "Crea tu PIN" : "Ingresa tu PIN";
                 document.getElementById('pin-subtitle').textContent = esNuevo
@@ -2044,10 +2176,38 @@
             const snap = await getDoc(doc(db, 'empleados', currentUserId, 'registros', t));
             const data = snap.exists() ? snap.data() : null;
 
-            if (!data) return setPunchUI('entrada');
-            if (data.estado === 'completado') return setPunchUI('completado', data);
-            if (data.almuerzo_inicio && !data.almuerzo_fin) return setPunchUI('almuerzo', data);
-            return setPunchUI('turno', data);
+            if (data) {
+                fechaRegistroActivo = t;
+                if (data.estado === 'completado') return setPunchUI('completado', data);
+                if (data.almuerzo_inicio && !data.almuerzo_fin) return setPunchUI('almuerzo', data);
+                return setPunchUI('turno', data);
+            }
+
+            // BUG CORREGIDO: antes, si no había registro de HOY, la app asumía que el colaborador no
+            // había marcado nada — pero si dejó un turno ABIERTO sin marcar salida (turno nocturno
+            // real, o un simple olvido), la app "lo olvidaba" en cuanto pasaba un día: mostraba el
+            // botón de Entrada de nuevo y ese turno quedaba huérfano para siempre, sin horas pagadas.
+            // La primera corrección solo miraba "ayer", así que si el colaborador entraba el viernes
+            // y no volvía a fichar hasta el lunes (fin de semana, puente festivo, incapacidad), el
+            // domingo estaba vacío y el turno del viernes seguía quedando huérfano. En vez de adivinar
+            // cuántos días atrás mirar, se busca directamente el registro más reciente ANTERIOR a hoy
+            // (sin importar cuántos días atrás quede) y se revisa si sigue "activo".
+            const snapAnterior = await getDocs(query(
+                collection(db, 'empleados', currentUserId, 'registros'),
+                where(documentId(), '<', t),
+                orderBy(documentId(), 'desc'),
+                fsLimit(1)
+            ));
+            if (!snapAnterior.empty) {
+                const docAnterior = snapAnterior.docs[0];
+                if (docAnterior.data().estado === 'activo') {
+                    fechaRegistroActivo = docAnterior.id;
+                    return setPunchUI('turno', docAnterior.data(), true);
+                }
+            }
+
+            fechaRegistroActivo = null;
+            return setPunchUI('entrada');
         }
 
         const validarSelectores = () => {
@@ -2060,59 +2220,140 @@
         document.getElementById('sel-obra').addEventListener('input', validarSelectores);
         document.getElementById('sel-autoriza').addEventListener('input', validarSelectores);
 
-        function getSafeGPS() {
-            return new Promise((resolve) => {
-                if (window.location.protocol === 'file:') {
-                    UI.showAlert("Aviso", "El GPS está bloqueado porque abriste el archivo desde tu PC local (ruta file:///). La hora se registrará sin ubicación.", "info");
-                    return resolve(null);
-                }
-                if (!navigator.geolocation) return resolve(null);
+        // Detecta si la app está abierta dentro del navegador interno de otra aplicación
+        // (WhatsApp, Instagram, Facebook, Gmail...). En esos navegadores internos el celular NO
+        // entrega la ubicación, sin importar los permisos que tenga configurados el colaborador.
+        // Esto puede pasar fácilmente porque los enlaces de la app se comparten por WhatsApp.
+        function navegadorEsWebViewInApp() {
+            const ua = navigator.userAgent || '';
+            if (/FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|WhatsApp|GSA\//i.test(ua)) return true;
+            if (/; wv\)/.test(ua)) return true; // Android: navegador interno de otra app
+            // En iOS, cualquier navegador embebido se identifica como iPhone/iPad pero NO trae
+            // "Safari" ni el identificador propio de Chrome/Firefox/Edge para iOS.
+            if (/iPhone|iPad|iPod/.test(ua) && !/Safari|CriOS|FxiOS|EdgiOS/.test(ua)) return true;
+            return false;
+        }
 
+        // Devuelve SIEMPRE un objeto { loc, motivo, avisar } y NUNCA se queda colgada:
+        //   loc    -> { lat, lng, precision, exactitud_m }  o null
+        //   motivo -> por qué no se pudo obtener, para guardarlo junto al registro
+        //   avisar -> si vale la pena explicarle al colaborador cómo arreglarlo
+        function getSafeGPS(segundosMax = 9) {
+            return new Promise((resolve) => {
                 // Los teléfonos suelen dar una primera lectura de GPS poco precisa justo al encenderlo
                 // (a veces con varios cientos de metros de margen), y mejoran notablemente unos segundos
                 // después a medida que el chip GPS "afina" la señal. En vez de quedarse con la primera
                 // lectura que llegue, se vigilan varias durante unos segundos y se usa la MEJOR (menor
                 // exactitud_m) que se haya visto — terminando antes si ya se logra una lectura muy precisa.
-                let isResolved = false;
-                let mejorLectura = null;
+                let terminado = false;
                 let watchId = null;
+                let mejorLectura = null;
+                // BUG CORREGIDO: antes estos temporizadores eran "const" declarados MÁS ABAJO, después
+                // de que finalizar() ya podía usarlos. En navegadores poco estándar (como el navegador
+                // interno de WhatsApp) que responden de inmediato con "permiso denegado", eso lanzaba un
+                // error dentro del callback del GPS que ningún catch atrapaba: la promesa nunca resolvía
+                // y el botón se quedaba pegado en "Obteniendo ubicación..." para siempre.
+                let timerFinal = null;
+                let timerDuro = null;
 
-                const finalizar = (resultado) => {
-                    if (isResolved) return;
-                    isResolved = true;
-                    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                const finalizar = (loc, motivo = null, avisar = false) => {
+                    if (terminado) return;
+                    terminado = true;
+                    try { if (watchId !== null) navigator.geolocation.clearWatch(watchId); } catch (_) {}
                     clearTimeout(timerFinal);
-                    resolve(resultado);
+                    clearTimeout(timerDuro);
+                    resolve({ loc: loc || null, motivo: loc ? null : motivo, avisar: loc ? false : avisar });
                 };
 
-                const attemptLowAccuracy = () => {
+                if (window.location.protocol === 'file:') return finalizar(null, 'archivo_local', true);
+                if (!window.isSecureContext) return finalizar(null, 'sitio_inseguro', true);
+                if (!navigator.geolocation) return finalizar(null, 'no_soportado', true);
+                if (navegadorEsWebViewInApp()) return finalizar(null, 'webview', true);
+
+                // Red de seguridad: pase lo que pase (un callback que nunca llega, un navegador que
+                // ignora su propio timeout), esto resuelve la promesa igual y libera el botón.
+                timerDuro = setTimeout(() => {
+                    finalizar(mejorLectura, 'timeout', !mejorLectura);
+                }, (segundosMax + 4) * 1000);
+
+                try {
+                    watchId = navigator.geolocation.watchPosition(
+                        (pos) => {
+                            const exactitud = Math.round(pos.coords.accuracy || 999999);
+                            if (!mejorLectura || exactitud < mejorLectura.exactitud_m) {
+                                mejorLectura = { lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'alta', exactitud_m: exactitud };
+                            }
+                            if (exactitud <= 15) finalizar(mejorLectura); // ya es lo bastante precisa, no hace falta esperar más
+                        },
+                        (err) => {
+                            if (err && err.code === 1) finalizar(null, 'permiso_denegado', true); // PERMISSION_DENIED
+                            // otros códigos (sin señal, timeout): se deja seguir hasta el timerFinal
+                        },
+                        { enableHighAccuracy: true, timeout: segundosMax * 1000, maximumAge: 0 }
+                    );
+                } catch (e) {
+                    console.error('Error al iniciar el GPS:', e);
+                    return finalizar(null, 'error', true);
+                }
+
+                timerFinal = setTimeout(() => {
+                    if (mejorLectura) return finalizar(mejorLectura);
+                    // Último intento por red/antenas: menos preciso, pero mejor que nada.
                     navigator.geolocation.getCurrentPosition(
                         (pos) => finalizar({ lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'baja', exactitud_m: Math.round(pos.coords.accuracy || 0) }),
-                        () => finalizar(mejorLectura), // sin señal de red tampoco: se usa lo que sí se alcanzó a leer del GPS, o null
-                        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+                        (err) => finalizar(null, (err && err.code === 1) ? 'permiso_denegado' : 'sin_senal_gps', true),
+                        { enableHighAccuracy: false, timeout: 6000, maximumAge: 30000 }
                     );
-                };
-
-                watchId = navigator.geolocation.watchPosition(
-                    (pos) => {
-                        const exactitud = Math.round(pos.coords.accuracy || 999999);
-                        if (!mejorLectura || exactitud < mejorLectura.exactitud_m) {
-                            mejorLectura = { lat: pos.coords.latitude, lng: pos.coords.longitude, precision: 'alta', exactitud_m: exactitud };
-                        }
-                        if (exactitud <= 15) finalizar(mejorLectura); // ya es lo bastante precisa, no hace falta esperar más
-                    },
-                    (err) => {
-                        if (err.code === 1) finalizar(null); // PERMISSION_DENIED: no tiene sentido seguir esperando
-                        // otros códigos de error: se deja seguir intentando hasta el timeout de abajo
-                    },
-                    { enableHighAccuracy: true, timeout: 9000, maximumAge: 0 }
-                );
-
-                const timerFinal = setTimeout(() => {
-                    if (mejorLectura) finalizar(mejorLectura);
-                    else attemptLowAccuracy();
-                }, 8000);
+                }, Math.round(segundosMax * 800));
             });
+        }
+
+        // Explicación para el colaborador de cada motivo por el que el GPS no se pudo tomar.
+        const GPS_AVISOS = {
+            webview: {
+                titulo: 'Abre la app en Safari o Chrome',
+                msg: 'Estás viendo la app dentro de otra aplicación (por ejemplo el navegador interno de WhatsApp), y ahí el celular NO permite tomar la ubicación.\n\niPhone: toca el botón de compartir (cuadrito con flecha) y elige "Abrir en Safari".\nAndroid: toca los tres puntos arriba a la derecha y elige "Abrir en Chrome".\n\nGuarda esa dirección en tus favoritos y entra siempre por ahí.'
+            },
+            permiso_denegado: {
+                titulo: 'La ubicación está bloqueada',
+                msg: 'Tu celular tiene bloqueado el permiso de ubicación para este navegador, y por eso tu fichaje queda sin GPS.\n\niPhone: Ajustes › Privacidad y seguridad › Localización › Safari › "Al usar la app", y activa "Ubicación precisa". Luego Ajustes › Safari › Ubicación › Preguntar.\nAndroid: mantén pulsado el icono de Chrome › Información de la app › Permisos › Ubicación › Permitir.\n\nAvísale a SSTA si no lo logras.'
+            },
+            sin_senal_gps: {
+                titulo: 'Sin señal de GPS',
+                msg: 'No se pudo tomar la ubicación en este punto. Tu fichaje SÍ quedó registrado, pero sin GPS.\n\nSi estás dentro de una bodega o sótano, sal un momento donde veas el cielo y vuelve a intentarlo en el próximo fichaje.'
+            },
+            timeout: {
+                titulo: 'El GPS tardó demasiado',
+                msg: 'Tu fichaje quedó registrado, pero sin ubicación. Verifica que el GPS del celular esté encendido y que no estés en modo de ahorro de batería.'
+            },
+            sitio_inseguro: {
+                titulo: 'Dirección incorrecta de la app',
+                msg: 'Estás entrando por una dirección que no es segura (sin https), y por eso el celular bloquea la ubicación. Avísale a SSTA para que te envíe el enlace correcto.'
+            },
+            archivo_local: {
+                titulo: 'Abriste el archivo desde el computador',
+                msg: 'La app se abrió como archivo local y por eso el GPS está bloqueado. Entra por el enlace web de la app.'
+            },
+            no_soportado: {
+                titulo: 'Este navegador no tiene GPS',
+                msg: 'El navegador que estás usando no permite tomar la ubicación. Usa Safari (iPhone) o Chrome (Android).'
+            },
+            error: {
+                titulo: 'No se pudo activar el GPS',
+                msg: 'Tu fichaje quedó registrado, pero sin ubicación. Avísale a SSTA con una foto de esta pantalla.'
+            }
+        };
+
+        // Se muestra como máximo una vez al día por motivo, para no volverse molesto en cada fichaje.
+        function mostrarAvisoGPS(motivo) {
+            const aviso = GPS_AVISOS[motivo];
+            if (!aviso) return;
+            try {
+                const clave = `aviso_gps_${motivo}`;
+                if (localStorage.getItem(clave) === getTodayStr()) return;
+                localStorage.setItem(clave, getTodayStr());
+            } catch (_) { /* si localStorage está bloqueado, se muestra igual */ }
+            UI.showAlert(aviso.titulo, aviso.msg, 'error');
         }
 
         // Selfie de verificación (anti-suplantación): abre la cámara frontal del celular, comprime la
@@ -2169,7 +2410,11 @@
             btn.disabled = true;
 
             try {
-                const tStr = getTodayStr();
+                // Para "Entrada" siempre se usa HOY (empieza un turno nuevo). Para cualquier otra
+                // acción (almuerzo, salida) se usa fechaRegistroActivo, que puede ser AYER si quedó
+                // un turno nocturno sin cerrar — así "Fin de Jornada" cierra el registro correcto en
+                // vez de crear uno nuevo vacío para hoy.
+                const tStr = (action === 'in') ? getTodayStr() : (fechaRegistroActivo || getTodayStr());
                 const tTime = new Date().toLocaleTimeString('es-CO', { hour12: false, hour: '2-digit', minute: '2-digit' });
                 const ref = doc(db, 'empleados', currentUserId, 'registros', tStr);
                 const snap = await getDoc(ref);
@@ -2182,8 +2427,17 @@
                 };
 
                 let loc = null;
+                let gpsMotivo = null;
+                let gpsAvisar = false;
                 let selfieUrl = null;
                 if (action === 'in' || action === 'out') {
+                    // El GPS se empieza a pedir AQUÍ MISMO, en el instante en que el colaborador tocó
+                    // el botón. BUG CORREGIDO: antes se pedía DESPUÉS de la selfie — pero al volver de
+                    // la cámara del celular, iOS ya no considera que se sigue en el mismo "toque" del
+                    // usuario, y puede bloquear en silencio el permiso de ubicación. Por eso el GPS
+                    // fallaba justo cuando tocaba foto (33% de las veces) y parecía al azar.
+                    const promesaGPS = getSafeGPS();
+
                     // La foto de verificación no se pide siempre: sale al azar según el % configurado en
                     // Admin (por defecto 33%), para no incomodar a todos en cada fichaje, pero sigue
                     // siendo un disuasivo real porque nadie sabe cuándo le va a tocar.
@@ -2202,12 +2456,17 @@
                         selfieUrl = selfieDataUrl;
                     }
                     btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Obteniendo ubicación...';
-                    loc = await getSafeGPS();
+                    const resGPS = await promesaGPS;
+                    loc = resGPS.loc;
+                    gpsMotivo = resGPS.motivo;
+                    gpsAvisar = resGPS.avisar;
+
                     btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Guardando...';
                 }
 
                 if (action === 'in') {
-                    data.entrada = tTime; data.loc_entrada = loc; data.foto_entrada = selfieUrl; data.estado = 'activo';
+                    data.entrada = tTime; data.loc_entrada = loc; data.gps_motivo_entrada = gpsMotivo;
+                    data.foto_entrada = selfieUrl; data.estado = 'activo';
                     const evalTardanza = evaluarTardanza(data.obra, tTime);
                     if (evalTardanza) {
                         data.llegada_tarde = evalTardanza.tarde;
@@ -2220,11 +2479,14 @@
                             verificarTardanzasRepetidasMes(currentUserId, currentUserProfile.nombre, tStr);
                         }
                     }
+                    // Revisa si la semana anterior (si hoy es lunes) no alcanzó las 42h reglamentarias.
+                    verificarCumplimientoSemanal(currentUserId, currentUserProfile.nombre, tStr);
                 }
                 else if (action === 'lunch_in') { data.almuerzo_inicio = tTime; }
                 else if (action === 'lunch_out') { data.almuerzo_fin = tTime; }
                 else if (action === 'out') {
-                    data.salida = tTime; data.loc_salida = loc; data.foto_salida = selfieUrl; data.estado = 'completado';
+                    data.salida = tTime; data.loc_salida = loc; data.gps_motivo_salida = gpsMotivo;
+                    data.foto_salida = selfieUrl; data.estado = 'completado';
                     const acumuladaSemana = await getOrdinariasAcumuladasSemana(currentUserId, tStr);
                     const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
                     const calc = calcularJornadaDiaria(data, topeDia);
@@ -2233,6 +2495,7 @@
                     data.horas_extras_nocturnas = calc.extN;
                     data.horas_recargo_nocturno = calc.recNoct;
                     data.es_dominical_festivo = calc.dominical;
+                    data.horas_dominicales = calc.horas_dominicales;
                     data.minutos_tarde = calc.minutosTarde;
                     data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                 }
@@ -2242,6 +2505,10 @@
                 btn.innerHTML = originalHTML; btn.disabled = false;
                 await checkTodayState();
                 await calculateMonthlyAccumulated();
+
+                // El aviso del GPS va DESPUÉS de guardar: el fichaje nunca se bloquea por falta de
+                // ubicación, pero el colaborador sí se entera de que quedó sin GPS y cómo arreglarlo.
+                if (gpsAvisar && gpsMotivo) mostrarAvisoGPS(gpsMotivo);
 
                 if (resultado === 'pendiente') {
                     // No se cierra sesión automáticamente aquí a propósito: no conviene salir de
@@ -2295,7 +2562,7 @@
         document.getElementById('btn-punch-lunch-out').addEventListener('click', (e) => registrarEvento('lunch_out', e.currentTarget));
         document.getElementById('btn-punch-out').addEventListener('click', (e) => registrarEvento('out', e.currentTarget));
 
-        function setPunchUI(state, data = null) {
+        function setPunchUI(state, data = null, esTurnoDeAyer = false) {
             const s1 = document.getElementById('state-1-entrada');
             const s2 = document.getElementById('state-2-turno');
             const s3 = document.getElementById('state-3-almuerzo');
@@ -2323,6 +2590,7 @@
                 s2.classList.remove('hidden'); selects.classList.remove('hidden');
                 sc.disabled = true; so.disabled = true; sa.disabled = true;
                 document.getElementById('display-hora-entrada').textContent = data.entrada;
+                document.getElementById('aviso-turno-ayer').classList.toggle('hidden', !esTurnoDeAyer);
             } else if (state === 'almuerzo') {
                 s3.classList.remove('hidden'); selects.classList.add('hidden');
                 document.getElementById('display-hora-almuerzo').textContent = data.almuerzo_inicio;
@@ -3245,6 +3513,12 @@
             if (!fecha || !cedula || !cliente || !obra || !autoriza) {
                 return UI.showAlert("Datos Incompletos", "Completa Fecha, Colaborador, Cliente, Obra y Autoriza.", "error");
             }
+            // BUG CORREGIDO: sin este chequeo se podía guardar por error un registro con fecha futura
+            // (ej. un año mal digitado, 2028 en vez de 2025). No se valida solo con el "max" del input
+            // porque algunos navegadores lo ignoran o el valor puede llegar ya manipulado.
+            if (fecha > getTodayStr()) {
+                return UI.showAlert("Fecha inválida", `La fecha (${fecha}) es futura. No se pueden registrar tiempos trabajados que todavía no han pasado.`, "error");
+            }
             if ((entrada && !salida) || (!entrada && salida)) {
                 return UI.showAlert("Horario incompleto", "Si registras horario trabajado, completa tanto Entrada como Salida (o déjalas ambas en blanco si el día fue 100% permiso).", "error");
             }
@@ -3256,6 +3530,9 @@
             }
             if ((almuerzoInicio && !almuerzoFin) || (!almuerzoInicio && almuerzoFin)) {
                 return UI.showAlert("Almuerzo incompleto", "Si registras almuerzo, completa tanto la hora de inicio como la de fin (o deja ambas en blanco).", "error");
+            }
+            if (almuerzoInicio && almuerzoFin && timeStrToFloat(almuerzoFin) <= timeStrToFloat(almuerzoInicio)) {
+                return UI.showAlert("Horario de almuerzo inválido", "La hora de fin del almuerzo debe ser después de la hora de inicio.", "error");
             }
             // Detecta el error típico de marcar el almuerzo en AM cuando se quería decir PM (ej. "12:00
             // a.m." en vez de "12:00 p.m."): si la hora de almuerzo queda ANTES de la entrada Y no hay
@@ -3279,7 +3556,49 @@
                 }
             }
 
+            // BUG CORREGIDO: si se digitaba mal la Entrada o la Salida (ej. Entrada 17:00 / Salida
+            // 16:50 en vez de 07:00), el cálculo asumía turno nocturno y sumaba 24h a la salida,
+            // generando jornadas de ~24 horas sin ningún aviso. Ningún turno real dura más de
+            // JORNADA_MANUAL_MAX_HORAS, así que a partir de ahí se exige confirmación explícita.
+            if (entrada && salida) {
+                const hEntradaChk = timeStrToFloat(entrada);
+                let hSalidaChk = timeStrToFloat(salida);
+                if (hSalidaChk < hEntradaChk) hSalidaChk += 24;
+                const duracionChk = hSalidaChk - hEntradaChk;
+                const JORNADA_MANUAL_MAX_HORAS = 12;
+                if (duracionChk > JORNADA_MANUAL_MAX_HORAS) {
+                    const continuar = await new Promise(resolve => {
+                        UI.showConfirm(
+                            "Jornada inusualmente larga",
+                            `Con Entrada ${entrada} y Salida ${salida} el turno dura ${duracionChk.toFixed(1)} horas seguidas. Esto suele pasar por un error al digitar la hora de salida. ¿Seguro que estos datos están bien?`,
+                            () => resolve(true)
+                        );
+                        setTimeout(() => resolve(false), 60000);
+                    });
+                    if (!continuar) return;
+                }
+            }
+
             try {
+                // BUG CORREGIDO: antes este botón sobrescribía el registro del día SIN avisar,
+                // aunque ya existiera uno con la foto y el GPS reales del fichaje del colaborador —
+                // esos se perdían para siempre sin que nadie se enterara. Ahora, si ya hay un
+                // registro guardado ese día, se avisa antes de reemplazarlo.
+                const refExistente = doc(db, 'empleados', cedula, 'registros', fecha);
+                const snapExistente = await getDoc(refExistente);
+                if (snapExistente.exists()) {
+                    const ex = snapExistente.data();
+                    const teniaEvidencia = !!(ex.foto_entrada || ex.foto_salida || ex.loc_entrada || ex.loc_salida);
+                    const advertencia = teniaEvidencia
+                        ? `Ya existe un registro guardado para ${fecha}, con foto y/o ubicación GPS del fichaje real del colaborador. Si continúas, ESE registro (incluida la foto y el GPS) se reemplaza por completo por lo que acabas de escribir, y no se puede deshacer.\n\n¿Seguro que quieres sobrescribirlo?`
+                        : `Ya existe un registro guardado para ${fecha}. Si continúas, se reemplaza por completo por lo que acabas de escribir.\n\n¿Seguro que quieres sobrescribirlo?`;
+                    const continuar = await new Promise(resolve => {
+                        UI.showConfirm("Este día ya tiene un registro", advertencia, () => resolve(true));
+                        setTimeout(() => resolve(false), 60000);
+                    });
+                    if (!continuar) return;
+                }
+
                 const empSnap = await getDoc(doc(db, 'empleados', cedula));
                 const nombre = empSnap.data().nombre;
                 let data = {
@@ -3299,6 +3618,7 @@
                     data.horas_extras_nocturnas = calc.extN;
                     data.horas_recargo_nocturno = calc.recNoct;
                     data.es_dominical_festivo = calc.dominical;
+                    data.horas_dominicales = calc.horas_dominicales;
                     data.minutos_tarde = calc.minutosTarde;
                     data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                 } else {
@@ -3308,6 +3628,7 @@
                     data.horas_extras_nocturnas = 0;
                     data.horas_recargo_nocturno = 0;
                     data.es_dominical_festivo = esDominicalOFestivo(fecha);
+                    data.horas_dominicales = 0; // sin horario trabajado, no hay horas que recargar
                     data.minutos_tarde = 0;
                     data.horas_descuento_tardanza = 0;
                 }
@@ -3346,6 +3667,7 @@
                     horas_extras_nocturnas: calc.extN,
                     horas_recargo_nocturno: calc.recNoct,
                     es_dominical_festivo: calc.dominical,
+                    horas_dominicales: calc.horas_dominicales,
                     minutos_tarde: calc.minutosTarde,
                     horas_descuento_tardanza: calc.horasDescontadasTardanza
                 });
@@ -3442,8 +3764,21 @@
             }
 
             regs.forEach(r => {
-                const mapBtn = (loc) => {
-                    if (!loc) return `<span class="text-slate-300">-</span>`;
+                const ETIQUETAS_GPS = {
+                    webview: 'Abrió desde WhatsApp',
+                    permiso_denegado: 'Permiso bloqueado',
+                    sin_senal_gps: 'Sin señal GPS',
+                    timeout: 'GPS lento',
+                    sitio_inseguro: 'Enlace no seguro',
+                    archivo_local: 'Archivo local',
+                    no_soportado: 'Navegador sin GPS',
+                    error: 'Error de GPS'
+                };
+                const mapBtn = (loc, motivo) => {
+                    if (!loc) {
+                        if (!motivo) return `<span class="text-slate-300">-</span>`;
+                        return `<span class="text-amber-600 font-semibold" title="Motivo reportado por el celular del colaborador">⚠ ${escHtml(ETIQUETAS_GPS[motivo] || motivo)}</span>`;
+                    }
                     let avisoExactitud = '';
                     if (loc.exactitud_m) {
                         const colorClase = loc.exactitud_m <= 20 ? 'text-emerald-600' : (loc.exactitud_m <= 100 ? 'text-amber-600' : 'text-rose-600');
@@ -3463,7 +3798,7 @@
                     <td class="p-4 border-b border-slate-100">
                         <div class="font-mono font-bold text-slate-700">${escHtml(r.fecha)} ${r.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
                         <div class="text-[10px] flex gap-2 mt-1 items-center">
-                            IN: ${mapBtn(r.loc_entrada)} ${fotoBtn(r.foto_entrada)} <span class="text-slate-200">|</span> OUT: ${mapBtn(r.loc_salida)} ${fotoBtn(r.foto_salida)}
+                            IN: ${mapBtn(r.loc_entrada, r.gps_motivo_entrada)} ${fotoBtn(r.foto_entrada)} <span class="text-slate-200">|</span> OUT: ${mapBtn(r.loc_salida, r.gps_motivo_salida)} ${fotoBtn(r.foto_salida)}
                         </div>
                     </td>
                     <td class="p-4 border-b border-slate-100">
@@ -4267,6 +4602,7 @@
                         tipo_permiso: data.tipo || null, horas_permiso: parseFloat(data.horas) || 0, nota_permiso: data.nota || null,
                         estado: 'completado', loc_entrada: null, loc_salida: null,
                         horas_ordinarias: 0, horas_extras_diurnas: 0, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0,
+                        horas_dominicales: 0,
                         es_dominical_festivo: esDominicalOFestivo(data.fecha)
                     });
                 }
