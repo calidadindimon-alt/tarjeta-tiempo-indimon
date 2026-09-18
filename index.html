@@ -1480,7 +1480,15 @@
         function mostrarErrorDiagnosticado(contexto, e) {
             logError(contexto, e);
             const d = describirError(e);
-            UI.showAlert(d.titulo, `${d.msg}\n\nCódigo técnico: ${d.detalle}`, 'error');
+            // Se agrega el MENSAJE COMPLETO del error, no solo el código. Motivo: un mismo código
+            // (por ejemplo 'failed-precondition') lo usa Firestore para causas totalmente distintas
+            // —almacenamiento bloqueado, falta un índice en la base de datos, etc.— y solo el mensaje
+            // dice cuál es. Sin él, diagnosticar a distancia es adivinar.
+            const mensajeTecnico = String(e?.message || '').slice(0, 300);
+            const detalleAmpliado = mensajeTecnico && mensajeTecnico !== d.detalle
+                ? `${d.detalle}\n\nDetalle: ${mensajeTecnico}`
+                : d.detalle;
+            UI.showAlert(d.titulo, `${d.msg}\n\nCódigo técnico: ${detalleAmpliado}`, 'error');
         }
 
         // La app usa UNA sola sesión de Firebase para colaboradores. Si alguien entra a Admin o a
