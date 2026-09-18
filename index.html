@@ -1142,7 +1142,16 @@
         // app se siga viendo con su diseño normal aunque se abra sin señal. Si falla (navegador viejo,
         // o el archivo no está publicado todavía), la app sigue funcionando igual, solo sin ese beneficio.
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js').catch((e) => console.error('No se pudo registrar el service worker:', e));
+            navigator.serviceWorker.register('./service-worker.js').then((registro) => {
+                // El navegador revisa por su cuenta si hay un service worker nuevo, pero puede tardar
+                // hasta 24 h. Aquí se le pide que revise cada vez que la persona vuelve a la pestaña,
+                // para que el rescate de pestañas viejas (ver service-worker.js) ocurra mucho antes.
+                const revisar = () => { try { registro.update(); } catch (_) { /* sin conexión: no pasa nada */ } };
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') revisar();
+                });
+                setInterval(revisar, 60 * 60 * 1000);
+            }).catch((e) => console.error('No se pudo registrar el service worker:', e));
         }
 
         // Los empleados no usan un correo real: se les asigna uno técnico ligado a su cédula
@@ -1457,6 +1466,17 @@
             } catch (_) { /* si el navegador bloquea localStorage, no pasa nada */ }
         }
 
+        // Códigos que significan "la copia local de la base de datos de este navegador quedó rota o
+        // bloqueada" — típicamente porque el navegador borró el almacenamiento del sitio mientras la
+        // pestaña llevaba días abierta (muy común en iPhone), o por modo privado. Lo importante: NO se
+        // arreglan reintentando, solo recargando la página; por eso se tratan aparte.
+        function esErrorDeAlmacenamientoRoto(e) {
+            const code = String(e?.code || '').replace(/^firestore\//, '');
+            if (code === 'failed-precondition' || code === 'internal' || code === 'aborted') return true;
+            const msg = String(e?.message || '').toLowerCase();
+            return msg.includes('indexeddb') || msg.includes('quotaexceeded') || msg.includes('storage');
+        }
+
         function mostrarErrorDiagnosticado(contexto, e) {
             logError(contexto, e);
             const d = describirError(e);
@@ -1533,6 +1553,8 @@
         // banner. Así funciona automáticamente con cualquier edición futura, se acuerden o no de tocar
         // un número de versión.
         let htmlVersionBase = null;
+        let actualizacionPendiente = false; // true en cuanto se detecta una versión nueva publicada
+        let fichajeEnCurso = false; // true mientras registrarEvento() está a mitad de un fichaje
         async function verificarNuevaVersion() {
             try {
                 const res = await fetch(window.location.pathname, { cache: 'no-store' });
@@ -1545,6 +1567,7 @@
                     return;
                 }
                 if (texto !== htmlVersionBase) {
+                    actualizacionPendiente = true;
                     document.getElementById('banner-nueva-version').classList.remove('hidden');
                 }
             } catch (e) {
@@ -1555,12 +1578,29 @@
         document.getElementById('btn-actualizar-version').addEventListener('click', () => {
             window.location.reload();
         });
-        // Revisa al abrir la app, cada vez que el celular vuelve a esta pestaña (lo más común: alguien
-        // reabre una pestaña que llevaba horas/días en segundo plano), y cada 20 minutos si la deja
-        // abierta todo el día.
+        // MEJORA (corrige un bug real de un colaborador con iPhone): si alguien deja la pestaña
+        // abierta días sin cerrarla, el celular la "congela" en segundo plano en vez de cerrarla —
+        // al volver a abrirla, muchos navegadores móviles solo la despiertan tal cual estaba, SIN
+        // pedir la página de nuevo a internet. Esa pestaña nunca llega a ver el banner de "hay una
+        // versión nueva" (ni ningún arreglo publicado después) porque literalmente nunca vuelve a
+        // ejecutar el código nuevo. Por eso, además del banner (para cuando la persona sigue
+        // usando la app activamente), se agrega una recarga silenciosa: apenas la pestaña pasa a
+        // segundo plano (se cambia de app, se bloquea la pantalla, etc.) HABIENDO una versión
+        // pendiente, se recarga sola en ese mismo instante — es el momento más seguro para hacerlo,
+        // porque nadie está mirando la pantalla, así que no se interrumpe nada. La próxima vez que
+        // la persona vuelva a la pestaña, ya está en la versión correcta. Se pospone mientras haya
+        // un fichaje a mitad de camino (fichajeEnCurso), para no cortar justo cuando se abrió la
+        // cámara de la selfie de verificación (eso también dispara "pestaña oculta").
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') verificarNuevaVersion();
+            if (document.visibilityState === 'visible') {
+                verificarNuevaVersion();
+            } else if (document.visibilityState === 'hidden' && actualizacionPendiente && !fichajeEnCurso) {
+                window.location.reload();
+            }
         });
+        // Respaldo por si la pestaña se queda al frente todo el día sin pasar nunca a segundo
+        // plano: revisa igual cada 20 minutos (esto solo muestra el banner, no recarga sola,
+        // porque la persona sí está mirando la pantalla en ese momento).
         setInterval(verificarNuevaVersion, 20 * 60 * 1000);
 
         async function initApp() {
@@ -2516,6 +2556,11 @@
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Procesando...';
             btn.disabled = true;
+            // MEJORA: mientras esto está en true, la recarga automática por nueva versión (ver
+            // verificarNuevaVersion más abajo) se pospone — no queremos recargar la página a mitad
+            // de un fichaje (por ejemplo, justo cuando se abrió la cámara del celular para la selfie
+            // de verificación, lo que también dispara un cambio de "pestaña oculta").
+            fichajeEnCurso = true;
 
             try {
                 // Para "Entrada" siempre se usa HOY (empieza un turno nuevo). Para cualquier otra
@@ -2721,7 +2766,24 @@
                 mostrarErrorDiagnosticado(`fichaje-${action}`, e);
                 if (e?.code === 'permission-denied' || e?.code === 'unauthenticated') {
                     setTimeout(() => forzarReingresoColaborador('Tu sesión se cerró mientras la app estaba abierta.'), 300);
+                } else if (esErrorDeAlmacenamientoRoto(e)) {
+                    // Bug real reportado en iPhone: si la pestaña lleva días abierta, el navegador puede
+                    // borrar por su cuenta el almacenamiento local del sitio. La copia offline de Firestore
+                    // que esa pestaña tiene abierta queda rota y TODOS los fichajes fallan a partir de ahí,
+                    // una y otra vez, por más que la persona reintente — que es exactamente lo que pasaba
+                    // ("el usuario del iPhone queda ahí siempre"). Recargar la página lo arregla al instante,
+                    // porque vuelve a abrir la copia local desde cero. Se ofrece en vez de hacerlo solo para
+                    // no borrarle de golpe lo que acaba de escribir en Cliente / Obra / Autoriza.
+                    setTimeout(() => {
+                        UI.showConfirm(
+                            "Recargar la app para arreglarlo",
+                            "Esto pasa cuando la app lleva muchos días abierta sin cerrarse. Recargarla lo soluciona de inmediato y vuelves a marcar normal. ¿Recargar ahora?",
+                            () => window.location.reload()
+                        );
+                    }, 400);
                 }
+            } finally {
+                fichajeEnCurso = false;
             }
         }
 
