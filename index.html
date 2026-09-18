@@ -1385,8 +1385,14 @@
                 msg: 'Tu registro quedó guardado en este celular y se enviará solo cuando mejore la señal. Puedes seguir trabajando normalmente.'
             },
             'failed-precondition': {
-                titulo: 'El navegador está bloqueando el guardado',
-                msg: 'Estás en modo privado/incógnito, o el navegador tiene bloqueado el almacenamiento. Abre la app en Safari o Chrome normales (sin modo privado) y vuelve a intentarlo.'
+                // BUG CORREGIDO (diagnóstico): este mensaje decía "modo privado/incógnito", pero la
+                // causa real y más común de 'failed-precondition' en esta app es otra: la persistencia
+                // offline está configurada como "de una sola pestaña" (persistentSingleTabManager), así
+                // que si el sitio queda abierto en OTRA pestaña o ventana al mismo tiempo (aunque sea en
+                // segundo plano, de una prueba anterior), la pestaña nueva no puede tomar control de los
+                // datos guardados sin conexión y falla con este código exacto.
+                titulo: 'La app está abierta en otra pestaña',
+                msg: 'Este sitio ya está abierto en otra pestaña o ventana del navegador (aunque esté en segundo plano), y eso bloquea el guardado sin conexión. Cierra las demás pestañas donde tengas esta página abierta, deja solo una, y vuelve a intentarlo.\n\nSi ya revisaste eso y sigue igual, puede ser que el navegador esté en modo privado/incógnito o tenga el almacenamiento bloqueado — en ese caso, ábrelo en Safari o Chrome normales.'
             },
             'resource-exhausted': {
                 titulo: 'Sistema saturado',
@@ -2092,6 +2098,15 @@
                     UI.showAlert("Sin conexión", "No se pudo comunicar con el servidor. Verifica tu conexión a internet e inténtalo de nuevo.", "error");
                 } else if (e.code === 'auth/too-many-requests') {
                     UI.showAlert("Demasiados intentos", "Se bloquearon los intentos temporalmente por seguridad. Espera unos minutos y vuelve a intentarlo.", "error");
+                } else if (DIAGNOSTICO_ERRORES[String(e.code || '').replace(/^firestore\//, '')]) {
+                    // BUG CORREGIDO (diagnóstico): códigos que no son de Auth (ej. 'failed-precondition'
+                    // cuando el sitio está abierto en otra pestaña) también pueden ocurrir aquí, porque
+                    // este bloque también incluye la lectura del perfil en Firestore, no solo el login.
+                    // Antes esos casos caían en el mensaje genérico de "verifica tu conexión" en vez del
+                    // mensaje específico y más útil que ya existe para ese código (logError ya se llamó
+                    // arriba, así que aquí solo se muestra el mensaje, sin registrar el error dos veces).
+                    const d = describirError(e);
+                    UI.showAlert(d.titulo, `${d.msg}\n\nCódigo técnico: ${d.detalle}`, 'error');
                 } else {
                     // BUG CORREGIDO (diagnóstico): antes este mensaje genérico no mostraba el código
                     // técnico del error, así que un problema real (ej. dominio no autorizado, regla de
