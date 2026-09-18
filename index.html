@@ -2348,18 +2348,41 @@
             // domingo estaba vacío y el turno del viernes seguía quedando huérfano. En vez de adivinar
             // cuántos días atrás mirar, se busca directamente el registro más reciente ANTERIOR a hoy
             // (sin importar cuántos días atrás quede) y se revisa si sigue "activo".
-            const snapAnterior = await getDocs(query(
-                collection(db, 'empleados', currentUserId, 'registros'),
-                where(documentId(), '<', t),
-                orderBy(documentId(), 'desc'),
-                fsLimit(1)
-            ));
-            if (!snapAnterior.empty) {
-                const docAnterior = snapAnterior.docs[0];
-                if (docAnterior.data().estado === 'activo') {
+            //
+            // BUG CORREGIDO (caída en producción, 18/09): la primera versión de esta búsqueda usaba
+            // where(documentId(),'<',hoy) + orderBy(documentId(),'desc'). Esa combinación EXIGE un
+            // índice especial en Firestore que nunca se creó, así que la consulta fallaba SIEMPRE con
+            // 'failed-precondition'. Como esta función corre al iniciar sesión, cualquier colaborador
+            // que todavía NO tuviera registro de hoy veía el error y no podía fichar; los que ya
+            // tenían registro del día no pasaban por aquí y por eso a ellos sí les funcionaba — eso
+            // explica por qué el error parecía aleatorio según la persona.
+            //
+            // Ahora se busca por 'estado' == 'activo', que Firestore indexa solo, sin configurar nada.
+            // Se piden unos pocos y se descarta en el navegador cualquiera que sea de hoy o posterior;
+            // de los que queden, se toma el más reciente. Un colaborador normal tiene 0 o 1 turno
+            // activo, así que esto no trae datos de más.
+            // Todo esto va dentro de un try/catch propio a propósito: buscar turnos viejos sin cerrar
+            // es una COMODIDAD, no algo indispensable para fichar. Si esta consulta llegara a fallar
+            // por cualquier motivo, lo peor que debe pasar es que no se detecte un turno olvidado —
+            // NUNCA que el colaborador no pueda entrar a la app ni marcar. Esa fue exactamente la
+            // falla del 18/09: una consulta secundaria tumbando todo el inicio de sesión.
+            try {
+                const snapActivos = await getDocs(query(
+                    collection(db, 'empleados', currentUserId, 'registros'),
+                    where('estado', '==', 'activo'),
+                    fsLimit(10)
+                ));
+                const anteriores = snapActivos.docs
+                    .filter(d => d.id < t)
+                    .sort((a, b) => (a.id < b.id ? 1 : -1));
+                if (anteriores.length > 0) {
+                    const docAnterior = anteriores[0];
                     fechaRegistroActivo = docAnterior.id;
                     return setPunchUI('turno', docAnterior.data(), true);
                 }
+            } catch (eTurnoViejo) {
+                console.error('No se pudo revisar si hay turnos anteriores sin cerrar:', eTurnoViejo);
+                logError('buscar-turno-huerfano', eTurnoViejo);
             }
 
             fechaRegistroActivo = null;
