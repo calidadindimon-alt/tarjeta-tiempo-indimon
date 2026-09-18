@@ -976,7 +976,7 @@
             <h3 id="pin-title" class="text-lg font-bold text-center text-slate-800 mb-1">Ingresa tu PIN</h3>
             <p id="pin-subtitle" class="text-xs text-center text-slate-500 mb-5">Protege tu tarjeta de tiempo.</p>
 
-            <input type="text" id="pin-verif-cedula" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input hidden w-full bg-amber-50 border border-amber-300 rounded-xl p-3.5 mb-3 text-lg focus:ring-2 focus:ring-amber-500 outline-none" placeholder="Últimos 4 dígitos de tu cédula">
+            <input type="text" id="pin-verif-cedula" inputmode="numeric" pattern="[0-9]*" maxlength="15" class="pin-input hidden w-full bg-amber-50 border border-amber-300 rounded-xl p-3.5 mb-3 text-lg focus:ring-2 focus:ring-amber-500 outline-none" placeholder="Tu número de cédula completo">
             <input type="tel" id="pin-input-1" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="6" class="pin-input w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••">
             <input type="tel" id="pin-input-2" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="6" class="pin-input hidden w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 mb-3 text-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Confirma tu PIN">
 
@@ -1814,8 +1814,6 @@
                 if (ordPartEnd > s) {
                     // Porción ordinaria de este intervalo -> puede generar recargo nocturno ordinario (35%)
                     recNoct += overlapNocturno(s, ordPartEnd);
-                    // El recargo dominical/festivo (90%) solo se paga sobre horas ordinarias, igual que
-                    // antes — lo que cambia es que ahora se reparte según el día calendario real.
                     if (hoyEsDomFest) horasDominicales += overlap(s, ordPartEnd, 0, 24);
                     if (mananaEsDomFest) horasDominicales += overlap(s, ordPartEnd, 24, 48);
                 }
@@ -1824,6 +1822,14 @@
                     const nocturnaExtra = overlapNocturno(extraPartStart, e);
                     extN += nocturnaExtra;
                     extD += (e - extraPartStart) - nocturnaExtra;
+                    // BUG CORREGIDO: el recargo dominical/festivo (90%) solo se estaba pagando sobre la
+                    // porción ORDINARIA del turno. En Colombia el recargo dominical/festivo es acumulable
+                    // con el recargo de horas extra (no son excluyentes — Art. 179 CST): trabajar horas
+                    // extra un domingo o festivo también debe llevar el 90% dominical, además del recargo
+                    // de extra que ya se calcula arriba. Se agrega también la porción extra de este mismo
+                    // intervalo al total dominical.
+                    if (hoyEsDomFest) horasDominicales += overlap(extraPartStart, e, 0, 24);
+                    if (mananaEsDomFest) horasDominicales += overlap(extraPartStart, e, 24, 48);
                 }
             }
 
@@ -2091,7 +2097,7 @@
                 in1.value = ''; in2.value = ''; inCedula.value = '';
                 document.getElementById('pin-title').textContent = esNuevo ? "Crea tu PIN" : "Ingresa tu PIN";
                 document.getElementById('pin-subtitle').textContent = esNuevo
-                    ? "Es tu primer ingreso. Para confirmar que eres tú, primero escribe los últimos 4 dígitos de tu cédula, y luego elige un PIN de 6 dígitos."
+                    ? "Es tu primer ingreso. Para confirmar que eres tú, primero escribe tu número de cédula COMPLETO, y luego elige un PIN de 6 dígitos."
                     : "Ingresa el PIN de 6 dígitos que creaste la primera vez.";
                 in1.placeholder = "••••••";
                 if (esNuevo) {
@@ -2114,9 +2120,16 @@
                 };
                 const onOk = () => {
                     if (esNuevo) {
-                        const ultimos4 = (cedula || '').slice(-4);
-                        if (inCedula.value.trim() !== ultimos4) {
-                            return UI.showAlert("No coincide", "Los últimos 4 dígitos de la cédula no coinciden con nuestros registros. Si no eres tú quien está creando este PIN, por favor detente aquí — solo el propio colaborador debe crear su PIN.", "error");
+                        // BUG CORREGIDO: antes solo se pedían los ÚLTIMOS 4 DÍGITOS de la cédula para crear
+                        // el PIN por primera vez — un dato que cualquier compañero puede conocer fácilmente
+                        // (carné, WhatsApp, o simplemente preguntando), con solo 10.000 combinaciones si se
+                        // quisiera adivinar. Ahora se exige el número de cédula COMPLETO, que es un dato que
+                        // circula mucho menos casualmente entre compañeros. Sigue sin ser una verificación
+                        // perfecta (no hay Firebase Auth "real" en este flujo), pero eleva bastante la
+                        // barrera para suplantar a alguien que todavía no ha creado su PIN.
+                        const cedulaReal = String(cedula || '').trim();
+                        if (inCedula.value.trim() !== cedulaReal) {
+                            return UI.showAlert("No coincide", "El número de cédula no coincide con nuestros registros. Si no eres tú quien está creando este PIN, por favor detente aquí — solo el propio colaborador debe crear su PIN.", "error");
                         }
                     }
                     const p1 = in1.value.trim();
@@ -2419,6 +2432,40 @@
                 const ref = doc(db, 'empleados', currentUserId, 'registros', tStr);
                 const snap = await getDoc(ref);
 
+                // BUG CORREGIDO: si el colaborador tenía la app abierta en dos pestañas/dispositivos (o
+                // la pantalla quedó desactualizada), tocar "Entrada" dos veces sobrescribía silenciosamente
+                // la hora real de la primera entrada. Se revalida contra el servidor justo antes de crear
+                // el registro: si ya existe un turno activo para hoy, se rechaza en vez de sobrescribir.
+                if (action === 'in' && snap.exists() && snap.data().estado === 'activo') {
+                    btn.innerHTML = originalHTML; btn.disabled = false;
+                    await checkTodayState();
+                    return UI.showAlert("Ya tienes un turno abierto", "Ya registraste una Entrada para hoy que sigue activa. Si esto no es correcto, avísale a SSTA para que lo revise.", "error");
+                }
+
+                // BUG CORREGIDO: verificarIncapacidadActiva() solo deshabilitaba el botón en pantalla —
+                // alguien con acceso a las herramientas de desarrollador podía saltarse ese bloqueo visual
+                // y fichar entrada igual mientras está incapacitado. Se revalida aquí, justo antes de
+                // guardar, consultando Firestore directamente (no solo el estado ya cargado en pantalla).
+                if (action === 'in') {
+                    try {
+                        const hoyStr = getTodayStr();
+                        const incapSnap = await getDocs(query(collection(db, 'incapacidades'), where('trabajador_cedula', '==', currentUserId)));
+                        const incapacidadActivaHoy = incapSnap.docs.some(d => {
+                            const inc = d.data();
+                            return inc.fecha_inicio && inc.fecha_fin && hoyStr >= inc.fecha_inicio && hoyStr <= inc.fecha_fin;
+                        });
+                        if (incapacidadActivaHoy) {
+                            btn.innerHTML = originalHTML; btn.disabled = false;
+                            return UI.showAlert("Incapacidad activa", "Tienes una incapacidad registrada que cubre el día de hoy, así que no puedes fichar entrada. Si esto es un error, avísale a RRHH.", "error");
+                        }
+                    } catch (eIncap) {
+                        // Si la consulta de incapacidades falla (ej. sin conexión), no se bloquea el
+                        // fichaje por eso — el aviso visual (verificarIncapacidadActiva) ya cubre el caso
+                        // normal con conexión; esto es solo una segunda barrera, no la única.
+                        console.error('No se pudo revalidar incapacidad activa antes de fichar:', eIncap);
+                    }
+                }
+
                 let data = snap.exists() ? snap.data() : {
                     fecha: tStr, empleado_nombre: currentUserProfile.nombre, cedula: currentUserId,
                     cliente: document.getElementById('sel-cliente').value.trim(),
@@ -2486,18 +2533,42 @@
                 else if (action === 'lunch_out') { data.almuerzo_fin = tTime; }
                 else if (action === 'out') {
                     data.salida = tTime; data.loc_salida = loc; data.gps_motivo_salida = gpsMotivo;
-                    data.foto_salida = selfieUrl; data.estado = 'completado';
-                    const acumuladaSemana = await getOrdinariasAcumuladasSemana(currentUserId, tStr);
-                    const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
-                    const calc = calcularJornadaDiaria(data, topeDia);
-                    data.horas_ordinarias = calc.ord;
-                    data.horas_extras_diurnas = calc.extD;
-                    data.horas_extras_nocturnas = calc.extN;
-                    data.horas_recargo_nocturno = calc.recNoct;
-                    data.es_dominical_festivo = calc.dominical;
-                    data.horas_dominicales = calc.horas_dominicales;
-                    data.minutos_tarde = calc.minutosTarde;
-                    data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
+                    data.foto_salida = selfieUrl;
+
+                    // BUG CORREGIDO: calcularJornadaDiaria() compara solo las horas del reloj (HH:MM) de
+                    // entrada y salida, y solo suma 24h si la salida "parece" menor que la entrada — es
+                    // decir, solo contempla UN cruce de medianoche. Si el turno quedó abierto varios días
+                    // (se detecta y se deja cerrar gracias a la corrección del "turno huérfano"), cerrarlo
+                    // así daría un número de horas absurdo o casi cero (ej. entrada viernes 08:00, salida
+                    // lunes 08:30 calcularía 0.5h en vez de las ~76h reales). En vez de inventar un cálculo
+                    // automático para un caso que no es un turno normal, se guarda el fichaje real (hora y
+                    // fecha tal como ocurrió) pero SIN calcular horas automáticamente, y se marca para que
+                    // Admin lo revise y decida manualmente cuánto se paga.
+                    const diasTranscurridos = Math.round((new Date(getTodayStr() + 'T00:00:00') - new Date(tStr + 'T00:00:00')) / 86400000);
+                    if (diasTranscurridos > 1) {
+                        data.estado = 'requiere_revision_admin';
+                        data.horas_ordinarias = 0;
+                        data.horas_extras_diurnas = 0;
+                        data.horas_extras_nocturnas = 0;
+                        data.horas_recargo_nocturno = 0;
+                        data.horas_dominicales = 0;
+                        data.minutos_tarde = 0;
+                        data.horas_descuento_tardanza = 0;
+                        data.nota_revision = `Turno quedó abierto ${diasTranscurridos} días (de ${tStr} a ${getTodayStr()}). Las horas NO se calcularon automáticamente — Admin debe revisar y corregir manualmente en "Editar Registro".`;
+                    } else {
+                        data.estado = 'completado';
+                        const acumuladaSemana = await getOrdinariasAcumuladasSemana(currentUserId, tStr);
+                        const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
+                        const calc = calcularJornadaDiaria(data, topeDia);
+                        data.horas_ordinarias = calc.ord;
+                        data.horas_extras_diurnas = calc.extD;
+                        data.horas_extras_nocturnas = calc.extN;
+                        data.horas_recargo_nocturno = calc.recNoct;
+                        data.es_dominical_festivo = calc.dominical;
+                        data.horas_dominicales = calc.horas_dominicales;
+                        data.minutos_tarde = calc.minutosTarde;
+                        data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
+                    }
                 }
 
                 const resultado = await guardarConConfirmacion(ref, data);
@@ -2519,7 +2590,11 @@
                         "info"
                     );
                 } else if (action === 'out') {
-                    UI.showAlert("Jornada Finalizada", "Tus horas de hoy han sido guardadas. Cerrando sesión...", "success");
+                    if (data.estado === 'requiere_revision_admin') {
+                        UI.showAlert("Jornada Finalizada", "Como este turno quedó abierto varios días, tus horas NO se calcularon automáticamente — Admin las revisará y corregirá manualmente. Tu hora de salida ya quedó guardada. Cerrando sesión...", "info");
+                    } else {
+                        UI.showAlert("Jornada Finalizada", "Tus horas de hoy han sido guardadas. Cerrando sesión...", "success");
+                    }
                     setTimeout(() => document.getElementById('btn-logout').click(), 3000);
                 }
             } catch (e) {
@@ -2864,7 +2939,10 @@
             try {
                 const snap = await getDocs(collection(db, 'empleados'));
                 const lista = [];
-                snap.forEach(d => lista.push({ cedula: d.id, ...d.data() }));
+                // "Eliminar" ahora marca activo:false en vez de borrar el documento (ver eliminarColaborador
+                // más abajo), así se conserva su historial referenciable. Esta lista de gestión sigue
+                // mostrando solo colaboradores activos, igual que antes.
+                snap.forEach(d => { if (d.data().activo !== false) lista.push({ cedula: d.id, ...d.data() }); });
                 lista.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
                 colaboradoresAdminCache = lista;
                 pintarListaColaboradoresAdmin();
@@ -2954,13 +3032,22 @@
                 `¿Seguro que quieres eliminar a ${nombre} (CC ${cedula})? Ya no podrá registrar tiempo ni aparecerá en los listados. Su historial de registros pasados NO se borra. Si ya había creado su PIN de acceso, además debes eliminar su cuenta manualmente en Firebase Authentication para bloquearla por completo.`,
                 async () => {
                     try {
-                        await deleteDoc(doc(db, 'empleados', cedula));
+                        // BUG CORREGIDO: antes "eliminar" borraba por completo el documento de 'empleados'.
+                        // Sus registros/permisos/desprendibles seguían en Firestore (referenciados por
+                        // cédula), pero como los combos de "Editar Registro" y "Recalcular Semana" se llenan
+                        // solo desde la lista de empleados, ese colaborador quedaba imposible de seleccionar
+                        // para corregir su historial si más adelante se detectaba un error. Ahora se marca
+                        // activo:false en vez de borrar: desaparece de los listados normales y ya no puede
+                        // iniciar sesión (se borra su copia pública, usada para el buscador de login), pero
+                        // sigue disponible — marcado como "(inactivo)" — en los combos de corrección de
+                        // nómina histórica.
+                        await setDoc(doc(db, 'empleados', cedula), { activo: false }, { merge: true });
                         await deleteDoc(doc(db, 'empleados_publico', cedula));
                         await cargarListaEmpleadosDatalist();
                         await initAdminManualEntry();
                         await renderGestionColaboradores();
                         registrarAuditoria('Eliminar colaborador', `${nombre} (CC ${cedula})`);
-                        UI.showAlert("Eliminado", `${nombre} fue eliminado de la lista de colaboradores activos.`, "success");
+                        UI.showAlert("Eliminado", `${nombre} fue eliminado de la lista de colaboradores activos y ya no puede iniciar sesión. Su historial sigue disponible en Recalcular Semana / Editar Registro por si hay que corregir algo después.`, "success");
                     } catch (e) {
                         console.error(e);
                         UI.showAlert("Error", "No se pudo eliminar el colaborador.", "error");
@@ -3478,11 +3565,19 @@
             const snap = await getDocs(collection(db, 'empleados'));
             const users = [];
             snap.forEach(d => users.push({ cedula: d.id, ...d.data() }));
-            users.sort((a, b) => a.nombre.localeCompare(b.nombre));
+            // Los inactivos (eliminados desde Gestión de Colaboradores) se mantienen en estos combos a
+            // propósito — ver BUG CORREGIDO en eliminarColaborador — para poder seguir corrigiendo su
+            // historial de nómina desde Editar Registro o Recalcular Semana. Se ordenan activos primero
+            // y se etiquetan los inactivos para que no se confundan con el personal vigente.
+            users.sort((a, b) => {
+                if ((a.activo === false) !== (b.activo === false)) return (a.activo === false) ? 1 : -1;
+                return (a.nombre || '').localeCompare(b.nombre || '');
+            });
             users.forEach(u => {
-                selEmp.appendChild(new Option(u.nombre, u.cedula));
-                selFiltro.appendChild(new Option(u.nombre, u.cedula));
-                selRecalc.appendChild(new Option(u.nombre, u.cedula));
+                const etiqueta = u.activo === false ? `${u.nombre} (inactivo)` : u.nombre;
+                selEmp.appendChild(new Option(etiqueta, u.cedula));
+                selFiltro.appendChild(new Option(etiqueta, u.cedula));
+                selRecalc.appendChild(new Option(etiqueta, u.cedula));
             });
 
             document.getElementById('manual-cliente').value = '';
@@ -3754,9 +3849,25 @@
             if (w) w.document.write(`<title>Foto de verificación</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${dataUrl}" style="max-width:100%;max-height:100vh"></body>`);
         };
 
+        // BUG CORREGIDO: fotoBtn() interpolaba el data:URL de la foto directo dentro de un atributo
+        // onclick="...('${foto}')". Aunque hoy 'foto' siempre es base64 (sin comillas, no explotable
+        // con los datos que genera esta app), escapar comillas con entidades HTML NO alcanza a proteger
+        // un onclick: el navegador decodifica las entidades ANTES de interpretar el atributo como JS, así
+        // que una comilla escapada igual rompería el script si el dato alguna vez viniera de otro lado.
+        // Se guardan las fotos en este mapa (por fila) y se abren con un solo listener delegado en vez de
+        // JS inline, para que ningún contenido de 'foto' se interprete nunca como código.
+        const fotosPorFila = new Map();
+        document.getElementById('admin-table-body').addEventListener('click', (e) => {
+            const img = e.target.closest('[data-foto-id]');
+            if (!img) return;
+            const dataUrl = fotosPorFila.get(img.dataset.fotoId);
+            if (dataUrl) window.verFotoCompleta(dataUrl);
+        });
+
         function renderAdminTable(regs) {
             const tbody = document.getElementById('admin-table-body');
             tbody.innerHTML = '';
+            fotosPorFila.clear();
 
             if (!regs || regs.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-slate-400 font-medium">No hay registros de tiempo que coincidan con el filtro.</td></tr>';
@@ -3789,16 +3900,18 @@
                     }
                     return `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoExactitud}`;
                 };
-                const fotoBtn = (foto) => {
+                const fotoBtn = (foto, idBase, sufijo) => {
                     if (!foto) return '';
-                    return `<img src="${foto}" class="w-6 h-6 rounded-full object-cover border border-slate-300 cursor-pointer flex-shrink-0" title="Ver foto de verificación en tamaño completo" onclick="window.verFotoCompleta('${foto}')">`;
+                    const fotoId = `${idBase}-${sufijo}`;
+                    fotosPorFila.set(fotoId, foto);
+                    return `<img src="${escHtml(foto)}" data-foto-id="${escHtml(fotoId)}" class="w-6 h-6 rounded-full object-cover border border-slate-300 cursor-pointer flex-shrink-0" title="Ver foto de verificación en tamaño completo">`;
                 };
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-4 border-b border-slate-100">
                         <div class="font-mono font-bold text-slate-700">${escHtml(r.fecha)} ${r.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
                         <div class="text-[10px] flex gap-2 mt-1 items-center">
-                            IN: ${mapBtn(r.loc_entrada, r.gps_motivo_entrada)} ${fotoBtn(r.foto_entrada)} <span class="text-slate-200">|</span> OUT: ${mapBtn(r.loc_salida, r.gps_motivo_salida)} ${fotoBtn(r.foto_salida)}
+                            IN: ${mapBtn(r.loc_entrada, r.gps_motivo_entrada)} ${fotoBtn(r.foto_entrada, `${r.cedula}_${r.fecha}`, 'in')} <span class="text-slate-200">|</span> OUT: ${mapBtn(r.loc_salida, r.gps_motivo_salida)} ${fotoBtn(r.foto_salida, `${r.cedula}_${r.fecha}`, 'out')}
                         </div>
                     </td>
                     <td class="p-4 border-b border-slate-100">
@@ -3825,7 +3938,10 @@
                                 <span class="bg-amber-50 text-amber-700 px-1.5 rounded">+${r.horas_extras_diurnas || 0} ED</span>
                                 <span class="bg-indigo-50 text-indigo-700 px-1.5 rounded">+${r.horas_extras_nocturnas || 0} EN</span>
                                 <span class="bg-violet-50 text-violet-700 px-1.5 rounded">+${r.horas_recargo_nocturno || 0} RN</span>
-                             </div>` : `<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider animate-pulse">En Turno</span>`
+                             </div>`
+                        : r.estado === 'requiere_revision_admin' ?
+                            `<span class="text-[10px] bg-rose-100 text-rose-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider" title="${escHtml(r.nota_revision || '')}">⚠️ Necesita revisión</span>`
+                        : `<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider animate-pulse">En Turno</span>`
                         }
                     </td>
                     <td class="p-4 border-b border-slate-100 text-center">
@@ -3869,6 +3985,38 @@
             return `"${s}"`;
         }
 
+        // Arma el CSV a partir de un arreglo de registros ya cargado y lo descarga. Se separó de
+        // btn-export-excel para poder reutilizarlo en el respaldo previo al "Borrar Todo" (ver más
+        // abajo) SIN pasar por ningún límite ni filtro de pantalla.
+        function descargarCsvDeRegistros(rows, nombreArchivo) {
+            rows.sort((a, b) => {
+                if (a.empleado_nombre === b.empleado_nombre) return (a.fecha || '').localeCompare(b.fecha || '');
+                return (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '');
+            });
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO;TIPO PERMISO;HORAS PERMISO;NOTA PERMISO\n";
+
+            rows.forEach(r => {
+                const row = [
+                    r.cedula, r.empleado_nombre, r.fecha, r.es_dominical_festivo ? 'SI' : 'NO',
+                    r.cliente || '', r.obra || '', r.autoriza || '',
+                    r.entrada || '', r.almuerzo_inicio || '', r.almuerzo_fin || '', r.salida || '',
+                    r.horas_ordinarias || 0, r.horas_extras_diurnas || 0, r.horas_extras_nocturnas || 0, r.horas_recargo_nocturno || 0,
+                    r.tipo_permiso || '', r.horas_permiso || 0, r.nota_permiso || ''
+                ].map(sanitizeCsvField).join(";");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", nombreArchivo);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         document.getElementById('btn-export-excel').addEventListener('click', async () => {
             try {
                 const cedulaFiltro = document.getElementById('filtro-colaborador').value;
@@ -3882,31 +4030,19 @@
                 } else {
                     const snap = await getDocs(query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(2000)));
                     snap.forEach(d => rows.push(d.data()));
+                    // BUG CORREGIDO: esta exportación sin filtro tenía un tope de 2000 registros (para no
+                    // recargar la pantalla), pero el botón "Borrar Todo" la reutilizaba como si fuera un
+                    // respaldo completo. Ahora "Borrar Todo" arma su propio respaldo aparte, sin límite
+                    // (ver btn-reset-db, más abajo). Aquí solo se avisa si se alcanzó el tope, para que no
+                    // se confunda este export con uno completo.
+                    if (snap.size >= 2000) {
+                        UI.showAlert("Exportación parcial", "Hay más de 2000 registros sin filtrar, así que este archivo solo trae los 2000 más recientes. Para el histórico completo, filtra por colaborador o por mes.", "info");
+                    }
                 }
                 if (mesFiltro) rows = rows.filter(r => (r.fecha || '').startsWith(mesFiltro));
 
                 if (rows.length === 0) return UI.showAlert("Aviso", "No hay registros para exportar con ese filtro.", "info");
 
-                rows.sort((a, b) => {
-                    if (a.empleado_nombre === b.empleado_nombre) return a.fecha.localeCompare(b.fecha);
-                    return (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '');
-                });
-
-                let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-                csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO;TIPO PERMISO;HORAS PERMISO;NOTA PERMISO\n";
-
-                rows.forEach(r => {
-                    const row = [
-                        r.cedula, r.empleado_nombre, r.fecha, r.es_dominical_festivo ? 'SI' : 'NO',
-                        r.cliente || '', r.obra || '', r.autoriza || '',
-                        r.entrada || '', r.almuerzo_inicio || '', r.almuerzo_fin || '', r.salida || '',
-                        r.horas_ordinarias || 0, r.horas_extras_diurnas || 0, r.horas_extras_nocturnas || 0, r.horas_recargo_nocturno || 0,
-                        r.tipo_permiso || '', r.horas_permiso || 0, r.nota_permiso || ''
-                    ].map(sanitizeCsvField).join(";");
-                    csvContent += row + "\n";
-                });
-
-                // Nombre de archivo descriptivo según el filtro activo
                 let nombreArchivo = "Tiempos_INDIMON";
                 if (cedulaFiltro) {
                     const selEl = document.getElementById('filtro-colaborador');
@@ -3916,13 +4052,7 @@
                 if (mesFiltro) nombreArchivo += `_${mesFiltro}`;
                 nombreArchivo += `_${getTodayStr()}.csv`;
 
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", nombreArchivo);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                descargarCsvDeRegistros(rows, nombreArchivo);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo generar el archivo de exportación.", "error");
@@ -3941,18 +4071,30 @@
                 return;
             }
             try {
-                document.getElementById('btn-export-excel').click();
+                // BUG CORREGIDO: antes este botón reutilizaba btn-export-excel para el respaldo previo,
+                // pero esa exportación tiene un tope de 2000 registros (y puede quedar filtrada por lo
+                // que había en pantalla) mientras el borrado de abajo SIEMPRE elimina el 100% sin límite
+                // ni filtro. Si la empresa ya superaba 2000 registros, el respaldo quedaba incompleto y
+                // el borrado igual eliminaba todo — pérdida de datos sin aviso. Ahora el respaldo se arma
+                // aquí mismo, directo de Firestore, con el MISMO conjunto exacto que se va a borrar.
+                const snap = await getDocs(collectionGroup(db, 'registros'));
+                const docs = snap.docs;
+                if (docs.length === 0) {
+                    return UI.showAlert("Nada que borrar", "No hay registros de tiempo guardados.", "info");
+                }
+
+                const rowsRespaldo = docs.map(d => d.data());
+                descargarCsvDeRegistros(rowsRespaldo, `Respaldo_COMPLETO_antes_de_borrar_${getTodayStr()}.csv`);
+                // Se espera un momento a que el navegador dispare la descarga antes de continuar borrando.
                 await new Promise(r => setTimeout(r, 1500));
 
-                const snap = await getDocs(collectionGroup(db, 'registros'));
                 const batchSize = 400;
-                let docs = snap.docs;
                 for (let i = 0; i < docs.length; i += batchSize) {
                     const batch = writeBatch(db);
                     docs.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
                     await batch.commit();
                 }
-                UI.showAlert("Sistema Reiniciado", `Se eliminaron ${docs.length} registros de tiempo. Los perfiles de empleados NO se borraron.`, "success");
+                UI.showAlert("Sistema Reiniciado", `Se eliminaron ${docs.length} registros de tiempo (los ${docs.length} quedaron respaldados en el CSV descargado). Los perfiles de empleados NO se borraron.`, "success");
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo completar el borrado. Revisa las reglas de Firestore.", "error");
@@ -4523,7 +4665,15 @@
                     verificacionBox.classList.add('hidden');
                     pendienteBox.classList.remove('hidden');
                     yaFirmadoBox.classList.add('hidden');
-                    document.getElementById('firmar-nombre-input').value = firmanteData?.nombre || '';
+                    const nombreInputEl = document.getElementById('firmar-nombre-input');
+                    nombreInputEl.value = firmanteData?.nombre || '';
+                    // BUG CORREGIDO: antes este campo quedaba editable después de verificar la cédula,
+                    // así que alguien podía verificarse correctamente y luego cambiar el nombre que queda
+                    // guardado junto a la firma, atribuyéndola a otra persona. Si ya se conoce el nombre
+                    // real del firmante (viene de firmanteData, verificado por cédula), se bloquea el
+                    // campo; solo queda editable cuando no hay cédula registrada (persona externa) y por
+                    // lo tanto tampoco hay nombre de referencia para fijar.
+                    nombreInputEl.readOnly = !!(firmanteData?.nombre);
 
                     const canvas = document.getElementById('firmar-canvas-standalone');
                     firmarPad = createSignaturePad(canvas, checkFirmarReady);
@@ -4988,7 +5138,12 @@
                     verificacionBox.classList.add('hidden');
                     pendienteBox.classList.remove('hidden');
                     yaFirmadoBox.classList.add('hidden');
-                    document.getElementById('desp-firmar-nombre-input').value = data.trabajador || '';
+                    const nombreInputEl = document.getElementById('desp-firmar-nombre-input');
+                    nombreInputEl.value = data.trabajador || '';
+                    // BUG CORREGIDO: mismo caso que en la firma de permisos — si ya se conoce el nombre
+                    // real del trabajador (verificado por cédula), se bloquea el campo para que no se
+                    // pueda cambiar después de pasar la verificación.
+                    nombreInputEl.readOnly = !!(data.trabajador);
 
                     const canvas = document.getElementById('desp-firmar-canvas');
                     despFirmarPad = createSignaturePad(canvas, checkDespFirmarReady);
