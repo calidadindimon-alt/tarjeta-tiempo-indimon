@@ -994,7 +994,8 @@
         import {
             getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager,
             doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup,
-            getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId
+            getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId,
+            serverTimestamp
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/+esm";
 
@@ -2428,7 +2429,20 @@
                 // un turno nocturno sin cerrar — así "Fin de Jornada" cierra el registro correcto en
                 // vez de crear uno nuevo vacío para hoy.
                 const tStr = (action === 'in') ? getTodayStr() : (fechaRegistroActivo || getTodayStr());
-                const tTime = new Date().toLocaleTimeString('es-CO', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                const ahoraDispositivo = new Date();
+                const tTime = ahoraDispositivo.toLocaleTimeString('es-CO', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                // MEJORA: hasta ahora toda la app confiaba 100% en el reloj del celular del colaborador
+                // (new Date()) para calcular horas, tardanzas y recargos, sin ningún contraste. Alguien
+                // podría poner el celular en modo avión, atrasar la hora del sistema operativo y fichar
+                // "a tiempo" de forma artificial. Se guarda ahora, junto a cada fichaje, la hora COMPLETA
+                // del dispositivo (hora_dispositivo_iso) y serverTimestamp() (hora que Firestore asigna
+                // al momento en que la escritura REALMENTE llega al servidor). OJO al leerlas: con la
+                // persistencia offline que usa esta app, si el colaborador fichó sin señal, serverTimestamp
+                // queda con la hora de cuando el celular por fin sincronizó — no la hora real del fichaje —
+                // así que una diferencia grande NO es necesariamente reloj alterado si ese fichaje ocurrió
+                // offline. Por eso se guarda también si el navegador reportaba conexión en ese momento
+                // (estaba_offline_al_fichar), para poder distinguir ambos casos desde el panel Admin.
+                const estabaOffline = !navigator.onLine;
                 const ref = doc(db, 'empleados', currentUserId, 'registros', tStr);
                 const snap = await getDoc(ref);
 
@@ -2509,6 +2523,16 @@
                     gpsAvisar = resGPS.avisar;
 
                     btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Guardando...';
+                }
+
+                // Registra, para el campo que corresponda a esta acción, la hora completa del
+                // dispositivo, la hora del servidor y si el celular reportaba estar offline — ver nota
+                // arriba sobre por qué una diferencia grande NO siempre significa reloj alterado.
+                const sufijoAuditoriaReloj = { in: 'entrada', lunch_in: 'almuerzo_inicio', lunch_out: 'almuerzo_fin', out: 'salida' }[action];
+                if (sufijoAuditoriaReloj) {
+                    data[`hora_dispositivo_iso_${sufijoAuditoriaReloj}`] = ahoraDispositivo.toISOString();
+                    data[`hora_servidor_${sufijoAuditoriaReloj}`] = serverTimestamp();
+                    data[`estaba_offline_al_fichar_${sufijoAuditoriaReloj}`] = estabaOffline;
                 }
 
                 if (action === 'in') {
@@ -3900,6 +3924,23 @@
                     }
                     return `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoExactitud}`;
                 };
+                // MEJORA: compara la hora que reportó el dispositivo contra la hora real en que la
+                // escritura llegó al servidor. Si el fichaje ocurrió offline, esa diferencia se explica
+                // sola (el celular sincronizó tarde) y NO se marca — solo se avisa cuando el celular
+                // decía estar CONECTADO en el momento de fichar y aun así hay una diferencia grande,
+                // que es la señal real de que el reloj del dispositivo pudo estar alterado.
+                const UMBRAL_RELOJ_SOSPECHOSO_MIN = 15;
+                const avisoRelojSospechoso = (r, sufijo) => {
+                    const isoDispositivo = r[`hora_dispositivo_iso_${sufijo}`];
+                    const tsServidor = r[`hora_servidor_${sufijo}`];
+                    const estabaOffline = r[`estaba_offline_al_fichar_${sufijo}`];
+                    if (!isoDispositivo || !tsServidor || estabaOffline) return '';
+                    const msServidor = tsServidor.toMillis ? tsServidor.toMillis() : null;
+                    if (msServidor === null) return '';
+                    const diffMin = Math.abs(msServidor - new Date(isoDispositivo).getTime()) / 60000;
+                    if (diffMin < UMBRAL_RELOJ_SOSPECHOSO_MIN) return '';
+                    return `<div class="text-[9px] text-rose-700 mt-1 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-block font-bold" title="El celular reportaba estar conectado, pero su reloj y el del servidor difieren en ~${Math.round(diffMin)} minutos. Puede ser el reloj del dispositivo mal configurado.">🕒 Reloj sospechoso (${Math.round(diffMin)}min)</div>`;
+                };
                 const fotoBtn = (foto, idBase, sufijo) => {
                     if (!foto) return '';
                     const fotoId = `${idBase}-${sufijo}`;
@@ -3928,6 +3969,8 @@
                         <span class="text-slate-300 mx-1">a</span>
                         <span class="text-rose-600 font-bold">${escHtml(r.salida || '--:--')}</span>
                         ${r.llegada_tarde ? `<div class="text-[9px] text-rose-700 mt-1 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-block font-bold">🔴 Tarde (${r.minutos_tarde}min)</div>` : ''}
+                        ${avisoRelojSospechoso(r, 'entrada')}
+                        ${avisoRelojSospechoso(r, 'salida')}
                         ${r.almuerzo_inicio ? `<div class="text-[9px] text-amber-600 mt-1 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)} - ${escHtml(r.almuerzo_fin || '...')}</div>` : ''}
                         ${r.tipo_permiso ? `<div class="text-[9px] text-violet-700 mt-1 bg-violet-50 border border-violet-200 rounded px-1 py-0.5 inline-block font-bold" title="${escHtml(r.nota_permiso || '')}">🩺 ${escHtml(r.tipo_permiso)} (${r.horas_permiso}h)</div>` : ''}
                     </td>
