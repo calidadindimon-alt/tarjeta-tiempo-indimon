@@ -386,6 +386,21 @@
                     </div>
                 </div>
 
+                <!-- FASE 4: Reporte mensual consolidado a RRHH. La app no tiene backend/cron, así que este
+                     botón es el "disparo" del reporte — el admin lo envía cuando quiera (normalmente al
+                     cerrar el mes). Reutiliza EMAILJS_TEMPLATE_GENERAL_ID, la misma plantilla ya usada
+                     para el resto de notificaciones (el plan gratis de EmailJS solo permite 2 plantillas). -->
+                <div class="bg-emerald-50/50 p-4 rounded-2xl shadow-sm border border-emerald-100 mb-2">
+                    <h3 class="font-bold text-emerald-900 mb-3 flex items-center gap-2 text-sm">
+                        <i class="ph-fill ph-envelope-simple text-emerald-600 text-lg"></i> Reporte Mensual a RRHH
+                    </h3>
+                    <p class="text-[11px] text-emerald-800/80 mb-3">Resume horas, extras, tardanzas, ausencias y vacaciones de todos los colaboradores en el mes elegido, y lo envía por correo al RRHH y al Coordinador de Proyectos configurados arriba.</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="month" id="input-mes-reporte-rrhh" class="border border-slate-300 rounded-lg p-2 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <button id="btn-enviar-reporte-rrhh" class="btn-touch bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5"><i class="ph-bold ph-paper-plane-tilt"></i> Enviar Reporte por Correo</button>
+                    </div>
+                </div>
+
                 <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 mb-2">
                     <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
                         <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
@@ -421,6 +436,10 @@
                         <div class="hidden" id="wrap-nuevo-colaborador-tarifa">
                             <label class="text-[10px] font-bold text-slate-500 uppercase">Tarifa por hora (Contratista)</label>
                             <input type="number" id="nuevo-colaborador-tarifa" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 12000">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Días de vacaciones disponibles</label>
+                            <input type="number" min="0" step="0.5" id="nuevo-colaborador-vacaciones" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 15">
                         </div>
                         <div class="md:col-span-2 flex gap-2">
                             <button id="btn-guardar-colaborador" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold">Guardar Colaborador</button>
@@ -711,15 +730,21 @@
                                     <option>Diligencia judicial/entidad pública</option>
                                     <option>Obligación escolar (acudiente)</option>
                                     <option>Permiso personal (según política interna)</option>
+                                    <option>Vacaciones</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Fecha del Permiso</label>
                                 <input type="date" id="permiso-fecha" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
-                            <div>
+                            <div id="wrap-permiso-horas">
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Horas Solicitadas</label>
                                 <input type="number" id="permiso-horas" min="0" step="0.5" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 4">
+                            </div>
+                            <div id="wrap-permiso-dias-vacaciones" class="hidden">
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Días de Vacaciones Solicitados</label>
+                                <input type="number" id="permiso-dias-vacaciones" min="0.5" step="0.5" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 5">
+                                <p id="permiso-saldo-vacaciones-info" class="text-[10px] text-slate-400 mt-1"></p>
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Motivo / Nota</label>
@@ -1085,7 +1110,7 @@
             getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
             doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup,
             getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId,
-            serverTimestamp
+            serverTimestamp, increment
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/+esm";
 
@@ -3687,6 +3712,116 @@
             }
         });
 
+        // FASE 4: Reporte mensual consolidado a RRHH (horas, extras, tardanzas, ausencias y vacaciones).
+        // Esta app no tiene backend ni Cloud Functions, así que no hay forma de que "se dispare sola" el
+        // día 1 de cada mes — eso requeriría un proceso corriendo en un servidor. Este botón es el
+        // disparo real y equivalente dentro de esta arquitectura: el admin lo envía cuando cierre el mes
+        // (o cuando quiera). Reutiliza EMAILJS_TEMPLATE_GENERAL_ID, la misma plantilla de las demás
+        // notificaciones (el plan gratis de EmailJS solo permite 2 plantillas en total).
+        async function generarYEnviarReporteMensualRRHH() {
+            const btn = document.getElementById('btn-enviar-reporte-rrhh');
+            const mesStr = document.getElementById('input-mes-reporte-rrhh').value;
+            if (!mesStr) return UI.showAlert("Falta el mes", "Selecciona el mes que quieres reportar.", "error");
+
+            const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
+            if (destinos.length === 0) {
+                return UI.showAlert("Sin destinatarios", "Configura el correo de RRHH y/o del Coordinador de Proyectos arriba antes de enviar el reporte.", "error");
+            }
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) {
+                return UI.showAlert("EmailJS no configurado", "No se puede enviar el reporte porque EmailJS no está configurado en esta instancia.", "error");
+            }
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Generando...';
+
+            try {
+                const primerDia = `${mesStr}-01`;
+                const ultimoDia = `${mesStr}-31`; // comparación de texto AAAA-MM-DD: "31" es un límite superior seguro incluso en meses más cortos
+                const snap = await getDocs(query(
+                    collectionGroup(db, 'registros'),
+                    where('fecha', '>=', primerDia),
+                    where('fecha', '<=', ultimoDia)
+                ));
+
+                const porColaborador = new Map();
+                snap.forEach(d => {
+                    const r = d.data();
+                    if (!r.cedula) return;
+                    const acc = porColaborador.get(r.cedula) || {
+                        nombre: r.empleado_nombre || r.cedula,
+                        ord: 0, extD: 0, extN: 0, recNoct: 0, domPond: 0,
+                        tardanzasSinJustificar: 0, tardanzasJustificadas: 0,
+                        ausencias: 0, diasVacaciones: 0
+                    };
+                    acc.ord += (r.horas_ordinarias || 0);
+                    acc.extD += (r.horas_extras_diurnas || 0);
+                    acc.extN += (r.horas_extras_nocturnas || 0);
+                    acc.recNoct += (r.horas_recargo_nocturno || 0);
+                    const horasDom = r.horas_dominicales != null ? r.horas_dominicales : (r.es_dominical_festivo ? (r.horas_ordinarias || 0) : 0);
+                    acc.domPond += horasDom * recargoDominicalFestivoPorFecha(r.fecha);
+                    if (r.llegada_tarde) {
+                        if (r.tardanza_justificada) acc.tardanzasJustificadas++;
+                        else acc.tardanzasSinJustificar++;
+                    }
+                    if (r.tipo_permiso && TIPOS_AUSENCIA.includes(r.tipo_permiso)) acc.ausencias++;
+                    if (r.tipo_permiso === 'Vacaciones') acc.diasVacaciones += (r.dias_vacaciones_permiso || 0);
+                    porColaborador.set(r.cedula, acc);
+                });
+
+                if (porColaborador.size === 0) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    return UI.showAlert("Sin datos", `No hay registros de tiempo en ${mesStr} para reportar.`, "info");
+                }
+
+                let totOrd = 0, totExtD = 0, totExtN = 0, totRecNoct = 0, totDomPond = 0, totTardSin = 0, totTardJust = 0, totAusencias = 0, totVacDias = 0;
+                const filas = [...porColaborador.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+                filas.forEach(f => {
+                    totOrd += f.ord; totExtD += f.extD; totExtN += f.extN; totRecNoct += f.recNoct; totDomPond += f.domPond;
+                    totTardSin += f.tardanzasSinJustificar; totTardJust += f.tardanzasJustificadas;
+                    totAusencias += f.ausencias; totVacDias += f.diasVacaciones;
+                });
+
+                const nombreMes = new Date(`${mesStr}-01T12:00:00`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+                const lineas = filas.map(f =>
+                    `• ${f.nombre}: ${f.ord.toFixed(1)}h ord, +${f.extD.toFixed(1)} ED, +${f.extN.toFixed(1)} EN, +${f.recNoct.toFixed(1)} RN, ${f.domPond.toFixed(1)}h dom/fest` +
+                    (f.tardanzasSinJustificar ? ` · ${f.tardanzasSinJustificar} tardanza(s) sin justificar` : '') +
+                    (f.tardanzasJustificadas ? ` · ${f.tardanzasJustificadas} justificada(s)` : '') +
+                    (f.ausencias ? ` · ${f.ausencias} ausencia(s)` : '') +
+                    (f.diasVacaciones ? ` · ${f.diasVacaciones} día(s) de vacaciones` : '')
+                ).join('\n');
+
+                const cuerpo = `Resumen de nómina y asistencia — ${nombreMes}\n\n` +
+                    `Totales de la empresa:\n` +
+                    `- Horas ordinarias: ${totOrd.toFixed(1)}h\n` +
+                    `- Extras diurnas: ${totExtD.toFixed(1)}h · Extras nocturnas: ${totExtN.toFixed(1)}h · Recargo nocturno: ${totRecNoct.toFixed(1)}h\n` +
+                    `- Horas dominicales/festivas (ponderadas): ${totDomPond.toFixed(1)}h\n` +
+                    `- Tardanzas sin justificar: ${totTardSin} · Justificadas: ${totTardJust}\n` +
+                    `- Ausencias: ${totAusencias} · Días de vacaciones tomados: ${totVacDias}\n\n` +
+                    `Detalle por colaborador (${filas.length}):\n${lineas}\n\n` +
+                    `Este es un resumen operativo generado automáticamente por Tarjeta de Tiempo INDIMON — no reemplaza la liquidación de nómina oficial.`;
+
+                for (const destino of destinos) {
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
+                        to_email: destino,
+                        asunto: `Reporte mensual de asistencia — ${nombreMes}`,
+                        cuerpo
+                    });
+                }
+
+                registrarAuditoria('Enviar reporte mensual a RRHH', `Mes: ${mesStr} · Destinos: ${destinos.join(', ')} · ${filas.length} colaborador(es)`);
+                UI.showAlert("Reporte enviado", `El reporte de ${nombreMes} fue enviado a: ${destinos.join(', ')}.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo generar o enviar el reporte. Revisa tu conexión e inténtalo de nuevo.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+        document.getElementById('btn-enviar-reporte-rrhh').addEventListener('click', generarYEnviarReporteMensualRRHH);
+
         document.getElementById('btn-save-config-permisos').addEventListener('click', async () => {
             const dias = parseInt(document.getElementById('input-dias-vencimiento').value, 10);
             const limite = parseInt(document.getElementById('input-limite-permisos').value, 10);
@@ -3734,6 +3869,7 @@
             const tipoVinculacion = document.getElementById('nuevo-colaborador-tipo').value;
             const sueldo = document.getElementById('nuevo-colaborador-sueldo').value;
             const tarifaHora = document.getElementById('nuevo-colaborador-tarifa').value;
+            const diasVacaciones = document.getElementById('nuevo-colaborador-vacaciones').value;
 
             if (!cedula || !nombre || !cargo) {
                 return UI.showAlert("Datos incompletos", "Completa cédula, nombre y cargo.", "error");
@@ -3755,6 +3891,7 @@
                     nombre, cargo, tipo_vinculacion: tipoVinculacion,
                     sueldo_base: sueldo ? Number(sueldo) : 1300000,
                     tarifa_hora: tarifaHora ? Number(tarifaHora) : 0,
+                    dias_vacaciones_disponibles: diasVacaciones !== '' ? Number(diasVacaciones) : 15,
                     authUid: null
                 });
                 await setDoc(doc(db, 'empleados_publico', cedula), { nombre, authUid: null });
@@ -3764,6 +3901,7 @@
                 document.getElementById('nuevo-colaborador-cargo').value = '';
                 document.getElementById('nuevo-colaborador-sueldo').value = '';
                 document.getElementById('nuevo-colaborador-tarifa').value = '';
+                document.getElementById('nuevo-colaborador-vacaciones').value = '';
                 document.getElementById('nuevo-colaborador-tipo').value = 'Planta';
                 toggleCampoSueldoContratista();
                 document.getElementById('form-agregar-colaborador').classList.add('hidden');
@@ -3846,10 +3984,19 @@
                                 <p class="text-[9px] font-bold text-slate-400 uppercase">Acceso a "Mi Tarjeta"</p>
                                 <p class="font-semibold ${tieneAcceso ? 'text-emerald-600' : 'text-slate-400'}">${tieneAcceso ? 'PIN configurado' : 'Aún no ha ingresado'}</p>
                             </div>
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase">Días de vacaciones disponibles</p>
+                                <p class="font-semibold text-slate-700">${c.dias_vacaciones_disponibles != null ? c.dias_vacaciones_disponibles : 15}</p>
+                            </div>
                         </div>
-                        <button class="btn-eliminar-colaborador btn-touch w-full mt-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}">
-                            <i class="ph-bold ph-trash"></i> Eliminar Colaborador
-                        </button>
+                        <div class="flex gap-2 mt-2.5">
+                            <button class="btn-editar-vacaciones btn-touch flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}" data-saldo="${c.dias_vacaciones_disponibles != null ? c.dias_vacaciones_disponibles : 15}">
+                                <i class="ph-bold ph-umbrella"></i> Editar Saldo de Vacaciones
+                            </button>
+                            <button class="btn-eliminar-colaborador btn-touch flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}">
+                                <i class="ph-bold ph-trash"></i> Eliminar Colaborador
+                            </button>
+                        </div>
                     </div>
                 </div>`;
             }).join('');
@@ -3872,8 +4019,39 @@
                     eliminarColaborador(btn.dataset.cedula, btn.dataset.nombre);
                 });
             });
+            cont.querySelectorAll('.btn-editar-vacaciones').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editarDiasVacaciones(btn.dataset.cedula, btn.dataset.nombre, btn.dataset.saldo);
+                });
+            });
         }
         document.getElementById('filtro-colaborador-gestion').addEventListener('input', pintarListaColaboradoresAdmin);
+
+        // FASE 4: ajuste manual del saldo de vacaciones de un colaborador (ej. al iniciar el año, al
+        // corregir un error, o al ingresar el saldo real de alguien que ya tenía historial en papel).
+        // El descuento automático por una solicitud aprobada ocurre aparte, en confirmarFirmaStandalone().
+        async function editarDiasVacaciones(cedula, nombre, saldoActual) {
+            const nuevoValor = await UI.showPrompt(
+                `Saldo de vacaciones — ${nombre}`,
+                `Saldo actual: ${saldoActual} día(s). Ingresa el nuevo saldo total disponible (no un ajuste, el número final).`,
+                "Ej: 15"
+            );
+            if (!nuevoValor) return;
+            const num = Number(nuevoValor.replace(',', '.'));
+            if (isNaN(num) || num < 0) {
+                return UI.showAlert("Valor inválido", "Ingresa un número de días válido (0 o mayor).", "error");
+            }
+            try {
+                await updateDoc(doc(db, 'empleados', cedula), { dias_vacaciones_disponibles: num });
+                registrarAuditoria('Editar saldo de vacaciones', `${nombre} (CC ${cedula}) · Saldo anterior: ${saldoActual} → Nuevo: ${num}`);
+                await renderGestionColaboradores();
+                UI.showAlert("Guardado", `El saldo de vacaciones de ${nombre} quedó en ${num} día(s).`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo actualizar el saldo de vacaciones.", "error");
+            }
+        }
 
         function eliminarColaborador(cedula, nombre) {
             UI.showConfirm(
@@ -4916,7 +5094,7 @@
                         ${avisoRelojSospechoso(r, 'entrada')}
                         ${avisoRelojSospechoso(r, 'salida')}
                         ${r.almuerzo_inicio ? `<div class="text-[9px] text-amber-600 mt-1 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)} - ${escHtml(r.almuerzo_fin || '...')}</div>` : ''}
-                        ${r.tipo_permiso ? `<div class="text-[9px] text-violet-700 mt-1 bg-violet-50 border border-violet-200 rounded px-1 py-0.5 inline-block font-bold" title="${escHtml(r.nota_permiso || '')}">🩺 ${escHtml(r.tipo_permiso)} (${r.horas_permiso}h)</div>` : ''}
+                        ${r.tipo_permiso ? `<div class="text-[9px] text-violet-700 mt-1 bg-violet-50 border border-violet-200 rounded px-1 py-0.5 inline-block font-bold" title="${escHtml(r.nota_permiso || '')}">🩺 ${escHtml(r.tipo_permiso)} ${r.tipo_permiso === 'Vacaciones' ? `(${r.dias_vacaciones_permiso || 0} día(s))` : `(${r.horas_permiso}h)`}</div>` : ''}
                         ${r.almuerzo_omitido ? `<div class="text-[9px] text-indigo-700 mt-1 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5 inline-block font-bold" title="Jornada sin almuerzo autorizada por producción. Este día NO tiene descuento de la hora de almuerzo — valida la autorización antes de liquidar.">🍽️ Sin almuerzo · autoriza ${escHtml(r.almuerzo_omitido_autoriza || '—')}</div>` : ''}
                     </td>
                     <td class="p-4 border-b border-slate-100 text-center">
@@ -5352,11 +5530,44 @@
         }
 
         function datosBasicosPermisoCompletos() {
-            return document.getElementById('permiso-trabajador').value.trim() &&
+            const tipo = document.getElementById('permiso-tipo').value.trim();
+            const camposBasicosOk = document.getElementById('permiso-trabajador').value.trim() &&
                    document.getElementById('permiso-creado-por').value.trim() &&
-                   document.getElementById('permiso-tipo').value.trim() &&
+                   tipo &&
                    document.getElementById('permiso-fecha').value.trim();
+            if (!camposBasicosOk) return false;
+            // Vacaciones se pide en días, no en horas — el resto de tipos siguen usando horas.
+            if (tipo === 'Vacaciones') return !!document.getElementById('permiso-dias-vacaciones').value.trim();
+            return true;
         }
+
+        // FASE 4: Vacaciones se solicita en días (no horas) y muestra el saldo disponible del
+        // colaborador para que quien crea la solicitud lo tenga presente antes de enviarla. El aviso
+        // real de "esto excede el saldo" (no bloqueante) ocurre al guardar, ver btn-guardar-permiso.
+        function toggleCampoVacaciones() {
+            const esVacaciones = document.getElementById('permiso-tipo').value === 'Vacaciones';
+            document.getElementById('wrap-permiso-horas').classList.toggle('hidden', esVacaciones);
+            document.getElementById('wrap-permiso-dias-vacaciones').classList.toggle('hidden', !esVacaciones);
+            actualizarInfoSaldoVacaciones();
+        }
+
+        async function actualizarInfoSaldoVacaciones() {
+            const info = document.getElementById('permiso-saldo-vacaciones-info');
+            if (document.getElementById('permiso-tipo').value !== 'Vacaciones') { info.textContent = ''; return; }
+            const nombre = document.getElementById('permiso-trabajador').value.trim();
+            const cedula = empleadosNombreCedula[nombre.toUpperCase()];
+            if (!cedula) { info.textContent = 'Selecciona un colaborador registrado para ver su saldo de vacaciones.'; return; }
+            try {
+                const snap = await getDoc(doc(db, 'empleados', cedula));
+                const saldo = snap.exists() ? (snap.data().dias_vacaciones_disponibles != null ? snap.data().dias_vacaciones_disponibles : 15) : null;
+                info.textContent = saldo != null ? `Saldo disponible de ${nombre}: ${saldo} día(s).` : '';
+            } catch (e) {
+                info.textContent = '';
+            }
+        }
+        document.getElementById('permiso-tipo').addEventListener('change', toggleCampoVacaciones);
+        document.getElementById('permiso-trabajador').addEventListener('change', actualizarInfoSaldoVacaciones);
+        document.getElementById('permiso-dias-vacaciones').addEventListener('input', updateCrearSolicitudState);
 
         function nombresFirmantesCompletos() {
             return SIGNANTES.every(s =>
@@ -5425,13 +5636,16 @@
                 };
             });
 
+            const tipoSolicitud = document.getElementById('permiso-tipo').value;
+            const esVacaciones = tipoSolicitud === 'Vacaciones';
             const data = {
                 trabajador: document.getElementById('permiso-trabajador').value.trim(),
                 trabajador_cedula: empleadosNombreCedula[document.getElementById('permiso-trabajador').value.trim().toUpperCase()] || null,
                 creado_por: document.getElementById('permiso-creado-por').value.trim(),
-                tipo: document.getElementById('permiso-tipo').value,
+                tipo: tipoSolicitud,
                 fecha: document.getElementById('permiso-fecha').value,
-                horas: document.getElementById('permiso-horas').value.trim(),
+                horas: esVacaciones ? '' : document.getElementById('permiso-horas').value.trim(),
+                dias_vacaciones: esVacaciones ? Number(document.getElementById('permiso-dias-vacaciones').value) : null,
                 nota: document.getElementById('permiso-nota').value.trim(),
                 es_emergencia: document.getElementById('permiso-es-emergencia').checked,
                 firmantes,
@@ -5450,8 +5664,10 @@
             document.getElementById('permiso-tipo').value = '';
             document.getElementById('permiso-fecha').value = getTodayStr();
             document.getElementById('permiso-horas').value = '';
+            document.getElementById('permiso-dias-vacaciones').value = '';
             document.getElementById('permiso-nota').value = '';
             document.getElementById('permiso-es-emergencia').checked = false;
+            toggleCampoVacaciones();
             SIGNANTES.forEach(s => {
                 document.getElementById(`firmante-nombre-${s.key}`).value = '';
                 document.getElementById(`firmante-cedula-${s.key}`).value = '';
@@ -5501,7 +5717,7 @@
                             btn.disabled = true;
                             btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin text-xl"></i> Creando...';
                             try {
-                                await crearSolicitudPermiso();
+                                await procederConCreacionPermiso(btn, originalHTML, tipo, cedulaTrabajador, nombreTrabajador);
                             } catch (e) {
                                 console.error(e);
                                 UI.showAlert("Error", "No se pudo crear la solicitud. Verifica tu conexión e inténtalo de nuevo.", "error");
@@ -5514,7 +5730,7 @@
                     return;
                 }
 
-                await crearSolicitudPermiso();
+                await procederConCreacionPermiso(btn, originalHTML, tipo, cedulaTrabajador, nombreTrabajador);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo crear la solicitud. Verifica tu conexión e inténtalo de nuevo.", "error");
@@ -5523,6 +5739,45 @@
                 updateCrearSolicitudState();
             }
         });
+
+        // FASE 4: Vacaciones — advertencia (no bloqueante) si la solicitud excede el saldo disponible
+        // del colaborador. Si el admin confirma de todas formas, la solicitud se crea igual (puede haber
+        // razones válidas, ej. anticipo de días del próximo año). Si no se puede leer el saldo por algún
+        // error de red, se deja pasar sin bloquear — la advertencia es una ayuda, no un candado.
+        async function procederConCreacionPermiso(btn, originalHTML, tipo, cedulaTrabajador, nombreTrabajador) {
+            if (tipo === 'Vacaciones' && cedulaTrabajador) {
+                const diasSolicitados = Number(document.getElementById('permiso-dias-vacaciones').value) || 0;
+                try {
+                    const snap = await getDoc(doc(db, 'empleados', cedulaTrabajador));
+                    const saldo = snap.exists() && snap.data().dias_vacaciones_disponibles != null ? snap.data().dias_vacaciones_disponibles : 15;
+                    if (diasSolicitados > saldo) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                        UI.showConfirm(
+                            "Excede el saldo de vacaciones",
+                            `${nombreTrabajador} solo tiene ${saldo} día(s) de vacaciones disponibles y esta solicitud pide ${diasSolicitados}. ¿Deseas crear la solicitud de todas formas?`,
+                            async () => {
+                                btn.disabled = true;
+                                btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin text-xl"></i> Creando...';
+                                try {
+                                    await crearSolicitudPermiso();
+                                } catch (e) {
+                                    console.error(e);
+                                    UI.showAlert("Error", "No se pudo crear la solicitud. Verifica tu conexión e inténtalo de nuevo.", "error");
+                                } finally {
+                                    btn.innerHTML = originalHTML;
+                                    updateCrearSolicitudState();
+                                }
+                            }
+                        );
+                        return;
+                    }
+                } catch (e) {
+                    console.error('No se pudo verificar el saldo de vacaciones, se continúa sin bloquear:', e);
+                }
+            }
+            await crearSolicitudPermiso();
+        }
 
         function mostrarEnlacesGenerados(permisoId, data) {
             const cont = document.getElementById('enlaces-lista');
@@ -5655,7 +5910,7 @@
                                 ${escapeHtml(p.trabajador) || '—'}
                                 ${p.es_emergencia ? '<span class="text-[9px] font-bold uppercase bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded flex-shrink-0">Emergencia</span>' : ''}
                             </div>
-                            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(p.tipo) || ''} · ${escapeHtml(p.fecha) || ''}${p.horas ? ' · ' + escapeHtml(p.horas) + 'h' : ''}</div>
+                            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(p.tipo) || ''} · ${escapeHtml(p.fecha) || ''}${p.horas ? ' · ' + escapeHtml(p.horas) + 'h' : ''}${p.dias_vacaciones ? ' · ' + p.dias_vacaciones + ' día(s)' : ''}</div>
                         </div>
                         ${badge}
                     </div>
@@ -5741,13 +5996,13 @@
             if (permisosCache.length === 0) return UI.showAlert("Aviso", "No hay solicitudes de permiso para exportar.", "info");
 
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "TRABAJADOR;CEDULA;TIPO DE PERMISO;FECHA;HORAS;ESTADO;CREADO POR;CREADO EN;" +
+            csvContent += "TRABAJADOR;CEDULA;TIPO DE PERMISO;FECHA;HORAS;DIAS DE VACACIONES;ESTADO;CREADO POR;CREADO EN;" +
                 SIGNANTES.map(s => `${s.label.toUpperCase()} - NOMBRE;${s.label.toUpperCase()} - FIRMADO`).join(';') + "\n";
 
             permisosCache.forEach(p => {
                 const estado = p.estado === 'aprobado' ? 'Aprobado' : (estaVencido(p) ? 'Vencido' : 'Pendiente');
                 const row = [
-                    p.trabajador || '', p.trabajador_cedula || '', p.tipo || '', p.fecha || '', p.horas || 0,
+                    p.trabajador || '', p.trabajador_cedula || '', p.tipo || '', p.fecha || '', p.horas || 0, p.dias_vacaciones || 0,
                     estado, p.creado_por || '', p.creado_en || '',
                     ...SIGNANTES.flatMap(s => [p.firmantes?.[s.key]?.nombre || '', p.firmantes?.[s.key]?.firmado ? 'SI' : 'NO'])
                 ].map(sanitizeCsvField).join(";");
@@ -5806,7 +6061,9 @@
                 document.getElementById('firmar-trabajador').textContent = data.trabajador || '—';
                 document.getElementById('firmar-tipo').textContent = data.tipo || '—';
                 document.getElementById('firmar-fecha').textContent = data.fecha || '—';
-                document.getElementById('firmar-horas').textContent = data.horas ? `${data.horas}h` : '—';
+                document.getElementById('firmar-horas').textContent = data.tipo === 'Vacaciones'
+                    ? (data.dias_vacaciones ? `${data.dias_vacaciones} día(s)` : '—')
+                    : (data.horas ? `${data.horas}h` : '—');
                 if (data.nota) {
                     document.getElementById('firmar-nota-wrap').classList.remove('hidden');
                     document.getElementById('firmar-nota').textContent = data.nota;
@@ -5900,6 +6157,7 @@
                     await updateDoc(ref, {
                         tipo_permiso: data.tipo || null,
                         horas_permiso: parseFloat(data.horas) || 0,
+                        dias_vacaciones_permiso: data.tipo === 'Vacaciones' ? (data.dias_vacaciones || 0) : null,
                         nota_permiso: data.nota || null
                     });
                 } else {
@@ -5907,7 +6165,9 @@
                         fecha: data.fecha, empleado_nombre: data.trabajador, cedula: data.trabajador_cedula,
                         cliente: null, obra: null, autoriza: null,
                         entrada: null, salida: null, almuerzo_inicio: null, almuerzo_fin: null,
-                        tipo_permiso: data.tipo || null, horas_permiso: parseFloat(data.horas) || 0, nota_permiso: data.nota || null,
+                        tipo_permiso: data.tipo || null, horas_permiso: parseFloat(data.horas) || 0,
+                        dias_vacaciones_permiso: data.tipo === 'Vacaciones' ? (data.dias_vacaciones || 0) : null,
+                        nota_permiso: data.nota || null,
                         estado: 'completado', loc_entrada: null, loc_salida: null,
                         horas_ordinarias: 0, horas_extras_diurnas: 0, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0,
                         horas_dominicales: 0,
@@ -5946,6 +6206,18 @@
                     await updateDoc(ref, { estado: 'aprobado' });
                     await enviarNotificacionPermiso(data);
                     await sincronizarPermisoConNomina(data);
+                    // FASE 4: el saldo de vacaciones solo se descuenta cuando la solicitud queda
+                    // realmente aprobada (4 firmas) — no al crearla, porque hasta entonces podría
+                    // rechazarse o quedar vencida sin firmarse.
+                    if (data.tipo === 'Vacaciones' && data.trabajador_cedula && data.dias_vacaciones) {
+                        try {
+                            await updateDoc(doc(db, 'empleados', data.trabajador_cedula), {
+                                dias_vacaciones_disponibles: increment(-data.dias_vacaciones)
+                            });
+                        } catch (e) {
+                            console.error('No se pudo descontar el saldo de vacaciones:', e);
+                        }
+                    }
                     quedoAprobado = true;
                 }
 
