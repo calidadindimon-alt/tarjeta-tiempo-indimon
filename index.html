@@ -200,7 +200,6 @@
 
                     <div class="space-y-4">
                         <div id="state-1-entrada" class="hidden">
-                            <input type="file" id="input-selfie" accept="image/*" capture="user" class="hidden">
                             <button id="btn-punch-in" disabled class="btn-touch w-full bg-emerald-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-emerald-600 text-white font-bold py-4 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all text-lg">
                                 <i class="ph-bold ph-sign-in text-2xl"></i> Registrar Entrada
                             </button>
@@ -273,7 +272,7 @@
                                         <span id="ui-res-recnoct" class="font-mono font-bold text-violet-700">0h</span>
                                     </div>
                                 </div>
-                                <p id="ui-res-dominical" class="hidden mt-3 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg py-1.5"><i class="ph-bold ph-star"></i> Día Dominical / Festivo (+90% recargo)</p>
+                                <p id="ui-res-dominical" class="hidden mt-3 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg py-1.5"><i class="ph-bold ph-star"></i> Día Dominical / Festivo (recargo)</p>
                             </div>
                         </div>
                     </div>
@@ -998,6 +997,27 @@
         </div>
     </div>
 
+    <!-- BUG CORREGIDO (A1 de la auditoría QA anterior): antes la "selfie de verificación" era un
+         <input type="file" accept="image/*" capture="user">, que en TODOS los navegadores sigue
+         dejando elegir "Galería/Archivos" en vez de la cámara — cualquiera podía subir una foto
+         vieja o de otra persona y pasar la verificación. Este modal usa getUserMedia() para abrir
+         la cámara EN VIVO dentro de la página: nunca toca un selector de archivos, así que no hay
+         forma de esquivarla subiendo una imagen guardada. -->
+    <div id="modal-selfie-camera" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-200 px-4">
+        <div id="modal-selfie-camera-box" class="bg-white rounded-3xl p-5 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-200">
+            <h3 class="text-lg font-bold text-center text-slate-800 mb-1">Foto de verificación</h3>
+            <p id="selfie-camera-msg" class="text-xs text-center text-slate-500 mb-3 font-medium leading-relaxed">Encuadra tu rostro y toma la foto.</p>
+            <div class="relative w-full aspect-square bg-slate-900 rounded-2xl overflow-hidden mb-4">
+                <video id="video-selfie-camera" autoplay playsinline muted class="w-full h-full object-cover [transform:scaleX(-1)]"></video>
+            </div>
+            <canvas id="canvas-selfie-camera" class="hidden"></canvas>
+            <div class="flex gap-3">
+                <button id="btn-selfie-cancelar" class="btn-touch flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors text-sm">Cancelar</button>
+                <button id="btn-selfie-tomar" class="btn-touch flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-camera text-lg"></i> Tomar foto</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de PIN para colaboradores (crear o ingresar) -->
     <div id="modal-pin" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-200 px-4">
         <div id="modal-pin-box" class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-200">
@@ -1256,9 +1276,30 @@
             RECARGO_NOCTURNO_ORDINARIO: 0.35,
             RECARGO_EXTRA_DIURNA: 0.25,
             RECARGO_EXTRA_NOCTURNA: 0.75,
+            // Este valor ya NO se usa directo para liquidar (ver recargoDominicalFestivoPorFecha
+            // más abajo, que aplica el escalonamiento real por fecha). Se deja aquí solo como
+            // referencia del valor vigente HOY, para mostrarlo en la interfaz.
             RECARGO_DOMINICAL_FESTIVO: 0.90,
             DEDUCCIONES: 0.08
         };
+
+        // BUG CORREGIDO (mantenimiento futuro, ago-2026): el recargo dominical/festivo de la Ley
+        // 2466 de 2025 NO es un número fijo — sube en 3 escalones ya definidos por la reforma:
+        //   hasta 30-jun-2025 .......... 75% (valor histórico, antes de la reforma)
+        //   01-jul-2025 a 30-jun-2026 .. 80%
+        //   01-jul-2026 a 30-jun-2027 .. 90%  <- vigente hoy (esta app se escribió en esta etapa)
+        //   desde 01-jul-2027 .......... 100%
+        // Antes esto se pagaba siempre al 90% fijo (LEY.RECARGO_DOMINICAL_FESTIVO), lo cual habría
+        // subliquidado automáticamente TODOS los domingos/festivos trabajados a partir de julio de
+        // 2027 si nadie se acordaba de venir a cambiar el número a mano. Ahora se calcula según la
+        // fecha real de cada turno, así que el 1 de julio de 2027 el cambio ocurre solo.
+        function recargoDominicalFestivoPorFecha(fechaStr) {
+            if (!fechaStr) return LEY.RECARGO_DOMINICAL_FESTIVO;
+            if (fechaStr < '2025-07-01') return 0.75;
+            if (fechaStr < '2026-07-01') return 0.80;
+            if (fechaStr < '2027-07-01') return 0.90;
+            return 1.00;
+        }
 
         let currentUserId = null;
         let currentUserProfile = null;
@@ -1702,7 +1743,7 @@
         // Los festivos regionales o días de la empresa se siguen agregando desde Admin → "+ Festivo",
         // y se suman a estos (ver esDiaFestivo más abajo).
         //
-        // MANTENIMIENTO: agregar el bloque del año siguiente antes de que termine 2027.
+        // MANTENIMIENTO: agregar el bloque del año siguiente antes de que termine 2028.
         const FESTIVOS_COLOMBIA = [
             // ---- 2026 ---- (Pascua: 5 de abril)
             '2026-01-01', // Año Nuevo
@@ -1741,7 +1782,29 @@
             '2027-11-01', // Todos los Santos
             '2027-11-15', // Independencia de Cartagena (trasladado del 11)
             '2027-12-08', // Inmaculada Concepción
-            '2027-12-25'  // Navidad
+            '2027-12-25', // Navidad
+            // ---- 2028 ---- (Pascua: 16 de abril) — verificado contra calendariodecolombia.com y
+            // calendario-365.com.co, coincide en las 17 fechas que ambas fuentes reportan; el
+            // Sagrado Corazón de Jesús (26-jun) se calculó con el mismo método (Pascua+68, Emiliani)
+            // ya usado y verificado para 2026-2027, ninguna fuente lo contradice.
+            '2028-01-01', // Año Nuevo
+            '2028-01-10', // Reyes Magos (trasladado del 6)
+            '2028-03-20', // San José (trasladado del 19)
+            '2028-04-13', // Jueves Santo
+            '2028-04-14', // Viernes Santo
+            '2028-05-01', // Día del Trabajo
+            '2028-05-29', // Ascensión
+            '2028-06-19', // Corpus Christi
+            '2028-06-26', // Sagrado Corazón
+            '2028-07-03', // San Pedro y San Pablo (trasladado del 29 de junio)
+            '2028-07-20', // Independencia
+            '2028-08-07', // Batalla de Boyacá
+            '2028-08-21', // Asunción de la Virgen (trasladado del 15)
+            '2028-10-16', // Día de la Raza (trasladado del 12)
+            '2028-11-06', // Todos los Santos (trasladado del 1)
+            '2028-11-13', // Independencia de Cartagena (trasladado del 11)
+            '2028-12-08', // Inmaculada Concepción
+            '2028-12-25'  // Navidad
         ];
 
         // Conjunto para búsqueda inmediata, sin recorrer el arreglo en cada consulta.
@@ -1858,7 +1921,9 @@
                 let total = 0;
                 snap.forEach(d => {
                     const r = d.data();
-                    if (r.fecha && r.fecha.startsWith(mesStr) && r.llegada_tarde) total++;
+                    // Una tardanza justificada por fuerza mayor (varada, calamidad, lluvia, etc.) no
+                    // cuenta para el patrón de tardanzas repetidas — ver justificarTardanza más abajo.
+                    if (r.fecha && r.fecha.startsWith(mesStr) && r.llegada_tarde && !r.tardanza_justificada) total++;
                 });
                 if (total === limite) { // solo se avisa la primera vez que se alcanza el límite, no cada vez que se repite después
                     if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
@@ -2137,13 +2202,18 @@
             };
         }
 
-        function calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras, valorHoraDirecto = null) {
+        // NOTA: "totalDomHorasPonderadas" ya NO son horas físicas dominicales/festivas sin más —
+        // vienen pre-multiplicadas por el porcentaje de recargo que le correspondía a CADA día
+        // según su propia fecha (recargoDominicalFestivoPorFecha), porque un mismo mes puede, en
+        // teoría, cruzar un cambio de escalón (ej. un mes que empieza en junio y termina en julio
+        // de 2027). Por eso aquí ya no se vuelve a multiplicar por LEY.RECARGO_DOMINICAL_FESTIVO.
+        function calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHorasPonderadas, valorHoraDirecto = null) {
             const valorHora = valorHoraDirecto != null ? valorHoraDirecto : base / LEY.FACTOR_MENSUAL;
             let pago = 0;
             pago += totalExtD * valorHora * (1 + LEY.RECARGO_EXTRA_DIURNA);
             pago += totalExtN * valorHora * (1 + LEY.RECARGO_EXTRA_NOCTURNA);
             pago += totalRecNoct * valorHora * LEY.RECARGO_NOCTURNO_ORDINARIO;
-            pago += totalDomHoras * valorHora * LEY.RECARGO_DOMINICAL_FESTIVO;
+            pago += totalDomHorasPonderadas * valorHora;
             return pago;
         }
 
@@ -2184,10 +2254,14 @@
                     // solo 6h eran realmente del domingo). Los registros nuevos ya traen el reparto
                     // correcto en horas_dominicales; para registros antiguos (de antes de esta
                     // corrección) que no tienen ese campo, se usa el cálculo anterior como respaldo.
+                    // Cada día pesa con el recargo que le correspondía A ESE DÍA (escalonamiento
+                    // Ley 2466: 80% hasta jun-2026, 90% hasta jun-2027, 100% desde jul-2027) — así
+                    // un mes que cruce el 1 de julio de un año de cambio queda bien liquidado.
+                    const recargoDeEseDia = recargoDominicalFestivoPorFecha(reg.fecha);
                     if (reg.horas_dominicales != null) {
-                        totalDomHoras += reg.horas_dominicales;
+                        totalDomHoras += reg.horas_dominicales * recargoDeEseDia;
                     } else if (reg.es_dominical_festivo) {
-                        totalDomHoras += (reg.horas_ordinarias || 0);
+                        totalDomHoras += (reg.horas_ordinarias || 0) * recargoDeEseDia;
                     }
                 }
             });
@@ -2721,38 +2795,92 @@
             UI.showAlert(aviso.titulo, aviso.msg, 'error');
         }
 
-        // Selfie de verificación (anti-suplantación): abre la cámara frontal del celular, comprime la
-        // foto a un tamaño pequeño (máx. 480px de ancho, calidad reducida) para que no pese casi nada
-        // en la base de datos, y la devuelve como imagen lista para guardar junto al registro. Si el
-        // colaborador cancela la foto, devuelve null (el llamador decide si bloquea el registro).
+        // Selfie de verificación (anti-suplantación): abre la cámara frontal EN VIVO (getUserMedia,
+        // nunca un selector de archivos — ver el comentario del modal en el HTML, corrige A1 de la
+        // auditoría QA anterior), comprime la foto a un tamaño pequeño (máx. 360px de ancho, calidad
+        // reducida) para que no pese casi nada en la base de datos, y la devuelve lista para guardar
+        // junto al registro. Si el colaborador cancela, o la cámara no está disponible/permitida,
+        // devuelve null (el llamador decide si bloquea el registro — hoy sí lo bloquea).
         function capturarSelfie() {
-            return new Promise((resolve) => {
-                const input = document.getElementById('input-selfie');
-                input.value = ''; // por si ya se había usado antes, para que 'change' dispare de nuevo
-                const onChange = () => {
-                    input.removeEventListener('change', onChange);
-                    const file = input.files && input.files[0];
-                    if (!file) return resolve(null);
+            return new Promise(async (resolve) => {
+                const modal = document.getElementById('modal-selfie-camera');
+                const box = document.getElementById('modal-selfie-camera-box');
+                const video = document.getElementById('video-selfie-camera');
+                const canvas = document.getElementById('canvas-selfie-camera');
+                const btnTomar = document.getElementById('btn-selfie-tomar');
+                const btnCancelar = document.getElementById('btn-selfie-cancelar');
+                const msg = document.getElementById('selfie-camera-msg');
 
-                    const img = new Image();
-                    const reader = new FileReader();
-                    reader.onload = (e) => { img.src = e.target.result; };
-                    reader.onerror = () => resolve(null);
-                    img.onload = () => {
-                        const maxAncho = 360;
-                        const escala = Math.min(1, maxAncho / img.width);
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.width * escala;
-                        canvas.height = img.height * escala;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.5));
-                    };
-                    img.onerror = () => resolve(null);
-                    reader.readAsDataURL(file);
+                // BUG EVITADO: los enlaces de esta app se comparten mucho por WhatsApp, y quien lo
+                // abre ahí queda dentro del navegador interno de WhatsApp (o Instagram/Facebook), que
+                // YA sabíamos que bloquea el GPS (ver navegadorEsWebViewInApp/GPS_AVISOS) — también
+                // bloquea o no permite getUserMedia en la enorme mayoría de los casos, a diferencia
+                // del <input type="file" capture="user"> que se quitó (ese SÍ delegaba en la cámara
+                // nativa del celular incluso dentro de un webview). Sin este chequeo, cada colaborador
+                // que entrara por WhatsApp se quedaría sin poder fichar (la cámara fallaría con un
+                // error genérico) y nadie sabría por qué. Se detecta ANTES de intentar getUserMedia y
+                // se reutiliza el mismo aviso claro que ya existe para el GPS ("Abre la app en Safari
+                // o Chrome"), en vez de dejar que intente y falle con un mensaje confuso.
+                if (navegadorEsWebViewInApp()) {
+                    // El modal todavía no se ha mostrado en este punto — no hay nada que cerrar.
+                    mostrarAvisoGPS('webview');
+                    return resolve(null);
+                }
+
+                let stream = null;
+                let resuelto = false;
+
+                const cerrar = (valor) => {
+                    if (resuelto) return;
+                    resuelto = true;
+                    btnTomar.removeEventListener('click', onTomar);
+                    btnCancelar.removeEventListener('click', onCancelar);
+                    if (stream) stream.getTracks().forEach(t => t.stop());
+                    video.srcObject = null;
+                    modal.classList.add('opacity-0'); box.classList.add('scale-95');
+                    setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 200);
+                    resolve(valor);
                 };
-                input.addEventListener('change', onChange);
-                input.click();
+
+                const onTomar = () => {
+                    const maxAncho = 360;
+                    const escala = Math.min(1, maxAncho / video.videoWidth);
+                    canvas.width = video.videoWidth * escala;
+                    canvas.height = video.videoHeight * escala;
+                    const ctx = canvas.getContext('2d');
+                    // Espejo horizontal para que la foto guardada se vea "normal" (no invertida como
+                    // el preview, que sí va en espejo para que sea intuitivo mirarse en la pantalla).
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    cerrar(canvas.toDataURL('image/jpeg', 0.5));
+                };
+                const onCancelar = () => cerrar(null);
+
+                btnTomar.addEventListener('click', onTomar);
+                btnCancelar.addEventListener('click', onCancelar);
+
+                modal.classList.remove('hidden'); modal.classList.add('flex');
+                setTimeout(() => { modal.classList.remove('opacity-0'); box.classList.remove('scale-95'); }, 10);
+
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
+                        audio: false
+                    });
+                    if (resuelto) { stream.getTracks().forEach(t => t.stop()); return; } // canceló mientras cargaba
+                    video.srcObject = stream;
+                    // En iOS Safari el atributo "autoplay" por sí solo a veces no arranca el video
+                    // después de un await (se perdió el "gesto" original del toque) — se llama play()
+                    // explícitamente. Sigue siendo válido porque el video va muted + playsinline.
+                    video.play().catch(() => {});
+                } catch (e) {
+                    // Permiso denegado, sin cámara, o navegador no soportado: no hay foto en vivo
+                    // posible, así que no se acepta nada — se avisa y se cierra el modal.
+                    msg.textContent = 'No se pudo abrir la cámara. Revisa el permiso de cámara del navegador.';
+                    btnTomar.disabled = true;
+                    setTimeout(() => cerrar(null), 1800);
+                }
             });
         }
 
@@ -3209,7 +3337,12 @@
                 document.getElementById('ui-res-diurnas').textContent = (data.horas_extras_diurnas || 0) + "h";
                 document.getElementById('ui-res-nocturnas').textContent = (data.horas_extras_nocturnas || 0) + "h";
                 document.getElementById('ui-res-recnoct').textContent = (data.horas_recargo_nocturno || 0) + "h";
-                document.getElementById('ui-res-dominical').classList.toggle('hidden', !data.es_dominical_festivo);
+                const elDom = document.getElementById('ui-res-dominical');
+                elDom.classList.toggle('hidden', !data.es_dominical_festivo);
+                if (data.es_dominical_festivo) {
+                    const pctDia = Math.round(recargoDominicalFestivoPorFecha(data.fecha) * 100);
+                    elDom.innerHTML = `<i class="ph-bold ph-star"></i> Día Dominical / Festivo (+${pctDia}% recargo)`;
+                }
             }
         }
 
@@ -4531,7 +4664,11 @@
                         <span class="text-emerald-600 font-bold">${escHtml(r.entrada || '--:--')}</span>
                         <span class="text-slate-300 mx-1">a</span>
                         <span class="text-rose-600 font-bold">${escHtml(r.salida || '--:--')}</span>
-                        ${r.llegada_tarde ? `<div class="text-[9px] text-rose-700 mt-1 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-block font-bold">🔴 Tarde (${r.minutos_tarde}min)</div>` : ''}
+                        ${r.llegada_tarde ? (
+                            r.tardanza_justificada
+                                ? `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-quitar-justificacion text-[9px] text-indigo-700 mt-1 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-indigo-100 transition-colors" title="${escHtml(r.motivo_justificacion || 'Sin motivo registrado')} — clic para quitar la justificación">🔵 Tarde Justificada (${r.minutos_tarde}min)</button>`
+                                : `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-justificar-tardanza text-[9px] text-rose-700 mt-1 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-rose-100 transition-colors" title="Clic para justificar por fuerza mayor (varada, calamidad, lluvia, etc.)">🔴 Tarde (${r.minutos_tarde}min) · Justificar</button>`
+                        ) : ''}
                         ${avisoRelojSospechoso(r, 'entrada')}
                         ${avisoRelojSospechoso(r, 'salida')}
                         ${r.almuerzo_inicio ? `<div class="text-[9px] text-amber-600 mt-1 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)} - ${escHtml(r.almuerzo_fin || '...')}</div>` : ''}
@@ -4561,6 +4698,51 @@
 
             tbody.querySelectorAll('.btn-borrar-registro').forEach(btn => {
                 btn.addEventListener('click', () => borrarRegistro(btn.dataset.cedula, btn.dataset.fecha));
+            });
+            tbody.querySelectorAll('.btn-justificar-tardanza').forEach(btn => {
+                btn.addEventListener('click', () => justificarTardanza(btn.dataset.cedula, btn.dataset.fecha));
+            });
+            tbody.querySelectorAll('.btn-quitar-justificacion').forEach(btn => {
+                btn.addEventListener('click', () => quitarJustificacionTardanza(btn.dataset.cedula, btn.dataset.fecha));
+            });
+        }
+
+        // Tardanzas justificadas por fuerza mayor (varada, calamidad, lluvia, etc.): a propósito NO
+        // se toca entrada/salida/foto/GPS/horas de ese día — updateDoc con solo estos dos campos, para
+        // no arriesgar sobreescribir evidencia real del fichaje. La hora de entrada real queda igual,
+        // solo se anula el impacto: el badge cambia de rojo a azul y deja de contar para la alerta de
+        // tardanzas repetidas a RRHH (ver verificarTardanzasRepetidasMes).
+        async function justificarTardanza(cedula, fecha) {
+            const motivo = await UI.showPrompt(
+                "Justificar tardanza",
+                "La hora de entrada real no cambia y sigue quedando registrada. Esto solo anula el impacto de la tardanza (la alerta a RRHH y el conteo de tardanzas del mes) y deja constancia del motivo.",
+                "Ej: Se varó la moto en la vía"
+            );
+            if (!motivo) return;
+            try {
+                await updateDoc(doc(db, 'empleados', cedula, 'registros', fecha), {
+                    tardanza_justificada: true,
+                    motivo_justificacion: motivo.trim()
+                });
+                registrarAuditoria('Justificar tardanza', `${cedula} · ${fecha} · Motivo: ${motivo.trim()}`);
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar la justificación.", "error");
+            }
+        }
+
+        function quitarJustificacionTardanza(cedula, fecha) {
+            UI.showConfirm("Quitar justificación", `¿Quitar la justificación de tardanza del ${fecha}? Volverá a contar como tardanza sin justificar, incluida la alerta a RRHH si se repite.`, async () => {
+                try {
+                    await updateDoc(doc(db, 'empleados', cedula, 'registros', fecha), {
+                        tardanza_justificada: false,
+                        motivo_justificacion: null
+                    });
+                    registrarAuditoria('Quitar justificación de tardanza', `${cedula} · ${fecha}`);
+                } catch (e) {
+                    console.error(e);
+                    UI.showAlert("Error", "No se pudo quitar la justificación.", "error");
+                }
             });
         }
 
@@ -4617,7 +4799,7 @@
             // Las columnas nuevas van AL FINAL a prop\u00F3sito: as\u00ED ninguna f\u00F3rmula o plantilla que ya
             // est\u00E9 usando este archivo cambia de posici\u00F3n y deja de funcionar.
             let csvContent = "\uFEFF";
-            csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO;TIPO PERMISO;HORAS PERMISO;NOTA PERMISO;HORAS DOMINICALES;MINUTOS TARDE;ESTADO;ALMUERZO OMITIDO;AUTORIZA ALMUERZO OMITIDO;NOTA REVISION\n";
+            csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO;TIPO PERMISO;HORAS PERMISO;NOTA PERMISO;HORAS DOMINICALES;MINUTOS TARDE;ESTADO;ALMUERZO OMITIDO;AUTORIZA ALMUERZO OMITIDO;NOTA REVISION;TARDANZA JUSTIFICADA;MOTIVO JUSTIFICACION\n";
 
             const ESTADO_LEGIBLE = {
                 completado: 'COMPLETADO',
@@ -4637,7 +4819,9 @@
                     ESTADO_LEGIBLE[r.estado] || (r.estado || ''),
                     r.almuerzo_omitido ? 'SI' : 'NO',
                     r.almuerzo_omitido_autoriza || '',
-                    r.nota_revision || ''
+                    r.nota_revision || '',
+                    r.tardanza_justificada ? 'SI' : 'NO',
+                    r.motivo_justificacion || ''
                 ].map(sanitizeCsvField).join(";");
                 csvContent += row + "\n";
             });
