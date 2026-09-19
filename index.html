@@ -600,6 +600,20 @@
                     <div id="filtro-resumen" class="w-full text-xs font-semibold text-slate-500 hidden"></div>
                 </div>
 
+                <!-- FASE 2: Totalizador de costo de mano de obra. Cruza las horas de los registros
+                     filtrados (arriba) con el sueldo_base/tarifa_hora de cada colaborador. Es una
+                     ESTIMACIÓN operativa (no incluye aportes patronales, prestaciones sociales ni
+                     parafiscales, que esta app no modela) — para eso siempre está el contador. -->
+                <div id="costo-mano-obra-box" class="hidden bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 mb-4">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                            <p id="costo-mano-obra-titulo" class="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">Costo de Mano de Obra</p>
+                            <p id="costo-mano-obra-total" class="text-2xl font-extrabold text-emerald-800">$ 0</p>
+                        </div>
+                        <p id="costo-mano-obra-detalle" class="text-[11px] text-emerald-700 font-medium max-w-md text-right"></p>
+                    </div>
+                </div>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse min-w-[900px]">
@@ -4672,6 +4686,56 @@
             });
         }
 
+        // FASE 2: costo de mano de obra de un conjunto de registros ya filtrados. Agrupa por
+        // colaborador (porque cada uno tiene su propio sueldo_base/tarifa_hora) y reutiliza
+        // calcularPagoExtras — la MISMA función que ya liquida la nómina individual de cada
+        // colaborador — para que el número de este panel nunca se desincronice de lo que la app
+        // realmente le paga a cada quien.
+        //
+        // El sueldo BASE de un colaborador de planta es fijo por MES (no por día ni por obra), así
+        // que solo tiene sentido sumarlo cuando el filtro de Mes está activo — sumar un sueldo_base
+        // completo por cada obra en la que trabajó ese colaborador ese mes lo multiplicaría por
+        // error. Sin filtro de mes, el totalizador muestra solo el costo de extras/recargos
+        // (un número real y sumable en cualquier combinación de días u obras) y lo aclara en pantalla.
+        function calcularCostoManoDeObra(regs, incluirBase) {
+            const porColaborador = new Map(); // cedula -> { totalOrd, totalExtD, totalExtN, totalRecNoct, totalDomPond }
+            regs.forEach(r => {
+                if (!r.cedula) return;
+                const acc = porColaborador.get(r.cedula) || { totalOrd: 0, totalExtD: 0, totalExtN: 0, totalRecNoct: 0, totalDomPond: 0 };
+                acc.totalOrd += (r.horas_ordinarias || 0);
+                acc.totalExtD += (r.horas_extras_diurnas || 0);
+                acc.totalExtN += (r.horas_extras_nocturnas || 0);
+                acc.totalRecNoct += (r.horas_recargo_nocturno || 0);
+                // Mismo escalonamiento de Ley 2466 (80/90/100%) que usa calculateMonthlyAccumulated —
+                // ver recargoDominicalFestivoPorFecha más arriba en este archivo.
+                const horasDom = r.horas_dominicales != null ? r.horas_dominicales : (r.es_dominical_festivo ? (r.horas_ordinarias || 0) : 0);
+                acc.totalDomPond += horasDom * recargoDominicalFestivoPorFecha(r.fecha);
+                porColaborador.set(r.cedula, acc);
+            });
+
+            let total = 0;
+            let colaboradoresSinPerfil = 0;
+            const perfilPorCedula = new Map(colaboradoresAdminCache.map(c => [c.cedula, c]));
+
+            porColaborador.forEach((acc, cedula) => {
+                const perfil = perfilPorCedula.get(cedula);
+                if (!perfil) { colaboradoresSinPerfil++; return; } // colaborador inactivo/borrado: no hay con qué liquidar
+                const esContratista = perfil.tipo_vinculacion === 'Contratista';
+                const tarifaHora = perfil.tarifa_hora || 0;
+                const base = perfil.sueldo_base || 0;
+
+                if (esContratista) {
+                    total += acc.totalOrd * tarifaHora; // el contratista SÍ se paga por hora ordinaria, con o sin filtro de mes
+                    total += calcularPagoExtras(null, acc.totalExtD, acc.totalExtN, acc.totalRecNoct, acc.totalDomPond, tarifaHora);
+                } else {
+                    if (incluirBase) total += base;
+                    total += calcularPagoExtras(base, acc.totalExtD, acc.totalExtN, acc.totalRecNoct, acc.totalDomPond);
+                }
+            });
+
+            return { total, numColaboradores: porColaborador.size, colaboradoresSinPerfil };
+        }
+
         function aplicarFiltrosYRenderizar() {
             const cedulaFiltro = document.getElementById('filtro-colaborador').value;
             const mesFiltro = document.getElementById('filtro-mes').value; // formato AAAA-MM
@@ -4688,6 +4752,24 @@
                 resumen.classList.remove('hidden');
             } else {
                 resumen.classList.add('hidden');
+            }
+
+            const cajaCosto = document.getElementById('costo-mano-obra-box');
+            const soloCompletados = filtrados.filter(r => r.estado === 'completado');
+            if (soloCompletados.length === 0) {
+                cajaCosto.classList.add('hidden');
+            } else {
+                const incluirBase = !!mesFiltro;
+                const { total, numColaboradores, colaboradoresSinPerfil } = calcularCostoManoDeObra(soloCompletados, incluirBase);
+                document.getElementById('costo-mano-obra-titulo').textContent = incluirBase
+                    ? 'Costo de Mano de Obra (sueldo base + extras + recargos, del mes filtrado)'
+                    : 'Costo de Extras y Recargos (sin sueldo base — filtra por Mes para incluirlo)';
+                document.getElementById('costo-mano-obra-total').textContent = UI.formatCOP(total);
+                const partes = [`${numColaboradores} colaborador(es)`];
+                if (colaboradoresSinPerfil > 0) partes.push(`${colaboradoresSinPerfil} sin perfil activo (no se incluyeron)`);
+                document.getElementById('costo-mano-obra-detalle').textContent =
+                    `${partes.join(' · ')} · Estimado operativo: no incluye aportes patronales ni prestaciones sociales.`;
+                cajaCosto.classList.remove('hidden');
             }
 
             renderAdminTable(filtrados);
