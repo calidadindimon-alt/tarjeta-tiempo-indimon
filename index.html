@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SSTA - Tarjeta de Tiempo Digital</title>
 
+    <!-- PWA: permite instalar la app en la pantalla de inicio del celular (Android e iPhone), con
+         ícono propio y sin la barra de direcciones del navegador (display: standalone). El
+         service-worker.js ya existente es lo que la hace instalable e "hidrata" el manifest. -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <!-- iOS no lee bien el manifest.json para el modo standalone/ícono — Safari necesita estas
+         etiquetas propias además del manifest (Android sí se conforma solo con el manifest). -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="T. Tiempo INDIMON">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Phosphor Icons -->
@@ -344,6 +356,7 @@
                         <button id="btn-add-festivo" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Festivo adicional</button>
                         <button id="btn-ver-festivos" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">Ver calendario de festivos</button>
                         <button id="btn-add-horario-obra" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Horario por Obra</button>
+                        <button id="btn-add-geocerca-obra" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Geocerca por Obra</button>
                     </div>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
                         <label class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alertas de tardanza</label>
@@ -1252,6 +1265,8 @@
             supervisores: ["JLAF", "S. BOHORQUEZ", "A. PINZON", "C. RIOS"],
             festivos: [],
             horarios_obra: { "BOGOTA": "07:30" }, // hora de entrada esperada por obra, para alertas de tardanza
+            geocercas_obra: {},                    // { "OBRA": {lat, lng} } — coordenadas por obra, para la geocerca antifraude
+            radio_geocerca_metros: 500,            // distancia máxima permitida antes de marcar el fichaje para revisión
             email_alertas: "",                     // correo del administrador que recibe alertas de tardanza
             email_rrhh: "",                        // correo de RRHH que recibe notificación cuando un permiso queda aprobado (4 firmas)
             email_coordinador: "",                  // correo del coordinador de proyectos que recibe la misma notificación
@@ -1877,6 +1892,46 @@
                 if (key.trim().toUpperCase() === claveNormalizada) return horarios[key];
             }
             return null;
+        }
+
+        // ============================ Geocerca por obra (antifraude) ============================
+        // Distancia entre dos puntos GPS en METROS, fórmula de Haversine (asume la Tierra como
+        // esfera — el margen de error frente al elipsoide real es de un par de metros, irrelevante
+        // para un radio de cientos de metros). Pura y síncrona: no toca Firestore ni el DOM.
+        function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // radio medio de la Tierra en metros
+            const toRad = (deg) => deg * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) ** 2 +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Busca las coordenadas configuradas para una obra (catálogo "geocercas_obra"), sin
+        // sensibilidad a mayúsculas/espacios — mismo patrón que getHoraEsperadaObra. Devuelve
+        // { lat, lng } o null si esa obra no tiene geocerca configurada.
+        function getGeocercaObra(obra) {
+            if (!obra) return null;
+            const geocercas = catalogosCache.geocercas_obra || {};
+            const claveNormalizada = obra.trim().toUpperCase();
+            for (const key in geocercas) {
+                if (key.trim().toUpperCase() === claveNormalizada) return geocercas[key];
+            }
+            return null;
+        }
+
+        // Compara el GPS de un fichaje contra la geocerca configurada de la obra. Devuelve null si
+        // la obra no tiene geocerca configurada o no hay GPS con el que comparar (en ninguno de los
+        // dos casos se bloquea ni se penaliza el fichaje — no hay con qué evaluarlo). Si sí hay
+        // ambos datos, devuelve { fuera: bool, distanciaM, radio }.
+        function evaluarGeocerca(obra, loc) {
+            const geo = getGeocercaObra(obra);
+            if (!geo || !loc) return null;
+            const distanciaM = Math.round(calcularDistanciaHaversine(loc.lat, loc.lng, geo.lat, geo.lng));
+            const radio = catalogosCache.radio_geocerca_metros || 500;
+            return { fuera: distanciaM > radio, distanciaM, radio };
         }
 
         function evaluarTardanza(obra, horaEntradaStr) {
@@ -3034,6 +3089,18 @@
                             verificarTardanzasRepetidasMes(currentUserId, currentUserProfile.nombre, tStr);
                         }
                     }
+                    // GEOCERCA (antifraude): a propósito NO se toca "estado" aquí (sigue en 'activo',
+                    // como siempre) — si se marcara 'requiere_revision_admin' desde la entrada, la
+                    // persona quedaría bloqueada para marcar almuerzo/salida el resto del día por un
+                    // posible falso positivo (GPS impreciso dentro de un edificio, por ejemplo). Solo
+                    // se deja constancia de la distancia; la decisión de marcar el DÍA para revisión
+                    // se toma al cerrar el turno (ver action === 'out' más abajo), con la entrada Y la
+                    // salida ya conocidas.
+                    const geocercaEntrada = evaluarGeocerca(data.obra, loc);
+                    if (geocercaEntrada) {
+                        data.geocerca_entrada_excedida = geocercaEntrada.fuera;
+                        data.distancia_geocerca_entrada_m = geocercaEntrada.distanciaM;
+                    }
                     // Revisa si la semana anterior (si hoy es lunes) no alcanzó las 42h reglamentarias.
                     verificarCumplimientoSemanal(currentUserId, currentUserProfile.nombre, tStr);
                 }
@@ -3080,7 +3147,6 @@
                             ? `Turno quedó abierto ${diasTranscurridos} días (de ${tStr} a ${getTodayStr()}). Las horas NO se calcularon automáticamente — Admin debe revisar y corregir manualmente en "Editar Registro".`
                             : `Turno de ${duracionTurnoHoras.toFixed(1)} horas seguidas (entrada ${data.entrada}, salida ${tTime}), por encima del límite de ${LIMITE_HORAS_TURNO_REVISION}h. Suele ser un olvido de marcar la salida. Las horas NO se calcularon automáticamente — Admin debe revisar y corregir en "Editar Registro".`;
                     } else {
-                        data.estado = 'completado';
                         const acumuladaSemana = await getOrdinariasAcumuladasSemana(currentUserId, tStr);
                         const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
                         const calc = calcularJornadaDiaria(data, topeDia);
@@ -3092,6 +3158,26 @@
                         data.horas_dominicales = calc.horas_dominicales;
                         data.minutos_tarde = calc.minutosTarde;
                         data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
+
+                        // GEOCERCA (antifraude): ya con entrada Y salida conocidas, se decide si el
+                        // día completo queda para revisión de Admin. Las horas SÍ se calculan
+                        // normalmente arriba (a diferencia del turno "demasiado largo" de más arriba,
+                        // aquí no hay ninguna duda sobre CUÁNTO se trabajó, solo sobre DÓNDE) — Admin
+                        // decide si el fichaje es real con el dato de distancia en la mano.
+                        const geocercaSalida = evaluarGeocerca(data.obra, loc);
+                        const fueraEntrada = data.geocerca_entrada_excedida === true;
+                        const fueraSalida = !!(geocercaSalida && geocercaSalida.fuera);
+                        if (fueraEntrada || fueraSalida) {
+                            data.estado = 'requiere_revision_admin';
+                            const partes = [];
+                            if (fueraEntrada) partes.push(`entrada a ${data.distancia_geocerca_entrada_m}m de la obra`);
+                            if (fueraSalida) partes.push(`salida a ${geocercaSalida.distanciaM}m de la obra`);
+                            const radioAviso = (geocercaSalida || {}).radio || catalogosCache.radio_geocerca_metros || 500;
+                            const notaGeocerca = `Fuera de la geocerca (${partes.join('; ')}). Radio permitido: ${radioAviso}m. Las horas sí se calcularon normalmente — verifica que el fichaje sea real antes de liquidar.`;
+                            data.nota_revision = data.nota_revision ? `${data.nota_revision} | ${notaGeocerca}` : notaGeocerca;
+                        } else {
+                            data.estado = 'completado';
+                        }
                     }
                 }
 
@@ -3490,6 +3576,57 @@
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo guardar el horario.", "error");
+            }
+        });
+
+        document.getElementById('btn-add-geocerca-obra').addEventListener('click', async () => {
+            const obra = await UI.showPrompt("Geocerca por Obra", "Escribe el nombre EXACTO de la obra (como aparece en el campo Obra al fichar), ej: MYKW", "Ej: MYKW");
+            if (!obra) return;
+
+            const usarActual = await new Promise((resolve) => {
+                UI.showConfirm(
+                    "¿Usar tu ubicación actual?",
+                    `Si estás parado en la obra "${obra.trim().toUpperCase()}" ahora mismo, puedes usar la ubicación de tu celular/computador como el centro de la geocerca, en vez de escribir las coordenadas a mano.`,
+                    () => resolve(true)
+                );
+                setTimeout(() => resolve(false), 30000);
+            });
+
+            let lat, lng;
+            if (usarActual) {
+                if (!navigator.geolocation) {
+                    return UI.showAlert("Sin GPS", "Este navegador no puede obtener tu ubicación. Escribe las coordenadas a mano la próxima vez.", "error");
+                }
+                const pos = await new Promise((resolve) => {
+                    navigator.geolocation.getCurrentPosition(
+                        (p) => resolve(p),
+                        () => resolve(null),
+                        { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                });
+                if (!pos) return UI.showAlert("No se pudo obtener tu ubicación", "Revisa el permiso de ubicación del navegador, o escribe las coordenadas a mano.", "error");
+                lat = pos.coords.latitude; lng = pos.coords.longitude;
+            } else {
+                const latStr = await UI.showPrompt("Latitud", `Coordenada de latitud para "${obra.trim().toUpperCase()}", ej: 4.6097`, "4.6097");
+                if (!latStr) return;
+                const lngStr = await UI.showPrompt("Longitud", `Coordenada de longitud para "${obra.trim().toUpperCase()}", ej: -74.0817`, "-74.0817");
+                if (!lngStr) return;
+                lat = Number(latStr.replace(',', '.'));
+                lng = Number(lngStr.replace(',', '.'));
+                if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+                    return UI.showAlert("Coordenadas inválidas", "Escribe números válidos de latitud (-90 a 90) y longitud (-180 a 180).", "error");
+                }
+            }
+
+            try {
+                await updateDoc(doc(db, 'catalogos', 'listas'), {
+                    [`geocercas_obra.${obra.trim().toUpperCase()}`]: { lat, lng }
+                });
+                await cargarCatalogos();
+                UI.showAlert("Guardado", `Geocerca configurada para "${obra.trim().toUpperCase()}" (radio ${catalogosCache.radio_geocerca_metros || 500}m). Los fichajes a más distancia quedarán marcados para revisión.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar la geocerca.", "error");
             }
         });
 
