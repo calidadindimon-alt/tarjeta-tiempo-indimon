@@ -614,11 +614,23 @@
                     </div>
                 </div>
 
+                <!-- FASE 3: Panel de Acciones Masivas — solo visible cuando hay filas seleccionadas. -->
+                <div id="acciones-masivas-panel" class="hidden bg-indigo-50/60 border border-indigo-200 rounded-2xl p-3 mb-4 flex items-center justify-between flex-wrap gap-2">
+                    <p class="text-xs font-bold text-indigo-700"><span id="acciones-masivas-contador">0</span> registro(s) seleccionado(s)</p>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-justificar-tardanzas-masivo" class="btn-touch bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3.5 rounded-lg text-xs flex items-center gap-1.5">
+                            <i class="ph-bold ph-check-circle"></i> Justificar Tardanzas Seleccionadas
+                        </button>
+                        <button id="btn-limpiar-seleccion" class="btn-touch bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 font-bold py-2 px-3 rounded-lg text-xs">Deseleccionar todo</button>
+                    </div>
+                </div>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse min-w-[900px]">
                             <thead>
                                 <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider border-b border-slate-200">
+                                    <th class="p-4 font-bold w-8"><input type="checkbox" id="chk-seleccionar-todo" class="w-4 h-4 rounded border-slate-300 cursor-pointer" title="Seleccionar todo"></th>
                                     <th class="p-4 font-bold">Fecha / GPS</th>
                                     <th class="p-4 font-bold">Colaborador</th>
                                     <th class="p-4 font-bold">Cliente, Obra & Auth</th>
@@ -628,7 +640,7 @@
                                 </tr>
                             </thead>
                             <tbody id="admin-table-body" class="divide-y divide-slate-100 text-sm">
-                                <tr><td colspan="6" class="text-center py-10 text-slate-400 font-medium">Cargando...</td></tr>
+                                <tr><td colspan="7" class="text-center py-10 text-slate-400 font-medium">Cargando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -4682,7 +4694,7 @@
             }, (error) => {
                 console.error("Error escuchando registros:", error);
                 document.getElementById('admin-table-body').innerHTML =
-                    '<tr><td colspan="6" class="text-center py-10 text-rose-400 font-medium">Error de permisos o conexión. Revisa las reglas de Firestore.</td></tr>';
+                    '<tr><td colspan="7" class="text-center py-10 text-rose-400 font-medium">Error de permisos o conexión. Revisa las reglas de Firestore.</td></tr>';
             });
         }
 
@@ -4809,8 +4821,17 @@
             fotosPorFila.clear();
 
             if (!regs || regs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-slate-400 font-medium">No hay registros de tiempo que coincidan con el filtro.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-400 font-medium">No hay registros de tiempo que coincidan con el filtro.</td></tr>';
+                actualizarPanelAccionesMasivas();
                 return;
+            }
+
+            // FASE 3: la selección se identifica por "cedula|fecha" (igual que la llave del documento
+            // en Firestore) y se conserva entre renders mientras la fila siga presente en el filtro
+            // actual — si el admin cambia de filtro, las filas que ya no se muestran se sueltan.
+            const clavesVisibles = new Set(regs.map(r => `${r.cedula}|${r.fecha}`));
+            for (const clave of [...seleccionRegistros]) {
+                if (!clavesVisibles.has(clave)) seleccionRegistros.delete(clave);
             }
 
             regs.forEach(r => {
@@ -4862,8 +4883,12 @@
                     fotosPorFila.set(fotoId, foto);
                     return `<img src="${escHtml(foto)}" data-foto-id="${escHtml(fotoId)}" class="w-6 h-6 rounded-full object-cover border border-slate-300 cursor-pointer flex-shrink-0" title="Ver foto de verificación en tamaño completo">`;
                 };
+                const claveFila = `${r.cedula}|${r.fecha}`;
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td class="p-4 border-b border-slate-100">
+                        <input type="checkbox" data-clave="${escHtml(claveFila)}" class="chk-fila-registro w-4 h-4 rounded border-slate-300 cursor-pointer" ${seleccionRegistros.has(claveFila) ? 'checked' : ''}>
+                    </td>
                     <td class="p-4 border-b border-slate-100">
                         <div class="font-mono font-bold text-slate-700">${escHtml(r.fecha)} ${r.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
                         <div class="text-[10px] flex gap-2 mt-1 items-center">
@@ -4924,7 +4949,97 @@
             tbody.querySelectorAll('.btn-quitar-justificacion').forEach(btn => {
                 btn.addEventListener('click', () => quitarJustificacionTardanza(btn.dataset.cedula, btn.dataset.fecha));
             });
+            tbody.querySelectorAll('.chk-fila-registro').forEach(chk => {
+                chk.addEventListener('change', () => {
+                    if (chk.checked) seleccionRegistros.add(chk.dataset.clave);
+                    else seleccionRegistros.delete(chk.dataset.clave);
+                    actualizarPanelAccionesMasivas();
+                });
+            });
+            actualizarPanelAccionesMasivas();
         }
+
+        // FASE 3: Operaciones Masivas (Multiselección). La selección vive en este Set en memoria
+        // (claves "cedula|fecha"), no en Firestore — se limpia sola al recargar la página o al aplicar
+        // un filtro que deje de mostrar la fila (ver renderAdminTable).
+        let seleccionRegistros = new Set();
+
+        function actualizarPanelAccionesMasivas() {
+            const panel = document.getElementById('acciones-masivas-panel');
+            const n = seleccionRegistros.size;
+            document.getElementById('acciones-masivas-contador').textContent = n;
+            panel.classList.toggle('hidden', n === 0);
+
+            const chkTodo = document.getElementById('chk-seleccionar-todo');
+            const filas = document.querySelectorAll('#admin-table-body .chk-fila-registro');
+            const totalFilas = filas.length;
+            const marcadas = document.querySelectorAll('#admin-table-body .chk-fila-registro:checked').length;
+            chkTodo.checked = totalFilas > 0 && marcadas === totalFilas;
+            chkTodo.indeterminate = marcadas > 0 && marcadas < totalFilas;
+        }
+
+        document.getElementById('chk-seleccionar-todo').addEventListener('change', (e) => {
+            document.querySelectorAll('#admin-table-body .chk-fila-registro').forEach(chk => {
+                chk.checked = e.target.checked;
+                if (e.target.checked) seleccionRegistros.add(chk.dataset.clave);
+                else seleccionRegistros.delete(chk.dataset.clave);
+            });
+            actualizarPanelAccionesMasivas();
+        });
+
+        document.getElementById('btn-limpiar-seleccion').addEventListener('click', () => {
+            seleccionRegistros.clear();
+            document.querySelectorAll('#admin-table-body .chk-fila-registro').forEach(chk => chk.checked = false);
+            actualizarPanelAccionesMasivas();
+        });
+
+        // Justifica en lote las tardanzas de todos los registros seleccionados que SÍ tengan tardanza
+        // sin justificar. Reutiliza el mismo par de campos que justificarTardanza() (uno por uno) para
+        // que el resto de la app (badges, conteo de tardanzas repetidas, CSV) no note la diferencia.
+        // Los seleccionados que no tengan tardanza pendiente simplemente se ignoran (no son un error).
+        async function justificarTardanzasSeleccionadasMasivo() {
+            if (seleccionRegistros.size === 0) return;
+
+            const clavesSeleccionadas = [...seleccionRegistros];
+            const candidatos = allRegsCache.filter(r =>
+                clavesSeleccionadas.includes(`${r.cedula}|${r.fecha}`) && r.llegada_tarde && !r.tardanza_justificada
+            );
+
+            if (candidatos.length === 0) {
+                UI.showAlert("Nada por hacer", "Ninguno de los registros seleccionados tiene una tardanza pendiente de justificar.", "info");
+                return;
+            }
+            if (candidatos.length > 490) {
+                UI.showAlert("Selección muy grande", "Firestore permite máximo 500 operaciones por lote. Selecciona menos registros (idealmente por mes) y repite la acción.", "error");
+                return;
+            }
+
+            const motivo = await UI.showPrompt(
+                `Justificar ${candidatos.length} tardanza(s) seleccionada(s)`,
+                "Se aplicará el mismo motivo a todos los registros seleccionados que tengan una tardanza sin justificar. La hora de entrada real no cambia en ninguno.",
+                "Ej: Paro de transporte en la vía principal"
+            );
+            if (!motivo) return;
+
+            try {
+                const batch = writeBatch(db);
+                candidatos.forEach(r => {
+                    batch.update(doc(db, 'empleados', r.cedula, 'registros', r.fecha), {
+                        tardanza_justificada: true,
+                        motivo_justificacion: motivo.trim()
+                    });
+                });
+                await batch.commit();
+                registrarAuditoria('Justificar tardanzas (masivo)', `${candidatos.length} registro(s) · Motivo: ${motivo.trim()} · ${candidatos.map(r => `${r.cedula}/${r.fecha}`).join(', ')}`);
+                seleccionRegistros.clear();
+                UI.showAlert("Listo", `Se justificaron ${candidatos.length} tardanza(s).`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo completar la justificación masiva. Ningún registro fue modificado.", "error");
+            }
+        }
+
+        document.getElementById('btn-justificar-tardanzas-masivo').addEventListener('click', justificarTardanzasSeleccionadasMasivo);
 
         // Tardanzas justificadas por fuerza mayor (varada, calamidad, lluvia, etc.): a propósito NO
         // se toca entrada/salida/foto/GPS/horas de ese día — updateDoc con solo estos dos campos, para
