@@ -160,6 +160,7 @@
                                 <p id="ui-total-neto" class="text-sm font-bold text-slate-800 money-val blur-text mt-0.5">$0</p>
                             </div>
                         </div>
+                        <p id="aviso-falta-salario" class="hidden text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-3 leading-relaxed"></p>
                         <p class="text-[10px] text-slate-400 mt-3 leading-relaxed"><i class="ph-bold ph-info"></i> Estimado informativo. No reemplaza la liquidación oficial de nómina; verifícalo con tu asesor contable/laboral.</p>
                     </div>
                 </div>
@@ -222,6 +223,17 @@
                                 <button id="btn-punch-out" class="btn-touch bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 shadow-sm transition-all text-xs">
                                     <i class="ph-bold ph-sign-out text-xl"></i> Fin de Jornada
                                 </button>
+                            </div>
+
+                            <!-- Cuando producción determina que hoy no hay pausa de almuerzo (se trabaja de
+                                 corrido). Sin esto, la app descuenta igual la hora legal de almuerzo y el
+                                 colaborador termina con una hora menos de la que realmente trabajó. Pide
+                                 quién lo autorizó y el día queda señalado para que Admin lo valide. -->
+                            <button id="btn-almuerzo-omitido" class="btn-touch w-full bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 font-semibold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs transition-all">
+                                <i class="ph-bold ph-prohibit text-base"></i> Hoy no tomo almuerzo (autorizado)
+                            </button>
+                            <div id="aviso-almuerzo-omitido" class="hidden bg-indigo-50 text-indigo-800 p-3 rounded-xl border border-indigo-200 text-xs font-semibold">
+                                <i class="ph-bold ph-check-circle"></i> Hoy trabajas de corrido, sin descuento de almuerzo. Autorizado por: <span id="display-almuerzo-autoriza" class="font-bold"></span>. Queda registrado para revisión de Admin.
                             </div>
                         </div>
 
@@ -326,7 +338,12 @@
                         <button id="btn-add-cliente" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Cliente</button>
                         <button id="btn-add-obra" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Obra</button>
                         <button id="btn-add-supervisor" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Supervisor</button>
-                        <button id="btn-add-festivo" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Festivo (AAAA-MM-DD)</button>
+                        <!-- Este botón YA NO sirve para cargar el calendario nacional (los festivos de
+                             Colombia 2026-2027 vienen incluidos en la app, ver FESTIVOS_COLOMBIA). Queda
+                             para las excepciones: un festivo regional, un día de la empresa, o corregir
+                             algo puntual sin tener que publicar una versión nueva. -->
+                        <button id="btn-add-festivo" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Festivo adicional</button>
+                        <button id="btn-ver-festivos" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">Ver calendario de festivos</button>
                         <button id="btn-add-horario-obra" class="btn-touch bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold">+ Horario por Obra</button>
                     </div>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
@@ -504,7 +521,11 @@
                             <input type="time" id="manual-almuerzo-fin" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                     </div>
-                    <p class="text-[10px] text-slate-400 mb-3">Deja el almuerzo en blanco si ese día no hubo pausa (ej. turnos cortos de sábado).</p>
+                    <p class="text-[10px] text-slate-400 mb-1">Deja el almuerzo en blanco si ese día no hubo pausa (ej. turnos cortos de sábado).</p>
+                    <label class="flex items-start gap-2 mb-3 text-[11px] text-slate-600 bg-indigo-50/60 border border-indigo-100 rounded-lg p-2 cursor-pointer">
+                        <input type="checkbox" id="manual-almuerzo-omitido" class="mt-0.5">
+                        <span><b>Jornada sin almuerzo autorizada por producción.</b> Marca esto si ese día se trabajó de corrido por decisión de producción: no se descontará la hora legal de almuerzo. Si lo dejas sin marcar y no pones horas de almuerzo, se descuenta 1 hora como en cualquier día normal.</span>
+                    </label>
 
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 bg-violet-50/50 p-3 rounded-lg border border-violet-100">
                         <div class="col-span-2 md:col-span-1">
@@ -1644,11 +1665,104 @@
 
         const overlap = (aStart, aEnd, bStart, bEnd) => Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
 
+        // ----------------------- Reglas de almuerzo y tardanza (parámetros del negocio) -----------------------
+        // Tolerancia de llegada: por debajo de estos minutos no se considera tardanza (regla de la empresa).
+        const TOLERANCIA_TARDANZA_MIN = 15;
+        // Si alguien entra más de estas horas después del horario oficial de la obra, no es una tardanza:
+        // es otro turno (ver A3 en calcularJornadaDiaria).
+        const MAX_HORAS_DESFASE_TARDANZA = 5;
+        // Almuerzo legal que se asume cuando el colaborador no marcó ninguno.
+        const ALMUERZO_LEGAL_HORAS = 1;
+        // Duración mínima para que un almuerzo marcado cuente como almuerzo real. Por debajo de esto
+        // (típicamente dos toques seguidos por error o a propósito) se trata como si no se hubiera
+        // marcado, y se aplica el almuerzo legal de 1 hora — salvo que el día tenga autorización de
+        // "no tomó almuerzo" (almuerzo_omitido), donde sí se respeta la duración real, aunque sea cero.
+        const MIN_ALMUERZO_VALIDO_MIN = 20;
+        // A partir de esta duración de jornada empieza a descontarse el almuerzo asumido. El descuento
+        // entra de forma gradual (ver A2) para que trabajar un rato más nunca pague menos.
+        const JORNADA_MIN_PARA_ALMUERZO_ASUMIDO = 5;
+        // Por encima de esta duración, un turno de un solo día deja de liquidarse automáticamente y
+        // queda marcado para que Admin lo revise (ver A4). Casi siempre es un olvido de marcar salida.
+        const LIMITE_HORAS_TURNO_REVISION = 16;
+
+        // ============================ CATÁLOGO DE FESTIVOS DE COLOMBIA ============================
+        // PROBLEMA QUE RESUELVE: la lista de festivos del catálogo estaba VACÍA en producción, así que
+        // ningún festivo se estaba pagando con recargo — solo los domingos, que el sistema deduce solo.
+        // Son ~18 días al año liquidados como días normales.
+        //
+        // Las fechas se calcularon aplicando la Ley Emiliani (traslado al lunes siguiente) y el cómputo
+        // de Pascua, y se verificaron una a una contra el calendario oficial publicado. Los que NO se
+        // trasladan son: Año Nuevo, Día del Trabajo, Independencia (20 jul), Batalla de Boyacá (7 ago),
+        // Inmaculada (8 dic), Navidad, Jueves Santo y Viernes Santo.
+        //
+        // POR QUÉ VIVEN EN EL CÓDIGO Y NO EN FIRESTORE: esta lista la consulta calcularJornadaDiaria(),
+        // que es SÍNCRONA y se llama en bucle al recalcular semanas y al pintar la tabla de Admin.
+        // Leerla de Firestore obligaría a volver async toda la cadena de cálculo, y además costaría
+        // lecturas cada vez. Aquí son cero lecturas, funciona sin señal y no se puede desconfigurar.
+        // Los festivos regionales o días de la empresa se siguen agregando desde Admin → "+ Festivo",
+        // y se suman a estos (ver esDiaFestivo más abajo).
+        //
+        // MANTENIMIENTO: agregar el bloque del año siguiente antes de que termine 2027.
+        const FESTIVOS_COLOMBIA = [
+            // ---- 2026 ---- (Pascua: 5 de abril)
+            '2026-01-01', // Año Nuevo
+            '2026-01-12', // Reyes Magos (trasladado del 6)
+            '2026-03-23', // San José (trasladado del 19)
+            '2026-04-02', // Jueves Santo
+            '2026-04-03', // Viernes Santo
+            '2026-05-01', // Día del Trabajo
+            '2026-05-18', // Ascensión
+            '2026-06-08', // Corpus Christi
+            '2026-06-15', // Sagrado Corazón
+            '2026-06-29', // San Pedro y San Pablo
+            '2026-07-20', // Independencia
+            '2026-08-07', // Batalla de Boyacá
+            '2026-08-17', // Asunción de la Virgen (trasladado del 15)
+            '2026-10-12', // Día de la Raza
+            '2026-11-02', // Todos los Santos (trasladado del 1)
+            '2026-11-16', // Independencia de Cartagena (trasladado del 11)
+            '2026-12-08', // Inmaculada Concepción
+            '2026-12-25', // Navidad
+            // ---- 2027 ---- (Pascua: 28 de marzo)
+            '2027-01-01', // Año Nuevo
+            '2027-01-11', // Reyes Magos (trasladado del 6)
+            '2027-03-22', // San José (trasladado del 19)
+            '2027-03-25', // Jueves Santo
+            '2027-03-26', // Viernes Santo
+            '2027-05-01', // Día del Trabajo
+            '2027-05-10', // Ascensión
+            '2027-05-31', // Corpus Christi
+            '2027-06-07', // Sagrado Corazón
+            '2027-07-05', // San Pedro y San Pablo (trasladado del 29 de junio)
+            '2027-07-20', // Independencia
+            '2027-08-07', // Batalla de Boyacá
+            '2027-08-16', // Asunción de la Virgen (trasladado del 15)
+            '2027-10-18', // Día de la Raza (trasladado del 12)
+            '2027-11-01', // Todos los Santos
+            '2027-11-15', // Independencia de Cartagena (trasladado del 11)
+            '2027-12-08', // Inmaculada Concepción
+            '2027-12-25'  // Navidad
+        ];
+
+        // Conjunto para búsqueda inmediata, sin recorrer el arreglo en cada consulta.
+        const FESTIVOS_SET = new Set(FESTIVOS_COLOMBIA);
+
+        /**
+         * ¿Esta fecha es festivo en Colombia? SÍNCRONA a propósito (ver nota arriba).
+         * Une dos fuentes: el calendario nacional de este archivo y los festivos que Admin haya
+         * agregado a mano en el catálogo (regionales, días de la empresa, correcciones).
+         */
+        function esDiaFestivo(fechaStr) {
+            if (!fechaStr) return false;
+            if (FESTIVOS_SET.has(fechaStr)) return true;
+            return (catalogosCache.festivos || []).includes(fechaStr);
+        }
+
         function esDominicalOFestivo(fechaStr) {
             const [y, m, d] = fechaStr.split('-').map(Number);
             const dow = new Date(y, m - 1, d).getDay(); // 0 = domingo
             if (dow === 0) return true;
-            return (catalogosCache.festivos || []).includes(fechaStr);
+            return esDiaFestivo(fechaStr);
         }
 
         // Devuelve [lunesStr, domingoStr] de la semana ISO (lunes a domingo) que contiene fechaStr.
@@ -1850,8 +1964,26 @@
             if (horaEsperadaObra) {
                 const horaEsperadaFloat = timeStrToFloat(horaEsperadaObra);
                 if (hIn < horaEsperadaFloat && horaEsperadaFloat < hOut) hIn = horaEsperadaFloat;
-                if (hInReal > horaEsperadaFloat) minutosTarde = Math.round((hInReal - horaEsperadaFloat) * 60);
+                if (hInReal > horaEsperadaFloat) {
+                    const desfaseHoras = hInReal - horaEsperadaFloat;
+                    // BUG CORREGIDO (A3): la hora oficial se configura POR OBRA, no por turno. Si una
+                    // obra abre a las 08:00 y alguien entra a las 19:00 a hacer el turno nocturno, la
+                    // cuenta anterior lo marcaba con 660 minutos de tardanza — 11 horas — y con eso
+                    // disparaba alertas por correo a RRHH y lo dejaba de primero en el informe de
+                    // tardanzas del mes, habiendo llegado puntual a SU turno. Nadie llega cinco horas
+                    // tarde: si el desfase pasa de ahí, no es una tardanza, es otro turno, y no se
+                    // cuenta. (La solución de fondo es configurar horarios por turno, no por obra.)
+                    if (desfaseHoras <= MAX_HORAS_DESFASE_TARDANZA) {
+                        minutosTarde = Math.round(desfaseHoras * 60);
+                    }
+                }
             }
+            // BUG CORREGIDO (M2): antes, al marcar ENTRADA se aplicaba la tolerancia de 15 minutos
+            // (una llegada de 5 minutos tarde se guardaba como 0) pero al marcar SALIDA se recalculaba
+            // SIN tolerancia y el mismo día pasaba a tener 5 minutos de tardanza. El informe mensual
+            // suma todo lo distinto de cero, así que terminaba contando llegadas que la propia regla
+            // de la empresa considera puntuales. Ahora se aplica la misma tolerancia en ambos lados.
+            if (minutosTarde < TOLERANCIA_TARDANZA_MIN) minutosTarde = 0;
             // Tolerancia de 15 minutos: por debajo de eso no se descuenta nada. De ahí en adelante,
             // se descuentan los minutos de tardanza directamente de las horas ordinarias pagadas del día
             // (no afecta el cálculo de horas extra, que sigue el horario realmente trabajado).
@@ -1868,19 +2000,55 @@
             })();
             const esDiaLaborableConAlmuerzo = diaSemana !== null && diaSemana >= 1 && diaSemana <= 5;
 
-            let intervals = [];
+            // REGLA DE ALMUERZO (reescrita tras la auditoría del 18/09). Tres situaciones posibles:
+            //
+            // 1. El colaborador marcó un almuerzo REAL  -> se descuenta exactamente lo que duró.
+            // 2. No marcó nada                           -> se descuenta el almuerzo legal de 1 hora.
+            // 3. El día tiene autorización de producción -> no se descuenta nada (o solo lo realmente
+            //    de "no tomó almuerzo" (almuerzo_omitido)    tomado, si marcó unos minutos).
+            //
+            // BUG CORREGIDO (C1): antes, marcar "inicio de almuerzo" y enseguida "retomar trabajo"
+            // dejaba un almuerzo de 0 minutos, y como SÍ había horas de almuerzo registradas la app no
+            // descontaba nada — el día pagaba 9 horas en vez de 8, con dos toques en la pantalla y sin
+            // dejar rastro. Ahora un almuerzo de menos de MIN_ALMUERZO_VALIDO_MIN minutos solo se
+            // respeta si el día está autorizado; si no, se trata como si no se hubiera marcado.
+            //
+            // BUG CORREGIDO (A1): si el fin del almuerzo quedaba ANTES que el inicio (un error de
+            // digitación como 13:00 -> 12:00), el cálculo perdía en silencio toda la tarde: una
+            // jornada de 8 horas pasaba a pagar 5. Ahora un almuerzo incoherente —invertido, fuera
+            // del turno o más largo que la propia jornada— se descarta y se aplica la regla normal.
+            let almuerzoReal = null; // [inicio, fin] en escala continua, solo si es coherente
             if (reg.almuerzo_inicio && reg.almuerzo_fin) {
                 let aIn = timeStrToFloat(reg.almuerzo_inicio);
                 let aOut = timeStrToFloat(reg.almuerzo_fin);
-                if (aOut < aIn) aOut += 24;
-                if (aIn < hIn) aIn += 24;
-                if (aOut < hIn) aOut += 24;
-                intervals.push([hIn, Math.min(aIn, hOut)]);
-                if (aOut < hOut) intervals.push([aOut, hOut]);
-            } else if (esDiaLaborableConAlmuerzo && (hOut - hIn) > 5) {
-                let mid = hIn + (hOut - hIn) / 2;
-                intervals.push([hIn, mid - 0.5]);
-                intervals.push([mid + 0.5, hOut]);
+                if (aIn < hIn) aIn += 24;          // el almuerzo ocurre después de la entrada
+                if (aOut < aIn) aOut += 24;        // el fin ocurre después del inicio
+                const duracionMin = (aOut - aIn) * 60;
+                const cabeEnElTurno = aIn >= hIn && aOut <= hOut;
+                const duracionAceptable = reg.almuerzo_omitido
+                    ? duracionMin >= 0
+                    : duracionMin >= MIN_ALMUERZO_VALIDO_MIN;
+                if (cabeEnElTurno && duracionAceptable) almuerzoReal = [aIn, aOut];
+            }
+
+            let intervals = [];
+            if (almuerzoReal) {
+                const [aIn, aOut] = almuerzoReal;
+                intervals.push([hIn, aIn]);
+                intervals.push([aOut, hOut]);
+            } else if (reg.almuerzo_omitido) {
+                // Producción autorizó trabajar de corrido: se paga la jornada completa, sin descuento.
+                intervals.push([hIn, hOut]);
+            } else if (esDiaLaborableConAlmuerzo && (hOut - hIn) > JORNADA_MIN_PARA_ALMUERZO_ASUMIDO) {
+                // BUG CORREGIDO (A2): antes se descontaba la hora completa de golpe apenas la jornada
+                // pasaba de 5 horas, así que trabajar 5h12m pagaba 4,2 horas — MENOS que trabajar 5h
+                // exactas, que pagaba 5. El descuento ahora entra de forma gradual: solo se descuenta
+                // lo que exceda de 5 horas, hasta completar la hora legal. Así trabajar más nunca paga
+                // menos, y a partir de 6 horas de jornada el descuento es la hora completa, como antes.
+                const descuento = Math.min(ALMUERZO_LEGAL_HORAS, (hOut - hIn) - JORNADA_MIN_PARA_ALMUERZO_ASUMIDO);
+                const mid = hIn + (hOut - hIn) / 2;
+                intervals.push([hIn, mid - descuento / 2]);
+                intervals.push([mid + descuento / 2, hOut]);
             } else {
                 intervals.push([hIn, hOut]);
             }
@@ -1986,6 +2154,19 @@
             const tarifaHora = currentUserProfile.tarifa_hora || 0;
             const currentMonthPrefix = getTodayStr().substring(0, 7);
 
+            // BUG CORREGIDO (M5): si a un colaborador no se le cargó el sueldo base (o la tarifa por
+            // hora, en contratistas), el cálculo daba un valor inválido que el formateador convertía en
+            // "$ 0". La persona veía su proyección de nómina en cero y parecía un error de SUS horas,
+            // cuando en realidad faltaba un dato en su perfil. Ahora se avisa de forma explícita.
+            const faltaValorBase = esContratista ? !(tarifaHora > 0) : !(base > 0);
+            const avisoDatos = document.getElementById('aviso-falta-salario');
+            if (avisoDatos) {
+                avisoDatos.classList.toggle('hidden', !faltaValorBase);
+                avisoDatos.textContent = esContratista
+                    ? 'No tienes configurada tu tarifa por hora, así que la proyección de pago no se puede calcular. Avísale a SSTA — tus horas sí se están registrando bien.'
+                    : 'No tienes configurado tu sueldo base, así que la proyección de nómina no se puede calcular. Avísale a SSTA — tus horas sí se están registrando bien.';
+            }
+
             let totalOrd = 0, totalExtD = 0, totalExtN = 0, totalRecNoct = 0, totalDomHoras = 0;
 
             const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
@@ -2026,7 +2207,12 @@
                 document.getElementById('ui-total-neto').textContent = UI.formatCOP(totalBruto);
             } else {
                 const pagoExtras = calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras);
-                const deducciones = base * LEY.DEDUCCIONES;
+                // BUG CORREGIDO (M3): las deducciones se calculaban solo sobre el sueldo base, dejando
+                // por fuera los recargos. En Colombia los aportes se liquidan sobre el ingreso salarial
+                // total, así que el "neto estimado" salía más alto de lo que la persona iba a recibir
+                // (en el ejemplo de la auditoría, $61.920 de más en un mes) — y ese es justamente el
+                // número que la gente mira y por el que después reclama.
+                const deducciones = (base + pagoExtras) * LEY.DEDUCCIONES;
                 const netoEstimado = (base + pagoExtras) - deducciones;
 
                 document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
@@ -2739,7 +2925,21 @@
                     // fecha tal como ocurrió) pero SIN calcular horas automáticamente, y se marca para que
                     // Admin lo revise y decida manualmente cuánto se paga.
                     const diasTranscurridos = Math.round((new Date(getTodayStr() + 'T00:00:00') - new Date(tStr + 'T00:00:00')) / 86400000);
-                    if (diasTranscurridos > 1) {
+                    // BUG CORREGIDO (A4): la única protección contra turnos absurdos era este contador
+                    // de DÍAS, así que un turno de 23 horas y media —el resultado típico de olvidar
+                    // marcar la salida— caía justo en el hueco: un solo cruce de medianoche, así que se
+                    // liquidaba solo, sin que nadie lo mirara (8 ordinarias + casi 15 horas extra).
+                    // Ahora, cualquier turno por encima de LIMITE_HORAS_TURNO_REVISION horas se marca
+                    // para revisión igual que los de varios días: se guarda el fichaje real, pero las
+                    // horas las decide Admin.
+                    const duracionTurnoHoras = (() => {
+                        const ini = timeStrToFloat(data.entrada || '00:00');
+                        let fin = timeStrToFloat(tTime);
+                        if (fin < ini) fin += 24;
+                        return fin - ini + (Math.max(0, diasTranscurridos - 1) * 24);
+                    })();
+                    const turnoDemasiadoLargo = duracionTurnoHoras > LIMITE_HORAS_TURNO_REVISION;
+                    if (diasTranscurridos > 1 || turnoDemasiadoLargo) {
                         data.estado = 'requiere_revision_admin';
                         data.horas_ordinarias = 0;
                         data.horas_extras_diurnas = 0;
@@ -2748,7 +2948,9 @@
                         data.horas_dominicales = 0;
                         data.minutos_tarde = 0;
                         data.horas_descuento_tardanza = 0;
-                        data.nota_revision = `Turno quedó abierto ${diasTranscurridos} días (de ${tStr} a ${getTodayStr()}). Las horas NO se calcularon automáticamente — Admin debe revisar y corregir manualmente en "Editar Registro".`;
+                        data.nota_revision = diasTranscurridos > 1
+                            ? `Turno quedó abierto ${diasTranscurridos} días (de ${tStr} a ${getTodayStr()}). Las horas NO se calcularon automáticamente — Admin debe revisar y corregir manualmente en "Editar Registro".`
+                            : `Turno de ${duracionTurnoHoras.toFixed(1)} horas seguidas (entrada ${data.entrada}, salida ${tTime}), por encima del límite de ${LIMITE_HORAS_TURNO_REVISION}h. Suele ser un olvido de marcar la salida. Las horas NO se calcularon automáticamente — Admin debe revisar y corregir en "Editar Registro".`;
                     } else {
                         data.estado = 'completado';
                         const acumuladaSemana = await getOrdinariasAcumuladasSemana(currentUserId, tStr);
@@ -2785,7 +2987,7 @@
                     );
                 } else if (action === 'out') {
                     if (data.estado === 'requiere_revision_admin') {
-                        UI.showAlert("Jornada Finalizada", "Como este turno quedó abierto varios días, tus horas NO se calcularon automáticamente — Admin las revisará y corregirá manualmente. Tu hora de salida ya quedó guardada. Cerrando sesión...", "info");
+                        UI.showAlert("Jornada Finalizada", "Este turno quedó marcado para revisión de Admin (quedó abierto demasiado tiempo), así que tus horas NO se calcularon automáticamente — Admin las revisará y corregirá. Tu hora de salida ya quedó guardada. Cerrando sesión...", "info");
                     } else {
                         UI.showAlert("Jornada Finalizada", "Tus horas de hoy han sido guardadas. Cerrando sesión...", "success");
                     }
@@ -2874,13 +3076,90 @@
                         { type: 'time', valorInicial: ahoraStr }
                     );
                     if (respuesta === null) return; // canceló, no se guarda nada todavía
-                    if (/^\d{2}:\d{2}$/.test(respuesta)) horaOverride = respuesta;
+                    if (/^\d{2}:\d{2}$/.test(respuesta)) {
+                        // BUG CORREGIDO (A1): aquí el colaborador escribe una hora a mano, y si escribe
+                        // una ANTERIOR al inicio del almuerzo (un error de digitación fácil: 12:00 en vez
+                        // de 13:00) el cálculo del día perdía en silencio todas las horas de la tarde —
+                        // una jornada de 8 horas pasaba a pagar 5. Se valida antes de guardar.
+                        let minDesdeInicio = (timeStrToFloat(respuesta) - timeStrToFloat(horaInicioAlmuerzo)) * 60;
+                        if (minDesdeInicio < 0) minDesdeInicio += 24 * 60; // almuerzo que cruzó la medianoche
+                        if (minDesdeInicio > minutos + 5) {
+                            return UI.showAlert(
+                                "Esa hora no cuadra",
+                                `Escribiste ${respuesta}, pero tu almuerzo empezó a las ${horaInicioAlmuerzo} y ahora son las ${ahoraStr}. La hora de fin tiene que estar entre esas dos. Vuelve a intentarlo.`,
+                                "error"
+                            );
+                        }
+                        horaOverride = respuesta;
+                    }
                 }
             }
 
             registrarEvento('lunch_out', btnRef, horaOverride);
         });
         document.getElementById('btn-punch-out').addEventListener('click', (e) => registrarEvento('out', e.currentTarget));
+
+        // "Hoy no tomo almuerzo": cuando producción determina que se trabaja de corrido. Sin esto, la
+        // app descontaría igual la hora legal de almuerzo y el colaborador perdería una hora que sí
+        // trabajó. Lo activa el propio colaborador (necesita ser inmediato, en obra), pero exige
+        // escribir quién lo autorizó y el día queda señalado en el panel Admin y en el archivo de
+        // nómina — así es rápido para quien está trabajando y verificable para quien liquida.
+        document.getElementById('btn-almuerzo-omitido').addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            const fechaDoc = fechaRegistroActivo || getTodayStr();
+            const ref = doc(db, 'empleados', currentUserId, 'registros', fechaDoc);
+
+            try {
+                const snap = await getDoc(ref);
+                const yaOmitido = snap.exists() && snap.data().almuerzo_omitido;
+
+                if (yaOmitido) {
+                    return UI.showConfirm(
+                        "Quitar la marca de hoy",
+                        "Este día está marcado como jornada sin almuerzo. Si lo quitas, vuelve a descontarse la hora de almuerzo como un día normal. ¿Quitar la marca?",
+                        async () => {
+                            try {
+                                await setDoc(ref, { almuerzo_omitido: false, almuerzo_omitido_autoriza: null }, { merge: true });
+                                await checkTodayState();
+                                UI.showAlert("Marca quitada", "El día vuelve a contar con la hora de almuerzo.", "info");
+                            } catch (err) { mostrarErrorDiagnosticado('quitar-almuerzo-omitido', err); }
+                        }
+                    );
+                }
+
+                if (snap.exists() && snap.data().almuerzo_inicio) {
+                    return UI.showAlert(
+                        "Ya iniciaste tu almuerzo",
+                        "Hoy ya marcaste el inicio del almuerzo, así que esta opción no aplica. Si al final no lo tomaste, avísale a SSTA para que ajuste el registro.",
+                        "error"
+                    );
+                }
+
+                const autoriza = await UI.showPrompt(
+                    "Hoy no tomas almuerzo",
+                    "Escribe quién de producción lo autorizó. El día se pagará completo, sin descontar la hora de almuerzo, y quedará marcado para revisión de Admin.",
+                    "Ej: JLAF"
+                );
+                if (!autoriza || !autoriza.trim()) return;
+
+                const original = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-base"></i> Guardando...';
+                try {
+                    await setDoc(ref, {
+                        almuerzo_omitido: true,
+                        almuerzo_omitido_autoriza: autoriza.trim(),
+                        almuerzo_omitido_marcado_en: serverTimestamp()
+                    }, { merge: true });
+                    await checkTodayState();
+                    UI.showAlert("Listo", "Hoy trabajas de corrido. No se te descontará la hora de almuerzo y Admin verá la autorización.", "success");
+                } finally {
+                    btn.disabled = false; btn.innerHTML = original;
+                }
+            } catch (err) {
+                mostrarErrorDiagnosticado('almuerzo-omitido', err);
+            }
+        });
 
         function setPunchUI(state, data = null, esTurnoDeAyer = false) {
             const s1 = document.getElementById('state-1-entrada');
@@ -2911,6 +3190,16 @@
                 sc.disabled = true; so.disabled = true; sa.disabled = true;
                 document.getElementById('display-hora-entrada').textContent = data.entrada;
                 document.getElementById('aviso-turno-ayer').classList.toggle('hidden', !esTurnoDeAyer);
+                // Jornada sin almuerzo autorizada: se muestra el aviso con quién la autorizó, y el botón
+                // pasa a ofrecer quitar la marca. Si además ya inició el almuerzo, el botón no aplica.
+                const omitido = !!data.almuerzo_omitido;
+                const btnOmitir = document.getElementById('btn-almuerzo-omitido');
+                document.getElementById('aviso-almuerzo-omitido').classList.toggle('hidden', !omitido);
+                document.getElementById('display-almuerzo-autoriza').textContent = data.almuerzo_omitido_autoriza || '—';
+                btnOmitir.innerHTML = omitido
+                    ? '<i class="ph-bold ph-arrow-counter-clockwise text-base"></i> Quitar "no tomo almuerzo"'
+                    : '<i class="ph-bold ph-prohibit text-base"></i> Hoy no tomo almuerzo (autorizado)';
+                btnOmitir.classList.toggle('hidden', !!data.almuerzo_inicio && !omitido);
             } else if (state === 'almuerzo') {
                 s3.classList.remove('hidden'); selects.classList.add('hidden');
                 document.getElementById('display-hora-almuerzo').textContent = data.almuerzo_inicio;
@@ -3022,10 +3311,29 @@
         document.getElementById('btn-add-cliente').addEventListener('click', () => agregarACatalogo('clientes', 'Cliente'));
         document.getElementById('btn-add-obra').addEventListener('click', () => agregarACatalogo('obras', 'Obra'));
         document.getElementById('btn-add-supervisor').addEventListener('click', () => agregarACatalogo('supervisores', 'Supervisor'));
+        // Muestra el calendario que la app ya trae cargado, para que Admin pueda confirmar de un
+        // vistazo que los festivos están activos (antes no había forma de saberlo: la lista del
+        // catálogo estaba vacía y nadie se enteraba de que no se estaba pagando el recargo).
+        document.getElementById('btn-ver-festivos').addEventListener('click', () => {
+            const hoy = getTodayStr();
+            const proximos = FESTIVOS_COLOMBIA.filter(f => f >= hoy).slice(0, 6);
+            const adicionales = (catalogosCache.festivos || []).filter(f => !FESTIVOS_SET.has(f));
+            UI.showAlert(
+                "Calendario de festivos",
+                `La app ya tiene cargados los ${FESTIVOS_COLOMBIA.length} festivos de Colombia de 2026 y 2027; no hay que digitarlos.\n\n` +
+                `Próximos festivos:\n${proximos.map(f => '  • ' + f).join('\n') || '  (ninguno en el calendario cargado)'}\n\n` +
+                `Festivos adicionales agregados a mano: ${adicionales.length > 0 ? adicionales.join(', ') : 'ninguno'}`,
+                "info"
+            );
+        });
+
         document.getElementById('btn-add-festivo').addEventListener('click', async () => {
-            const valor = await UI.showPrompt("Agregar Festivo", "Formato AAAA-MM-DD, ej: 2026-12-25", "2026-12-25");
+            const valor = await UI.showPrompt("Agregar festivo adicional", "Solo para festivos regionales o días de la empresa: el calendario nacional de 2026 y 2027 ya viene cargado. Formato AAAA-MM-DD.", "2026-12-25");
             if (!valor) return;
             if (!/^\d{4}-\d{2}-\d{2}$/.test(valor.trim())) return UI.showAlert("Formato inválido", "Usa el formato AAAA-MM-DD.", "error");
+            if (FESTIVOS_SET.has(valor.trim())) {
+                return UI.showAlert("Ya está cargado", `${valor.trim()} ya es festivo nacional en el calendario de la app. No hay que agregarlo.`, "info");
+            }
             try {
                 await updateDoc(doc(db, 'catalogos', 'listas'), { festivos: arrayUnion(valor.trim()) });
                 await cargarCatalogos();
@@ -3830,6 +4138,7 @@
             document.getElementById('manual-autoriza').value = '';
             document.getElementById('manual-almuerzo-inicio').value = '';
             document.getElementById('manual-almuerzo-fin').value = '';
+            document.getElementById('manual-almuerzo-omitido').checked = false;
             document.getElementById('manual-tipo-permiso').value = '';
             document.getElementById('manual-horas-permiso').value = '';
             document.getElementById('manual-nota-permiso').value = '';
@@ -3843,6 +4152,7 @@
             const autoriza = document.getElementById('manual-autoriza').value.trim();
             const entrada = document.getElementById('manual-entrada').value;
             const salida = document.getElementById('manual-salida').value;
+            const almuerzoOmitido = document.getElementById('manual-almuerzo-omitido').checked;
             const almuerzoInicio = document.getElementById('manual-almuerzo-inicio').value;
             const almuerzoFin = document.getElementById('manual-almuerzo-fin').value;
             const tipoPermiso = document.getElementById('manual-tipo-permiso').value;
@@ -3871,8 +4181,20 @@
             if ((almuerzoInicio && !almuerzoFin) || (!almuerzoInicio && almuerzoFin)) {
                 return UI.showAlert("Almuerzo incompleto", "Si registras almuerzo, completa tanto la hora de inicio como la de fin (o deja ambas en blanco).", "error");
             }
-            if (almuerzoInicio && almuerzoFin && timeStrToFloat(almuerzoFin) <= timeStrToFloat(almuerzoInicio)) {
-                return UI.showAlert("Horario de almuerzo inválido", "La hora de fin del almuerzo debe ser después de la hora de inicio.", "error");
+            // La comprobación anterior exigía que el fin fuera mayor que el inicio comparando las horas
+            // del reloj sin más, lo que rechazaba un almuerzo nocturno perfectamente válido (23:30 a
+            // 00:15 en un turno de noche). Ahora se mide la duración real teniendo en cuenta el cruce de
+            // medianoche, y se rechaza solo lo que de verdad no tiene sentido: duración cero o absurda.
+            if (almuerzoInicio && almuerzoFin) {
+                let durAlmMin = (timeStrToFloat(almuerzoFin) - timeStrToFloat(almuerzoInicio)) * 60;
+                if (durAlmMin < 0) durAlmMin += 24 * 60;
+                if (durAlmMin <= 0 || durAlmMin > 4 * 60) {
+                    return UI.showAlert(
+                        "Horario de almuerzo inválido",
+                        `Con inicio ${almuerzoInicio} y fin ${almuerzoFin}, el almuerzo duraría ${(durAlmMin / 60).toFixed(1)} horas. Revisa que el fin sea posterior al inicio y que la duración sea razonable.`,
+                        "error"
+                    );
+                }
             }
             // Detecta el error típico de marcar el almuerzo en AM cuando se quería decir PM (ej. "12:00
             // a.m." en vez de "12:00 p.m."): si la hora de almuerzo queda ANTES de la entrada Y no hay
@@ -3945,6 +4267,8 @@
                     fecha, empleado_nombre: nombre, cedula, cliente, obra, autoriza,
                     entrada: entrada || null, salida: salida || null,
                     almuerzo_inicio: almuerzoInicio || null, almuerzo_fin: almuerzoFin || null,
+                    almuerzo_omitido: almuerzoOmitido,
+                    almuerzo_omitido_autoriza: almuerzoOmitido ? (autoriza || 'Admin') : null,
                     tipo_permiso: tipoPermiso || null, horas_permiso: horasPermiso || 0, nota_permiso: notaPermiso || null,
                     estado: 'completado', loc_entrada: null, loc_salida: null
                 };
@@ -3974,7 +4298,25 @@
                 }
 
                 await setDoc(doc(db, 'empleados', cedula, 'registros', fecha), data);
-                UI.showAlert("Guardado", `Registro manual agregado para el día ${fecha}.`, "success");
+                // BUG CORREGIDO (M1): el tope de 42 horas semanales se repartía según lo ya acumulado
+                // en la semana, y los días ya guardados no se volvían a calcular. Al capturar a mano un
+                // día PASADO, las extras terminaban cargadas en un día distinto al que corresponde — y
+                // como una extra nocturna vale 75% y una diurna 25%, el pago de la semana cambiaba solo
+                // por el orden en que se capturó (en las pruebas: $38.571 de diferencia en una semana,
+                // por un colaborador, sin cambiar una sola hora trabajada). Existía el botón
+                // "Recalcular semana", que lo hace bien, pero había que acordarse de pulsarlo. Ahora
+                // se recalcula solo cada vez que se guarda un día que no es el de hoy.
+                let avisoRecalculo = '';
+                if (fecha !== getTodayStr()) {
+                    try {
+                        const res = await recalcularSemana(cedula, fecha);
+                        avisoRecalculo = ` Se recalcularon los ${res.actualizados} día(s) de esa semana (${res.lunes} a ${res.domingo}) para repartir bien el tope de 42 horas.`;
+                    } catch (eRec) {
+                        console.error('No se pudo recalcular la semana automáticamente:', eRec);
+                        avisoRecalculo = ' OJO: no se pudo recalcular la semana automáticamente — usa el botón "Recalcular semana" antes de liquidar.';
+                    }
+                }
+                UI.showAlert("Guardado", `Registro manual agregado para el día ${fecha}.${avisoRecalculo}`, "success");
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo guardar el registro manual.", "error");
@@ -4194,6 +4536,7 @@
                         ${avisoRelojSospechoso(r, 'salida')}
                         ${r.almuerzo_inicio ? `<div class="text-[9px] text-amber-600 mt-1 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)} - ${escHtml(r.almuerzo_fin || '...')}</div>` : ''}
                         ${r.tipo_permiso ? `<div class="text-[9px] text-violet-700 mt-1 bg-violet-50 border border-violet-200 rounded px-1 py-0.5 inline-block font-bold" title="${escHtml(r.nota_permiso || '')}">🩺 ${escHtml(r.tipo_permiso)} (${r.horas_permiso}h)</div>` : ''}
+                        ${r.almuerzo_omitido ? `<div class="text-[9px] text-indigo-700 mt-1 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5 inline-block font-bold" title="Jornada sin almuerzo autorizada por producción. Este día NO tiene descuento de la hora de almuerzo — valida la autorización antes de liquidar.">🍽️ Sin almuerzo · autoriza ${escHtml(r.almuerzo_omitido_autoriza || '—')}</div>` : ''}
                     </td>
                     <td class="p-4 border-b border-slate-100 text-center">
                         ${r.estado === 'completado' ?
@@ -4258,8 +4601,29 @@
                 return (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '');
             });
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO;TIPO PERMISO;HORAS PERMISO;NOTA PERMISO\n";
+            // BUG CORREGIDO (C2 y C3, auditor\u00EDa 18/09): este archivo es el que se usa para liquidar la
+            // n\u00F3mina, y le faltaban tres datos que la app S\u00CD calcula y guarda bien:
+            //
+            //  - HORAS DOMINICALES: el n\u00FAmero real de horas que cayeron en domingo o festivo. Antes
+            //    solo sal\u00EDa una marca SI/NO tomada de la fecha de ENTRADA del turno, as\u00ED que un turno
+            //    de s\u00E1bado 20:00 a domingo 06:00 se exportaba como "NO" cuando 6 de esas 10 horas s\u00ED
+            //    eran dominicales. Todo el reparto por d\u00EDa calendario se perd\u00EDa justo aqu\u00ED.
+            //  - ESTADO: un d\u00EDa marcado "requiere revisi\u00F3n" sal\u00EDa con ceros en todas las columnas,
+            //    id\u00E9ntico a un d\u00EDa sin trabajo. Si nadie miraba el panel Admin, se liquidaba en cero
+            //    un turno que pudo ser de 20 o 30 horas reales.
+            //  - MINUTOS TARDE y ALMUERZO OMITIDO: los datos con los que Admin/RRHH decide si hay
+            //    descuento o si la jornada sin almuerzo estaba autorizada.
+            //
+            // Las columnas nuevas van AL FINAL a prop\u00F3sito: as\u00ED ninguna f\u00F3rmula o plantilla que ya
+            // est\u00E9 usando este archivo cambia de posici\u00F3n y deja de funcionar.
+            let csvContent = "\uFEFF";
+            csvContent += "CEDULA;NOMBRE;FECHA;DOMINICAL/FESTIVO;CLIENTE;OBRA;AUTORIZA;ENTRADA;ALM. INICIO;ALM. FIN;SALIDA;HORAS ORDINARIAS;EXTRAS DIURNAS;EXTRAS NOCTURNAS;RECARGO NOCTURNO;TIPO PERMISO;HORAS PERMISO;NOTA PERMISO;HORAS DOMINICALES;MINUTOS TARDE;ESTADO;ALMUERZO OMITIDO;AUTORIZA ALMUERZO OMITIDO;NOTA REVISION\n";
+
+            const ESTADO_LEGIBLE = {
+                completado: 'COMPLETADO',
+                activo: 'TURNO ABIERTO (sin salida)',
+                requiere_revision_admin: 'REQUIERE REVISION DE ADMIN'
+            };
 
             rows.forEach(r => {
                 const row = [
@@ -4267,18 +4631,30 @@
                     r.cliente || '', r.obra || '', r.autoriza || '',
                     r.entrada || '', r.almuerzo_inicio || '', r.almuerzo_fin || '', r.salida || '',
                     r.horas_ordinarias || 0, r.horas_extras_diurnas || 0, r.horas_extras_nocturnas || 0, r.horas_recargo_nocturno || 0,
-                    r.tipo_permiso || '', r.horas_permiso || 0, r.nota_permiso || ''
+                    r.tipo_permiso || '', r.horas_permiso || 0, r.nota_permiso || '',
+                    r.horas_dominicales != null ? r.horas_dominicales : (r.es_dominical_festivo ? (r.horas_ordinarias || 0) : 0),
+                    r.minutos_tarde || 0,
+                    ESTADO_LEGIBLE[r.estado] || (r.estado || ''),
+                    r.almuerzo_omitido ? 'SI' : 'NO',
+                    r.almuerzo_omitido_autoriza || '',
+                    r.nota_revision || ''
                 ].map(sanitizeCsvField).join(";");
                 csvContent += row + "\n";
             });
 
-            const encodedUri = encodeURI(csvContent);
+            // BUG CORREGIDO (M4): antes la descarga se armaba como un "data:" URI, que tiene un l\u00EDmite
+            // de tama\u00F1o en el navegador (cerca de 2 MB en Chrome). Con exportaciones grandes \u2014justo las
+            // de fin de mes, y el respaldo previo a "Borrar Todo"\u2014 el archivo pod\u00EDa salir truncado o no
+            // descargarse, sin ning\u00FAn mensaje. Un Blob no tiene ese l\u00EDmite.
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
+            link.setAttribute("href", url);
             link.setAttribute("download", nombreArchivo);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
         }
 
         document.getElementById('btn-export-excel').addEventListener('click', async () => {
