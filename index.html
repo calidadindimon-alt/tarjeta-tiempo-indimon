@@ -1442,8 +1442,16 @@
                     // opts.type permite pedir un tipo de dato distinto a texto libre (ej. "time" para que
                     // el celular muestre su selector nativo de hora); opts.valorInicial precarga un valor
                     // sugerido en vez de dejar el campo vacío.
+                    // BUG CORREGIDO: este mismo <input> es el del PIN numérico (pin-input-1), que en el HTML
+                    // trae inputmode="numeric" y pattern="[0-9]*" fijos. Antes solo se cambiaba `type` a
+                    // "text" pero esos dos atributos quedaban puestos — y en el teclado de un celular,
+                    // inputmode="numeric" manda por encima de type="text", así que "+ Cliente", "+ Obra",
+                    // "+ Supervisor", "+ Horario por Obra", "+ Geocerca por Obra" (y cualquier otro
+                    // showPrompt de texto) abrían el teclado solo de números en vez de uno normal.
                     in1.type = opts.type || 'text'; in1.classList.remove('pin-input'); in1.value = opts.valorInicial || '';
                     in1.placeholder = placeholder; in1.maxLength = 60;
+                    in1.inputMode = opts.type === 'number' ? 'decimal' : 'text';
+                    in1.removeAttribute('pattern');
                     in2.classList.add('hidden');
 
                     const btnOk = document.getElementById('btn-pin-confirm');
@@ -1461,6 +1469,7 @@
                         setTimeout(() => {
                             m.classList.remove('flex'); m.classList.add('hidden');
                             in1.type = 'tel'; in1.classList.add('pin-input'); in1.maxLength = 6;
+                            in1.inputMode = 'numeric'; in1.setAttribute('pattern', '[0-9]*');
                             resolve(val);
                         }, 200);
                     };
