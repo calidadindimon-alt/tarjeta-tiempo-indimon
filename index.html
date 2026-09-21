@@ -1544,7 +1544,19 @@
             }
         }
 
-        const getTodayStr = () => new Date().toLocaleDateString('en-CA');
+        // BUG CORREGIDO (auditoría externa 20/09): esto usaba toLocaleDateString('en-CA'), que toma la
+        // fecha de la ZONA HORARIA DEL SISTEMA OPERATIVO del celular/computador, no la de Colombia. Si un
+        // colaborador estrena celular y no ajusta el huso horario (o lo tiene mal configurado, ej. en UTC),
+        // el dispositivo podía creer que ya es "mañana" mientras en Bogotá todavía es de noche — fichando
+        // el registro en la fecha equivocada. Se fuerza siempre America/Bogota, sin importar cómo esté
+        // configurado el reloj del dispositivo.
+        const getTodayStr = () => {
+            const partes = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
+            }).formatToParts(new Date());
+            const val = (tipo) => partes.find(p => p.type === tipo).value;
+            return `${val('year')}-${val('month')}-${val('day')}`;
+        };
 
         // ===================================== Diagnóstico de errores =====================================
         // Traduce el código técnico de Firebase a una instrucción concreta para el colaborador.
@@ -3690,6 +3702,25 @@
                     );
                 });
                 if (!pos) return UI.showAlert("No se pudo obtener tu ubicación", "Revisa el permiso de ubicación del navegador, o escribe las coordenadas a mano.", "error");
+
+                // BUG CORREGIDO (auditoría externa 20/09): antes se guardaba la coordenada devuelta por el
+                // GPS a ciegas, sin mirar su margen de error (accuracy). Dentro de una bodega con techo
+                // metálico, o en general con mala señal, el celular puede hacer "fallback" a triangulación
+                // de antenas y devolver una coordenada con error de cientos o miles de metros — que
+                // quedaría guardada como el centro "oficial" de la geocerca, haciendo que TODOS los
+                // fichajes de esa obra al día siguiente salgan marcados como fuera de geocerca.
+                const exactitudM = Math.round(pos.coords.accuracy || 0);
+                if (exactitudM > 100) {
+                    const continuarIgual = await new Promise((resolve) => {
+                        UI.showConfirm(
+                            "Señal GPS imprecisa",
+                            `Esta lectura tiene un margen de error de ~${exactitudM} metros (muy alto para fijar el centro de una geocerca). Puede deberse a estar bajo techo, en una bodega, o con mala señal. Sal a cielo abierto e inténtalo de nuevo si puedes.\n\n¿Quieres usarla de todas formas?`,
+                            () => resolve(true)
+                        );
+                        setTimeout(() => resolve(false), 30000);
+                    });
+                    if (!continuarIgual) return UI.showAlert("Cancelado", "No se guardó la geocerca. Sal a cielo abierto e inténtalo de nuevo, o escribe las coordenadas a mano.", "error");
+                }
                 lat = pos.coords.latitude; lng = pos.coords.longitude;
             } else {
                 const latStr = await UI.showPrompt("Latitud", `Coordenada de latitud para "${obra.trim().toUpperCase()}", ej: 4.6097`, "4.6097");
