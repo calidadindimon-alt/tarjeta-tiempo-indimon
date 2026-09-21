@@ -2045,13 +2045,25 @@
             return { fuera: distanciaM > radio, distanciaM, radio };
         }
 
+        // BUG CORREGIDO (auditoría 20/09, ronda 3): esta función es la que dispara la alerta de
+        // tardanza EN VIVO por correo (enviarAlertaTardanza) y alimenta el contador de "tardanzas
+        // repetidas del mes" (verificarTardanzasRepetidasMes, que le manda un aviso disciplinario a
+        // RRHH si se repite). El bug A3, ya corregido en calcularJornadaDiaria(), nunca se aplicó
+        // AQUÍ: un colaborador de turno nocturno que entra a las 20:00 a una obra con horario oficial
+        // de 08:00 seguía calculando "720 minutos de tardanza" (12 horas) en este punto — disparando
+        // una alerta real a RRHH y contando como tardanza real en el mes, aunque llegara puntual a SU
+        // turno. calcularJornadaDiaria ya no lo cuenta así al liquidar el día, pero para entonces la
+        // alerta ya se había mandado y ya había contado para el patrón disciplinario. Se aplica aquí
+        // el mismo tope MAX_HORAS_DESFASE_TARDANZA (ver la nota en calcularJornadaDiaria) para que
+        // ambos cálculos queden consistentes.
         function evaluarTardanza(obra, horaEntradaStr) {
             const horaEsperada = getHoraEsperadaObra(obra);
             if (!horaEsperada) return null;
             const minEntrada = timeStrToFloat(horaEntradaStr) * 60;
             const minEsperado = timeStrToFloat(horaEsperada) * 60;
-            const minutosTarde = Math.round(minEntrada - minEsperado);
-            return { tarde: minutosTarde >= 15, minutos: minutosTarde, horaEsperada };
+            let minutosTarde = Math.round(minEntrada - minEsperado);
+            if (minutosTarde <= 0 || minutosTarde > MAX_HORAS_DESFASE_TARDANZA * 60) minutosTarde = 0;
+            return { tarde: minutosTarde >= TOLERANCIA_TARDANZA_MIN, minutos: minutosTarde, horaEsperada };
         }
 
         // Envía la alerta de tardanza por correo al administrador (vía EmailJS, sin backend).
