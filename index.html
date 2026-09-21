@@ -1497,7 +1497,9 @@
                     btnCancel.addEventListener('click', onCancel);
 
                     m.classList.remove('hidden'); m.classList.add('flex');
-                    setTimeout(() => { m.classList.remove('opacity-0'); b.classList.remove('scale-95'); in1.focus(); }, 10);
+                    // Si ya trae un valor precargado (ej. un enlace para copiar a mano), lo deja
+                    // seleccionado de una vez para que Ctrl+C funcione sin tener que seleccionarlo primero.
+                    setTimeout(() => { m.classList.remove('opacity-0'); b.classList.remove('scale-95'); in1.focus(); if (opts.valorInicial) in1.select(); }, 10);
                 });
             },
 
@@ -5615,6 +5617,45 @@
             return String(str || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
         }
 
+        // BUG CORREGIDO (reportado por el usuario: "Copiar enlace" falla en PC, funciona bien en móvil):
+        // navigator.clipboard.writeText() puede fallar en computador por varias razones ajenas al enlace en
+        // sí — la más común es que el navegador exige que la PESTAÑA tenga el foco en ese instante, y si
+        // había otra ventana/panel (ej. las DevTools) con el foco justo al hacer clic, Chrome de escritorio
+        // la rechaza con un error de permisos aunque en el celular el mismo botón funcione sin problema.
+        // Antes, cuando esto fallaba, el único respaldo era decirle a la persona "mantén presionado el
+        // enlace para copiarlo" — una instrucción que solo tiene sentido en un celular (no existe "mantener
+        // presionado" con el mouse). Ahora, si falla la copia automática, se intenta un segundo método más
+        // viejo pero más compatible (un <textarea> oculto + document.execCommand('copy')) que no depende del
+        // foco de la pestaña; y si ni así funciona, se abre un cuadro con el enlace ya seleccionado en un
+        // campo de texto para que la persona lo copie ella misma con Ctrl+C (o mantener presionado, en
+        // celular) — instrucción que sirve en cualquier dispositivo.
+        async function copiarAlPortapapeles(texto) {
+            try {
+                await navigator.clipboard.writeText(texto);
+                return true;
+            } catch (e1) {
+                try {
+                    const ta = document.createElement('textarea');
+                    ta.value = texto;
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.focus();
+                    ta.select();
+                    const ok = document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    if (ok) return true;
+                } catch (e2) { /* sigue al último respaldo */ }
+                await UI.showPrompt(
+                    "Copiar enlace",
+                    "No se pudo copiar automáticamente. El enlace ya está seleccionado abajo — cópialo con Ctrl+C (o mantén presionado el texto en el celular).",
+                    "",
+                    { valorInicial: texto }
+                );
+                return false;
+            }
+        }
+
         function buildEnlacePermiso(permisoId, rolKey) {
             const base = window.location.origin + window.location.pathname;
             return `${base}?permiso=${encodeURIComponent(permisoId)}&rol=${encodeURIComponent(rolKey)}`;
@@ -5980,13 +6021,11 @@
 
             cont.querySelectorAll('.btn-copy-link').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    try {
-                        await navigator.clipboard.writeText(btn.dataset.link);
-                        const original = btn.innerHTML;
+                    const original = btn.innerHTML;
+                    const ok = await copiarAlPortapapeles(btn.dataset.link);
+                    if (ok) {
                         btn.innerHTML = '<i class="ph-bold ph-check"></i>';
                         setTimeout(() => { btn.innerHTML = original; }, 1500);
-                    } catch (e) {
-                        UI.showAlert("Copiar enlace", "No se pudo copiar automáticamente. Mantén presionado el enlace para copiarlo.", "info");
                     }
                 });
             });
@@ -6133,13 +6172,11 @@
             cont.querySelectorAll('.btn-copy-link-hist').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    try {
-                        await navigator.clipboard.writeText(btn.dataset.link);
-                        const original = btn.innerHTML;
+                    const original = btn.innerHTML;
+                    const ok = await copiarAlPortapapeles(btn.dataset.link);
+                    if (ok) {
                         btn.innerHTML = '<i class="ph-bold ph-check"></i> Copiado';
                         setTimeout(() => { btn.innerHTML = original; }, 1500);
-                    } catch (err) {
-                        UI.showAlert("Copiar enlace", "No se pudo copiar automáticamente.", "info");
                     }
                 });
             });
@@ -6554,13 +6591,11 @@
                         </div>
                     </div>`;
                 document.getElementById('btn-copiar-enlace-desp').addEventListener('click', async (e) => {
-                    try {
-                        await navigator.clipboard.writeText(e.currentTarget.dataset.link);
-                        const original = e.currentTarget.innerHTML;
+                    const original = e.currentTarget.innerHTML;
+                    const ok = await copiarAlPortapapeles(e.currentTarget.dataset.link);
+                    if (ok) {
                         e.currentTarget.innerHTML = '<i class="ph-bold ph-check"></i>';
                         setTimeout(() => { e.currentTarget.innerHTML = original; }, 1500);
-                    } catch (err) {
-                        UI.showAlert("Copiar enlace", "No se pudo copiar automáticamente. Mantén presionado el enlace para copiarlo.", "info");
                     }
                 });
 
@@ -6669,6 +6704,9 @@
                                <p class="text-[10px] text-slate-500">Firmado por ${escapeHtml(d.firmado_por) || escapeHtml(d.trabajador)} el ${d.firmado_en ? new Date(d.firmado_en).toLocaleString('es-CO') : ''}</p>`
                             : `<button class="btn-copy-link-desp-hist btn-touch w-full text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar enlace de firma</button>`
                         }
+                        <button class="btn-eliminar-desprendible btn-touch w-full mt-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${d.id}" data-trabajador="${escapeHtml(d.trabajador)}">
+                            <i class="ph-bold ph-trash"></i> Eliminar este desprendible
+                        </button>
                     </div>
                 </div>`;
             }).join('');
@@ -6676,16 +6714,45 @@
             cont.querySelectorAll('.btn-copy-link-desp-hist').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    try {
-                        await navigator.clipboard.writeText(btn.dataset.link);
-                        const original = btn.innerHTML;
+                    const original = btn.innerHTML;
+                    const ok = await copiarAlPortapapeles(btn.dataset.link);
+                    if (ok) {
                         btn.innerHTML = '<i class="ph-bold ph-check"></i> Copiado';
                         setTimeout(() => { btn.innerHTML = original; }, 1500);
-                    } catch (err) {
-                        UI.showAlert("Copiar enlace", "No se pudo copiar automáticamente.", "info");
                     }
                 });
             });
+
+            // NUEVO (a pedido del usuario): antes no había forma de borrar un desprendible cargado por
+            // error (nombre equivocado, documento equivocado, duplicado) — tocaba entrar directo a
+            // Firestore. Solo un Admin autenticado puede completar el borrado de verdad (lo exige
+            // firestore.rules: "desprendibles" solo permite "delete: if esAdmin()"); si alguien sin sesión
+            // de Admin llega a tocarlo, Firestore rechaza el intento y se muestra el error de "no se pudo".
+            cont.querySelectorAll('.btn-eliminar-desprendible').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    eliminarDesprendible(btn.dataset.id, btn.dataset.trabajador);
+                });
+            });
+        }
+
+        function eliminarDesprendible(despId, trabajador) {
+            UI.showConfirm(
+                "Eliminar Desprendible",
+                `¿Seguro que quieres eliminar el desprendible de ${trabajador || 'este colaborador'}? Esta acción no se puede deshacer. Úsalo solo si se cargó por error (documento equivocado, duplicado, etc.) — requiere haber iniciado sesión como Admin.`,
+                async () => {
+                    try {
+                        await deleteDoc(doc(db, 'desprendibles', despId));
+                        desprendiblesCache = desprendiblesCache.filter(d => d.id !== despId);
+                        renderHistorialDesprendibles();
+                        registrarAuditoria('Eliminar desprendible', `Trabajador: ${trabajador || '-'} (ID ${despId})`);
+                        UI.showAlert("Eliminado", "El desprendible fue eliminado.", "success");
+                    } catch (e) {
+                        console.error(e);
+                        UI.showAlert("Error", "No se pudo eliminar el desprendible. Si no has iniciado sesión como Admin, entra primero a la pestaña \"Admin SSTA\".", "error");
+                    }
+                }
+            );
         }
         window.toggleDesprendibleDetalle = (id) => {
             const el = document.getElementById(`detalle-desp-${id}`);
