@@ -44,8 +44,13 @@
         .firma-canvas { touch-action: none; cursor: crosshair; background: #fdfdfa; display: block; width: 100%; height: 160px; border-radius: 0.75rem; }
         .firma-box.firmado { border-color: #10b981 !important; background: #ecfdf5; }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+    <!-- BUG CORREGIDO: estaban fijas a una versión exacta de cdnjs (jspdf 2.5.1, Chart.js 4.4.4) y cdnjs
+         retiró ese archivo puntual de Chart.js (404 en consola: "chart.umd.min.js:1 Failed to load resource"),
+         lo que rompía "Informe PDF" con "ReferenceError: Chart is not defined". jsDelivr sirve directo desde
+         npm y nunca borra versiones publicadas, así que aquí se fija solo el major (@2, @4): siempre resuelve
+         a la última versión compatible sin arriesgarse a que cdnjs retire justo el archivo que se pidió. -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col relative">
 
@@ -503,8 +508,12 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-2 mb-3">
-                        <input type="text" id="filtro-incapacidad" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Buscar por colaborador...">
+                    <!-- BUG CORREGIDO: en pantallas angostas (celular) este renglón no tenía flex-wrap, así
+                         que el botón "Informe PDF" quedaba empujado fuera del ancho visible (no se veía
+                         completo ni se podía tocar bien). Con flex-wrap + min-w en el buscador, los botones
+                         bajan a una segunda línea en vez de salirse de la pantalla. -->
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <input type="text" id="filtro-incapacidad" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[140px] focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Buscar por colaborador...">
                         <button id="btn-exportar-incapacidades-excel" class="btn-touch bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg text-xs font-bold border border-emerald-200 flex items-center gap-1"><i class="ph-bold ph-file-xls"></i> Excel</button>
                         <button id="btn-exportar-informe-pdf" class="btn-touch bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-lg text-xs font-bold border border-rose-200 flex items-center gap-1"><i class="ph-bold ph-file-pdf"></i> Informe PDF</button>
                     </div>
