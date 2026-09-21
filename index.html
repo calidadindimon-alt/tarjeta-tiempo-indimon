@@ -3109,6 +3109,34 @@
                     return UI.showAlert("Ya tienes un turno abierto", "Ya registraste una Entrada para hoy que sigue activa. Si esto no es correcto, avísale a SSTA para que lo revise.", "error");
                 }
 
+                // BUG CORREGIDO (auditoría 20/09, ronda 2 — Alto): solo "Registrar Entrada" revalidaba
+                // contra el servidor antes de guardar. "Fin de Jornada" y los botones de almuerzo no lo
+                // hacían, así que si el colaborador tenía la app abierta en dos pestañas/dispositivos y
+                // tocaba, por ejemplo, "Fin de Jornada" en la pestaña VIEJA después de haber cerrado ya
+                // el turno en la otra, sobreescribía silenciosamente el cierre correcto con datos viejos
+                // (sin foto/GPS de la salida real, sin las horas ya calculadas). Ahora cada acción
+                // revalida, contra la copia recién leída del servidor (snap), que el turno esté REALMENTE
+                // en el estado que esa acción espera antes de continuar.
+                if (action !== 'in') {
+                    const dataServidor = snap.exists() ? snap.data() : null;
+                    const turnoYaCerrado = !dataServidor || dataServidor.estado !== 'activo' || !!dataServidor.salida;
+                    if (turnoYaCerrado) {
+                        btn.innerHTML = originalHTML; btn.disabled = false;
+                        await checkTodayState();
+                        return UI.showAlert("Este turno ya se cerró", "Tu turno de hoy ya no está activo (probablemente ya marcaste 'Fin de Jornada' en otra pestaña o dispositivo). La pantalla se actualizó con el estado real — revísala antes de continuar.", "error");
+                    }
+                    if (action === 'lunch_in' && dataServidor.almuerzo_inicio) {
+                        btn.innerHTML = originalHTML; btn.disabled = false;
+                        await checkTodayState();
+                        return UI.showAlert("Ya marcaste tu almuerzo", "Ya registraste el inicio de tu almuerzo de hoy. La pantalla se actualizó con el estado real.", "error");
+                    }
+                    if (action === 'lunch_out' && !dataServidor.almuerzo_inicio) {
+                        btn.innerHTML = originalHTML; btn.disabled = false;
+                        await checkTodayState();
+                        return UI.showAlert("No has iniciado tu almuerzo", "Según el servidor, aún no has marcado el inicio de tu almuerzo hoy. La pantalla se actualizó con el estado real.", "error");
+                    }
+                }
+
                 // BUG CORREGIDO: verificarIncapacidadActiva() solo deshabilitaba el botón en pantalla —
                 // alguien con acceso a las herramientas de desarrollador podía saltarse ese bloqueo visual
                 // y fichar entrada igual mientras está incapacitado. Se revalida aquí, justo antes de
@@ -4924,12 +4952,22 @@
             snap.forEach(d => { if (d.data().estado === 'completado' && d.data().entrada && d.data().salida) dias.push({ id: d.id, ref: d.ref, data: d.data() }); });
             dias.sort((a, b) => a.id.localeCompare(b.id)); // orden cronológico: lunes primero
 
+            // BUG CORREGIDO (auditoría 20/09, ronda 2 — Medio): antes cada día de la semana se escribía
+            // con su propio updateDoc() suelto, uno tras otro. Si dos personas de Admin recalculaban la
+            // MISMA semana casi al mismo tiempo (dos pestañas, o dos admins a la vez), sus escrituras día
+            // por día podían intercalarse entre sí — por ejemplo, el lunes de la corrida A se guarda,
+            // luego el lunes de la corrida B lo pisa, pero el martes sí queda de la corrida A — dejando la
+            // semana con una MEZCLA de dos cálculos distintos, cada uno consistente por separado pero no
+            // entre sí. writeBatch() agrupa las escrituras de todos los días de la semana en una sola
+            // operación atómica: Firestore garantiza que se aplican TODAS juntas o NINGUNA, así que ya no
+            // puede quedar una semana a medio recalcular por otra corrida en paralelo.
             let acumulada = 0;
             let actualizados = 0;
+            const batch = writeBatch(db);
             for (const dia of dias) {
                 const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumulada;
                 const calc = calcularJornadaDiaria(dia.data, topeDia);
-                await updateDoc(dia.ref, {
+                batch.update(dia.ref, {
                     horas_ordinarias: calc.ord,
                     horas_extras_diurnas: calc.extD,
                     horas_extras_nocturnas: calc.extN,
@@ -4942,6 +4980,7 @@
                 acumulada += calc.ord;
                 actualizados++;
             }
+            if (actualizados > 0) await batch.commit();
             return { actualizados, lunes, domingo };
         }
 
@@ -5077,15 +5116,25 @@
             if (soloCompletados.length === 0) {
                 cajaCosto.classList.add('hidden');
             } else {
-                const incluirBase = !!mesFiltro;
+                // BUG CORREGIDO (auditoría 20/09, ronda 2 — Alto): antes "incluirBase" solo dependía de
+                // si había filtro de Mes, sin importar si ADEMÁS había filtro de Obra activo. El sueldo
+                // base de un colaborador de planta es fijo por MES, no por obra — así que al filtrar
+                // Mes + Obra a la vez, el total de esa obra ya incluía el sueldo base COMPLETO del mes de
+                // cada colaborador que trabajó ahí, aunque también hubiera trabajado en otras obras ese
+                // mismo mes. Sumar el costo de Obra A + Obra B del mismo mes contaba el sueldo base de
+                // esas personas dos (o más) veces, inflando el número usado para prorratear entre obras.
+                // Ahora el sueldo base solo se incluye cuando el filtro es por Mes SIN Obra a la vez —
+                // que es el único caso en el que ese número es realmente sumable.
+                const incluirBase = !!mesFiltro && !obraFiltro;
                 const { total, numColaboradores, colaboradoresSinPerfil, colaboradoresSinSueldoConfigurado } = calcularCostoManoDeObra(soloCompletados, incluirBase);
                 document.getElementById('costo-mano-obra-titulo').textContent = incluirBase
                     ? 'Costo de Mano de Obra (sueldo base + extras + recargos, del mes filtrado)'
-                    : 'Costo de Extras y Recargos (sin sueldo base — filtra por Mes para incluirlo)';
+                    : 'Costo de Extras y Recargos (sin sueldo base — filtra solo por Mes, sin Obra, para incluirlo)';
                 document.getElementById('costo-mano-obra-total').textContent = UI.formatCOP(total);
                 const partes = [`${numColaboradores} colaborador(es)`];
                 if (colaboradoresSinPerfil > 0) partes.push(`${colaboradoresSinPerfil} sin perfil activo (no se incluyeron)`);
                 if (colaboradoresSinSueldoConfigurado > 0) partes.push(`${colaboradoresSinSueldoConfigurado} con perfil pero sin sueldo/tarifa configurado (contaron $0)`);
+                if (mesFiltro && obraFiltro) partes.push('el sueldo base NO se incluye porque hay filtro de Obra activo — no es prorrateable entre obras');
                 document.getElementById('costo-mano-obra-detalle').textContent =
                     `${partes.join(' · ')} · Estimado operativo: no incluye aportes patronales ni prestaciones sociales.`;
                 cajaCosto.classList.remove('hidden');
