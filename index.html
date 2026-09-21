@@ -614,6 +614,12 @@
                             <option value="">Todos los colaboradores</option>
                         </select>
                     </div>
+                    <div class="flex-1 min-w-[160px]">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por obra</label>
+                        <select id="filtro-obra" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">Todas las obras</option>
+                        </select>
+                    </div>
                     <div class="min-w-[160px]">
                         <label class="text-[10px] font-bold text-slate-500 uppercase">Mes</label>
                         <input type="month" id="filtro-mes" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
@@ -3764,74 +3770,85 @@
                     where('fecha', '<=', ultimoDia)
                 ));
 
-                const porColaborador = new Map();
-                snap.forEach(d => {
-                    const r = d.data();
-                    if (!r.cedula) return;
-                    const acc = porColaborador.get(r.cedula) || {
-                        nombre: r.empleado_nombre || r.cedula,
-                        ord: 0, extD: 0, extN: 0, recNoct: 0, domPond: 0,
-                        tardanzasSinJustificar: 0, tardanzasJustificadas: 0,
-                        ausencias: 0, diasVacaciones: 0
-                    };
-                    acc.ord += (r.horas_ordinarias || 0);
-                    acc.extD += (r.horas_extras_diurnas || 0);
-                    acc.extN += (r.horas_extras_nocturnas || 0);
-                    acc.recNoct += (r.horas_recargo_nocturno || 0);
-                    const horasDom = r.horas_dominicales != null ? r.horas_dominicales : (r.es_dominical_festivo ? (r.horas_ordinarias || 0) : 0);
-                    acc.domPond += horasDom * recargoDominicalFestivoPorFecha(r.fecha);
-                    if (r.llegada_tarde) {
-                        if (r.tardanza_justificada) acc.tardanzasJustificadas++;
-                        else acc.tardanzasSinJustificar++;
-                    }
-                    if (r.tipo_permiso && TIPOS_AUSENCIA.includes(r.tipo_permiso)) acc.ausencias++;
-                    if (r.tipo_permiso === 'Vacaciones') acc.diasVacaciones += (r.dias_vacaciones_permiso || 0);
-                    porColaborador.set(r.cedula, acc);
-                });
-
-                if (porColaborador.size === 0) {
+                if (snap.empty) {
                     btn.disabled = false;
                     btn.innerHTML = originalHTML;
                     return UI.showAlert("Sin datos", `No hay registros de tiempo en ${mesStr} para reportar.`, "info");
                 }
 
-                let totOrd = 0, totExtD = 0, totExtN = 0, totRecNoct = 0, totDomPond = 0, totTardSin = 0, totTardJust = 0, totAusencias = 0, totVacDias = 0;
-                const filas = [...porColaborador.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
-                filas.forEach(f => {
-                    totOrd += f.ord; totExtD += f.extD; totExtN += f.extN; totRecNoct += f.recNoct; totDomPond += f.domPond;
-                    totTardSin += f.tardanzasSinJustificar; totTardJust += f.tardanzasJustificadas;
-                    totAusencias += f.ausencias; totVacDias += f.diasVacaciones;
+                // CAMBIO (pedido del usuario): antes el correo listaba a cada colaborador en texto plano y
+                // salía muy largo/desordenado en el cliente de correo. Ahora se agrupa por OBRA (horas +
+                // costo en pesos, igual que la caja "Costo de Mano de Obra" del panel Admin) más un total
+                // general — mucho más corto y es lo que RRHH necesita para repartir el costo por proyecto.
+                // El detalle completo por colaborador/día sigue disponible: se descarga como Excel/CSV aparte
+                // (ver más abajo) porque el plan gratuito de EmailJS no permite adjuntar archivos al correo.
+                const filasCrudo = [];
+                snap.forEach(d => filasCrudo.push(d.data()));
+
+                // Perfiles frescos desde Firestore (no la caché en memoria colaboradoresAdminCache, que solo
+                // trae colaboradores activos y solo si ya se abrió "Gestión de Colaboradores" antes) — así el
+                // costo por obra sale igual se abra el reporte como primera acción del día o no, e incluye a
+                // quien haya trabajado ese mes aunque después haya quedado inactivo.
+                const empSnap = await getDocs(collection(db, 'empleados'));
+                const perfilPorCedula = new Map();
+                empSnap.forEach(d => perfilPorCedula.set(d.id, { cedula: d.id, ...d.data() }));
+
+                const porObra = new Map(); // "OBRA" -> { regsTodos: [], regsCompletados: [], cedulas: Set }
+                const cedulasTotal = new Set();
+                filasCrudo.forEach(r => {
+                    const obra = (r.obra || '').trim().toUpperCase() || '(SIN OBRA)';
+                    const acc = porObra.get(obra) || { regsTodos: [], regsCompletados: [], cedulas: new Set() };
+                    acc.regsTodos.push(r);
+                    if (r.estado === 'completado') acc.regsCompletados.push(r);
+                    if (r.cedula) { acc.cedulas.add(r.cedula); cedulasTotal.add(r.cedula); }
+                    porObra.set(obra, acc);
                 });
 
                 const nombreMes = new Date(`${mesStr}-01T12:00:00`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
-                const lineas = filas.map(f =>
-                    `• ${f.nombre}: ${f.ord.toFixed(1)}h ord, +${f.extD.toFixed(1)} ED, +${f.extN.toFixed(1)} EN, +${f.recNoct.toFixed(1)} RN, ${f.domPond.toFixed(1)}h dom/fest` +
-                    (f.tardanzasSinJustificar ? ` · ${f.tardanzasSinJustificar} tardanza(s) sin justificar` : '') +
-                    (f.tardanzasJustificadas ? ` · ${f.tardanzasJustificadas} justificada(s)` : '') +
-                    (f.ausencias ? ` · ${f.ausencias} ausencia(s)` : '') +
-                    (f.diasVacaciones ? ` · ${f.diasVacaciones} día(s) de vacaciones` : '')
-                ).join('\n');
+                const obrasOrdenadas = [...porObra.keys()].sort((a, b) => a.localeCompare(b));
 
-                const cuerpo = `Resumen de nómina y asistencia — ${nombreMes}\n\n` +
-                    `Totales de la empresa:\n` +
-                    `- Horas ordinarias: ${totOrd.toFixed(1)}h\n` +
-                    `- Extras diurnas: ${totExtD.toFixed(1)}h · Extras nocturnas: ${totExtN.toFixed(1)}h · Recargo nocturno: ${totRecNoct.toFixed(1)}h\n` +
-                    `- Horas dominicales/festivas (ponderadas): ${totDomPond.toFixed(1)}h\n` +
-                    `- Tardanzas sin justificar: ${totTardSin} · Justificadas: ${totTardJust}\n` +
-                    `- Ausencias: ${totAusencias} · Días de vacaciones tomados: ${totVacDias}\n\n` +
-                    `Detalle por colaborador (${filas.length}):\n${lineas}\n\n` +
-                    `Este es un resumen operativo generado automáticamente por Tarjeta de Tiempo INDIMON — no reemplaza la liquidación de nómina oficial.`;
+                let totOrd = 0, totExtra = 0, totDomPond = 0, totCosto = 0;
+                const lineasObra = obrasOrdenadas.map(obra => {
+                    const { regsTodos, regsCompletados, cedulas } = porObra.get(obra);
+                    let ord = 0, extra = 0, domPond = 0;
+                    regsTodos.forEach(r => {
+                        ord += (r.horas_ordinarias || 0);
+                        extra += (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0) + (r.horas_recargo_nocturno || 0);
+                        const horasDom = r.horas_dominicales != null ? r.horas_dominicales : (r.es_dominical_festivo ? (r.horas_ordinarias || 0) : 0);
+                        domPond += horasDom * recargoDominicalFestivoPorFecha(r.fecha);
+                    });
+                    const { total: costo } = calcularCostoManoDeObra(regsCompletados, true, perfilPorCedula);
+                    totOrd += ord; totExtra += extra; totDomPond += domPond; totCosto += costo;
+                    return `- ${obra} (${cedulas.size} colaborador${cedulas.size === 1 ? '' : 'es'}): ${ord.toFixed(1)}h ordinarias · +${extra.toFixed(1)}h extra/recargo · ${domPond.toFixed(1)}h dominical/festivo · Costo: ${UI.formatCOP(costo)}`;
+                }).join('\n');
+                // Contado una sola vez por persona (no por obra, para no duplicar a quien trabajó en más de
+                // una obra ese mes) y solo entre quienes tienen algún día 'completado' —a esos es a los que
+                // les faltó costear.
+                const cedulasCompletadas = new Set(filasCrudo.filter(r => r.estado === 'completado' && r.cedula).map(r => r.cedula));
+                const totSinPerfil = [...cedulasCompletadas].filter(c => !perfilPorCedula.has(c)).length;
+
+                const cuerpo = `Resumen de nómina — ${nombreMes}\n\n` +
+                    `Por obra:\n${lineasObra}\n\n` +
+                    `Total general (${cedulasTotal.size} colaborador${cedulasTotal.size === 1 ? '' : 'es'}):\n` +
+                    `${totOrd.toFixed(1)}h ordinarias · +${totExtra.toFixed(1)}h extra/recargo · ${totDomPond.toFixed(1)}h dominical/festivo · Costo total: ${UI.formatCOP(totCosto)}` +
+                    (totSinPerfil > 0 ? `\n(${totSinPerfil} colaborador(es) sin perfil de sueldo/tarifa configurado — no se incluyeron en el costo)` : '') +
+                    `\n\nCosto = estimado operativo (sueldo base + extras y recargos), no incluye aportes patronales ni prestaciones sociales. El detalle día a día por colaborador se descargó como Excel junto con este correo — no reemplaza la liquidación de nómina oficial.`;
 
                 for (const destino of destinos) {
                     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
                         to_email: destino,
-                        asunto: `Reporte mensual de asistencia — ${nombreMes}`,
+                        asunto: `Reporte mensual de nómina — ${nombreMes}`,
                         cuerpo
                     });
                 }
 
-                registrarAuditoria('Enviar reporte mensual a RRHH', `Mes: ${mesStr} · Destinos: ${destinos.join(', ')} · ${filas.length} colaborador(es)`);
-                UI.showAlert("Reporte enviado", `El reporte de ${nombreMes} fue enviado a: ${destinos.join(', ')}.`, "success");
+                // El plan gratuito de EmailJS no admite adjuntos, así que el detalle completo se entrega como
+                // una descarga aparte (mismo formato/columnas que "Exportar a Excel" en Admin → Registros) para
+                // que quien envía el reporte lo reenvíe a mano si RRHH lo necesita.
+                descargarCsvDeRegistros(filasCrudo, `Reporte_Nomina_${mesStr}_${getTodayStr()}.csv`);
+
+                registrarAuditoria('Enviar reporte mensual a RRHH', `Mes: ${mesStr} · Destinos: ${destinos.join(', ')} · ${cedulasTotal.size} colaborador(es) · ${obrasOrdenadas.length} obra(s) · Costo total: ${UI.formatCOP(totCosto)}`);
+                UI.showAlert("Reporte enviado", `El reporte de ${nombreMes} fue enviado a: ${destinos.join(', ')}. También se descargó el detalle completo en Excel.`, "success");
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo generar o enviar el reporte. Revisa tu conexión e inténtalo de nuevo.", "error");
@@ -4611,6 +4628,10 @@
             selFiltro.innerHTML = '<option value="">Todos los colaboradores</option>';
             const selRecalc = document.getElementById('recalc-empleado');
             selRecalc.innerHTML = '<option value="">Seleccione...</option>';
+            const selFiltroObra = document.getElementById('filtro-obra');
+            selFiltroObra.innerHTML = '<option value="">Todas las obras</option>';
+            [...(catalogosCache.obras || [])].sort((a, b) => a.localeCompare(b))
+                .forEach(o => selFiltroObra.appendChild(new Option(o, o)));
             const snap = await getDocs(collection(db, 'empleados'));
             const users = [];
             snap.forEach(d => users.push({ cedula: d.id, ...d.data() }));
@@ -4909,7 +4930,7 @@
         // completo por cada obra en la que trabajó ese colaborador ese mes lo multiplicaría por
         // error. Sin filtro de mes, el totalizador muestra solo el costo de extras/recargos
         // (un número real y sumable en cualquier combinación de días u obras) y lo aclara en pantalla.
-        function calcularCostoManoDeObra(regs, incluirBase) {
+        function calcularCostoManoDeObra(regs, incluirBase, perfilPorCedulaOverride) {
             const porColaborador = new Map(); // cedula -> { totalOrd, totalExtD, totalExtN, totalRecNoct, totalDomPond }
             regs.forEach(r => {
                 if (!r.cedula) return;
@@ -4927,7 +4948,11 @@
 
             let total = 0;
             let colaboradoresSinPerfil = 0;
-            const perfilPorCedula = new Map(colaboradoresAdminCache.map(c => [c.cedula, c]));
+            // El panel Admin llama esto sin tercer argumento y usa la caché en memoria (colaboradoresAdminCache,
+            // que solo trae activos y solo si ya se abrió "Gestión de Colaboradores"). El reporte mensual por
+            // correo pasa su propio mapa (perfilPorCedulaOverride), obtenido fresco de Firestore e incluyendo
+            // inactivos, para no depender de qué panel se haya abierto antes.
+            const perfilPorCedula = perfilPorCedulaOverride || new Map(colaboradoresAdminCache.map(c => [c.cedula, c]));
 
             porColaborador.forEach((acc, cedula) => {
                 const perfil = perfilPorCedula.get(cedula);
@@ -4951,13 +4976,17 @@
         function aplicarFiltrosYRenderizar() {
             const cedulaFiltro = document.getElementById('filtro-colaborador').value;
             const mesFiltro = document.getElementById('filtro-mes').value; // formato AAAA-MM
+            const obraFiltro = document.getElementById('filtro-obra').value;
 
             let filtrados = allRegsCache;
             if (cedulaFiltro) filtrados = filtrados.filter(r => r.cedula === cedulaFiltro);
             if (mesFiltro) filtrados = filtrados.filter(r => (r.fecha || '').startsWith(mesFiltro));
+            // Comparación insensible a mayúsculas/espacios, igual que getHoraEsperadaObra/getGeocercaObra,
+            // para que no falle si el registro guardó la obra con distinta capitalización.
+            if (obraFiltro) filtrados = filtrados.filter(r => (r.obra || '').trim().toUpperCase() === obraFiltro.trim().toUpperCase());
 
             const resumen = document.getElementById('filtro-resumen');
-            if (cedulaFiltro || mesFiltro) {
+            if (cedulaFiltro || mesFiltro || obraFiltro) {
                 const totalOrd = filtrados.reduce((a, r) => a + (r.horas_ordinarias || 0), 0);
                 const totalExtras = filtrados.reduce((a, r) => a + (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0), 0);
                 resumen.textContent = `${filtrados.length} registro(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra en total`;
@@ -4989,9 +5018,11 @@
 
         document.getElementById('filtro-colaborador').addEventListener('change', aplicarFiltrosYRenderizar);
         document.getElementById('filtro-mes').addEventListener('change', aplicarFiltrosYRenderizar);
+        document.getElementById('filtro-obra').addEventListener('change', aplicarFiltrosYRenderizar);
         document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
             document.getElementById('filtro-colaborador').value = '';
             document.getElementById('filtro-mes').value = '';
+            document.getElementById('filtro-obra').value = '';
             aplicarFiltrosYRenderizar();
         });
 
@@ -5379,6 +5410,7 @@
             try {
                 const cedulaFiltro = document.getElementById('filtro-colaborador').value;
                 const mesFiltro = document.getElementById('filtro-mes').value; // AAAA-MM
+                const obraFiltro = document.getElementById('filtro-obra').value;
 
                 let rows = [];
                 if (cedulaFiltro) {
@@ -5398,6 +5430,7 @@
                     }
                 }
                 if (mesFiltro) rows = rows.filter(r => (r.fecha || '').startsWith(mesFiltro));
+                if (obraFiltro) rows = rows.filter(r => (r.obra || '').trim().toUpperCase() === obraFiltro.trim().toUpperCase());
 
                 if (rows.length === 0) return UI.showAlert("Aviso", "No hay registros para exportar con ese filtro.", "info");
 
@@ -5407,6 +5440,7 @@
                     const nombreEmpleado = selEl.options[selEl.selectedIndex].text.trim().replace(/[^a-zA-Z0-9]+/g, '_');
                     nombreArchivo += `_${nombreEmpleado}`;
                 }
+                if (obraFiltro) nombreArchivo += `_${obraFiltro.trim().toUpperCase().replace(/[^a-zA-Z0-9]+/g, '_')}`;
                 if (mesFiltro) nombreArchivo += `_${mesFiltro}`;
                 nombreArchivo += `_${getTodayStr()}.csv`;
 
