@@ -1128,7 +1128,7 @@
             getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
             doc, getDoc, setDoc, updateDoc, deleteDoc, collection, collectionGroup,
             getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId,
-            serverTimestamp, increment
+            serverTimestamp, increment, runTransaction
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
         import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/+esm";
 
@@ -2258,9 +2258,12 @@
             let efectivas = intervals.reduce((acc, [s, e]) => acc + (e - s), 0);
             if (efectivas < 0) efectivas = 0;
 
+            // BUG CORREGIDO (auditoría 20/09, H7): aquí antes se calculaba "extras" (efectivas - topeDia)
+            // pero nunca se usaba — las horas extra reales se calculan más abajo, por intervalos, para
+            // repartirlas correctamente entre diurnas/nocturnas. Era código muerto sin efecto en el
+            // resultado; se quita para no confundir a quien lea esta función después.
             const topeDia = Math.max(0, Math.min(LEY.JORNADA_ORDINARIA_DIARIA, topeOrdinarioDia));
             const ordAntesDeTardanza = Math.min(topeDia, efectivas);
-            const extras = Math.max(0, efectivas - topeDia);
 
             // Punto en el tiempo donde terminan las horas ordinarias y empiezan las extra
             // (se calcula ANTES de aplicar el descuento por tardanza, para que las horas extra
@@ -3835,12 +3838,21 @@
                 // les faltó costear.
                 const cedulasCompletadas = new Set(filasCrudo.filter(r => r.estado === 'completado' && r.cedula).map(r => r.cedula));
                 const totSinPerfil = [...cedulasCompletadas].filter(c => !perfilPorCedula.has(c)).length;
+                // BUG CORREGIDO (auditoría 20/09, H3): distinto de "sin perfil" — cuenta a quien SÍ tiene
+                // perfil en empleados/ pero le falta sueldo_base (planta) o tarifa_hora (contratista), que
+                // antes aportaba $0 al costo sin ninguna señal en este correo.
+                const totSinSueldoConfigurado = [...cedulasCompletadas].filter(c => {
+                    const p = perfilPorCedula.get(c);
+                    if (!p) return false; // ya contado en totSinPerfil
+                    return p.tipo_vinculacion === 'Contratista' ? !(p.tarifa_hora > 0) : !(p.sueldo_base > 0);
+                }).length;
 
                 const cuerpo = `Resumen de nómina — ${nombreMes}\n\n` +
                     `Por obra:\n${lineasObra}\n\n` +
                     `Total general (${cedulasTotal.size} colaborador${cedulasTotal.size === 1 ? '' : 'es'}):\n` +
                     `${totOrd.toFixed(1)}h ordinarias · +${totExtra.toFixed(1)}h extra/recargo · ${totDomPond.toFixed(1)}h dominical/festivo · Costo total: ${UI.formatCOP(totCosto)}` +
-                    (totSinPerfil > 0 ? `\n(${totSinPerfil} colaborador(es) sin perfil de sueldo/tarifa configurado — no se incluyeron en el costo)` : '') +
+                    (totSinPerfil > 0 ? `\n(${totSinPerfil} colaborador(es) sin perfil registrado — no se incluyeron en el costo)` : '') +
+                    (totSinSueldoConfigurado > 0 ? `\n(${totSinSueldoConfigurado} colaborador(es) con perfil pero sin sueldo/tarifa configurado — contaron $0 en el costo)` : '') +
                     `\n\nCosto = estimado operativo (sueldo base + extras y recargos), no incluye aportes patronales ni prestaciones sociales. El detalle día a día por colaborador se descargó como Excel junto con este correo — no reemplaza la liquidación de nómina oficial.`;
 
                 for (const destino of destinos) {
@@ -4957,6 +4969,13 @@
 
             let total = 0;
             let colaboradoresSinPerfil = 0;
+            // BUG CORREGIDO (auditoría 20/09, H3): antes solo se avisaba de "sin perfil" cuando el
+            // colaborador NO existía en absoluto en empleados/. Si el perfil SÍ existía pero le faltaba
+            // sueldo_base (planta) o tarifa_hora (contratista), esa persona aportaba $0 al total con
+            // "base"/"tarifaHora" en 0 — sin ninguna señal distinta de alguien que de verdad ganó cero
+            // ese mes. El costo total mostrado a RRHH podía quedar subestimado sin que nadie lo notara.
+            // Ahora ese caso también se cuenta y se avisa, por separado de "sin perfil" del todo.
+            let colaboradoresSinSueldoConfigurado = 0;
             // El panel Admin llama esto sin tercer argumento y usa la caché en memoria (colaboradoresAdminCache,
             // que solo trae activos y solo si ya se abrió "Gestión de Colaboradores"). El reporte mensual por
             // correo pasa su propio mapa (perfilPorCedulaOverride), obtenido fresco de Firestore e incluyendo
@@ -4969,6 +4988,7 @@
                 const esContratista = perfil.tipo_vinculacion === 'Contratista';
                 const tarifaHora = perfil.tarifa_hora || 0;
                 const base = perfil.sueldo_base || 0;
+                if (esContratista ? !(tarifaHora > 0) : !(base > 0)) colaboradoresSinSueldoConfigurado++;
 
                 if (esContratista) {
                     total += acc.totalOrd * tarifaHora; // el contratista SÍ se paga por hora ordinaria, con o sin filtro de mes
@@ -4979,7 +4999,7 @@
                 }
             });
 
-            return { total, numColaboradores: porColaborador.size, colaboradoresSinPerfil };
+            return { total, numColaboradores: porColaborador.size, colaboradoresSinPerfil, colaboradoresSinSueldoConfigurado };
         }
 
         function aplicarFiltrosYRenderizar() {
@@ -5010,13 +5030,14 @@
                 cajaCosto.classList.add('hidden');
             } else {
                 const incluirBase = !!mesFiltro;
-                const { total, numColaboradores, colaboradoresSinPerfil } = calcularCostoManoDeObra(soloCompletados, incluirBase);
+                const { total, numColaboradores, colaboradoresSinPerfil, colaboradoresSinSueldoConfigurado } = calcularCostoManoDeObra(soloCompletados, incluirBase);
                 document.getElementById('costo-mano-obra-titulo').textContent = incluirBase
                     ? 'Costo de Mano de Obra (sueldo base + extras + recargos, del mes filtrado)'
                     : 'Costo de Extras y Recargos (sin sueldo base — filtra por Mes para incluirlo)';
                 document.getElementById('costo-mano-obra-total').textContent = UI.formatCOP(total);
                 const partes = [`${numColaboradores} colaborador(es)`];
                 if (colaboradoresSinPerfil > 0) partes.push(`${colaboradoresSinPerfil} sin perfil activo (no se incluyeron)`);
+                if (colaboradoresSinSueldoConfigurado > 0) partes.push(`${colaboradoresSinSueldoConfigurado} con perfil pero sin sueldo/tarifa configurado (contaron $0)`);
                 document.getElementById('costo-mano-obra-detalle').textContent =
                     `${partes.join(' · ')} · Estimado operativo: no incluye aportes patronales ni prestaciones sociales.`;
                 cajaCosto.classList.remove('hidden');
@@ -5259,18 +5280,22 @@
                 "Se aplicará el mismo motivo a todos los registros seleccionados que tengan una tardanza sin justificar. La hora de entrada real no cambia en ninguno.",
                 "Ej: Paro de transporte en la vía principal"
             );
-            if (!motivo) return;
+            // BUG CORREGIDO (auditoría 20/09, H5): antes se chequeaba "!motivo" ANTES de recortar espacios,
+            // así que un motivo de solo espacios (" ") pasaba el chequeo (es "truthy") y se guardaba como
+            // motivo_justificacion: "" — la tardanza quedaba justificada sin ningún motivo real registrado.
+            const motivoLimpio = (motivo || '').trim();
+            if (!motivoLimpio) return;
 
             try {
                 const batch = writeBatch(db);
                 candidatos.forEach(r => {
                     batch.update(doc(db, 'empleados', r.cedula, 'registros', r.fecha), {
                         tardanza_justificada: true,
-                        motivo_justificacion: motivo.trim()
+                        motivo_justificacion: motivoLimpio
                     });
                 });
                 await batch.commit();
-                registrarAuditoria('Justificar tardanzas (masivo)', `${candidatos.length} registro(s) · Motivo: ${motivo.trim()} · ${candidatos.map(r => `${r.cedula}/${r.fecha}`).join(', ')}`);
+                registrarAuditoria('Justificar tardanzas (masivo)', `${candidatos.length} registro(s) · Motivo: ${motivoLimpio} · ${candidatos.map(r => `${r.cedula}/${r.fecha}`).join(', ')}`);
                 seleccionRegistros.clear();
                 UI.showAlert("Listo", `Se justificaron ${candidatos.length} tardanza(s).`, "success");
             } catch (e) {
@@ -5292,13 +5317,16 @@
                 "La hora de entrada real no cambia y sigue quedando registrada. Esto solo anula el impacto de la tardanza (la alerta a RRHH y el conteo de tardanzas del mes) y deja constancia del motivo.",
                 "Ej: Se varó la moto en la vía"
             );
-            if (!motivo) return;
+            // BUG CORREGIDO (auditoría 20/09, H5): ver la misma corrección en el justificar masivo —
+            // un motivo de solo espacios pasaba el chequeo "!motivo" y quedaba guardado como "".
+            const motivoLimpio = (motivo || '').trim();
+            if (!motivoLimpio) return;
             try {
                 await updateDoc(doc(db, 'empleados', cedula, 'registros', fecha), {
                     tardanza_justificada: true,
-                    motivo_justificacion: motivo.trim()
+                    motivo_justificacion: motivoLimpio
                 });
-                registrarAuditoria('Justificar tardanza', `${cedula} · ${fecha} · Motivo: ${motivo.trim()}`);
+                registrarAuditoria('Justificar tardanza', `${cedula} · ${fecha} · Motivo: ${motivoLimpio}`);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo guardar la justificación.", "error");
@@ -5489,11 +5517,33 @@
                 // Se espera un momento a que el navegador dispare la descarga antes de continuar borrando.
                 await new Promise(r => setTimeout(r, 1500));
 
+                // BUG CORREGIDO (auditoría 20/09, H6): el borrado ocurre en varios lotes, uno tras otro,
+                // y no es atómico entre ellos — si la conexión fallaba a mitad de camino (ej. tras el
+                // lote 3 de 5), el mensaje de error genérico de abajo no distinguía "no se borró nada" de
+                // "se borró una parte", y quien lo ejecutaba no sabía en qué quedó la base sin ir a
+                // revisar manualmente. Ahora se cuenta cuántos lotes SÍ terminaron de confirmarse antes
+                // de que algo falle, para poder decirlo explícitamente (el respaldo CSV ya está
+                // descargado de todas formas, así que no hay pérdida de datos en ningún caso).
                 const batchSize = 400;
-                for (let i = 0; i < docs.length; i += batchSize) {
-                    const batch = writeBatch(db);
-                    docs.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
-                    await batch.commit();
+                let lotesConfirmados = 0;
+                const totalLotes = Math.ceil(docs.length / batchSize);
+                try {
+                    for (let i = 0; i < docs.length; i += batchSize) {
+                        const batch = writeBatch(db);
+                        docs.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
+                        await batch.commit();
+                        lotesConfirmados++;
+                    }
+                } catch (eLote) {
+                    const borrados = Math.min(lotesConfirmados * batchSize, docs.length);
+                    const pendientes = docs.length - borrados;
+                    console.error(eLote);
+                    UI.showAlert(
+                        "Borrado incompleto",
+                        `Se alcanzaron a borrar ${borrados} de ${docs.length} registros (lote ${lotesConfirmados} de ${totalLotes}) antes de que fallara la conexión. Quedan ${pendientes} registro(s) SIN borrar — vuelve a intentar "Borrar Todo" cuando tengas señal estable para terminar (el respaldo CSV ya descargado sigue siendo válido, no hace falta descargarlo de nuevo).`,
+                        "error"
+                    );
+                    return;
                 }
                 UI.showAlert("Sistema Reiniciado", `Se eliminaron ${docs.length} registros de tiempo (los ${docs.length} quedaron respaldados en el CSV descargado). Los perfiles de empleados NO se borraron.`, "success");
             } catch (e) {
@@ -5752,6 +5802,25 @@
                 const tipo = document.getElementById('permiso-tipo').value;
                 const fecha = document.getElementById('permiso-fecha').value;
                 const esEmergencia = document.getElementById('permiso-es-emergencia').checked;
+
+                // BUG CORREGIDO (auditoría 20/09): "Trabajador" es un campo de texto libre (con sugerencias
+                // de la lista, pero sin obligar a elegir una). Si el nombre escrito no coincidía EXACTO con
+                // uno ya registrado (una tilde, un espacio de más, un apodo), la solicitud se guardaba igual
+                // con trabajador_cedula = null, y quedaba aprobándose sin ningún aviso — pero sincronizarPermisoConNomina()
+                // y el descuento del saldo de vacaciones dependen los dos de ese mismo campo y se saltaban en
+                // silencio: el permiso quedaba aprobado y notificado, pero NUNCA aparecía en la tarjeta de
+                // tiempo del colaborador ni se descontaba del saldo de vacaciones. Ahora se bloquea la
+                // creación si el nombre no coincide con nadie de la lista, para que se corrija ANTES de
+                // avanzar con las firmas (que son más difíciles de deshacer que un campo de texto).
+                if (!cedulaTrabajador) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    return UI.showAlert(
+                        "Colaborador no reconocido",
+                        `"${nombreTrabajador}" no coincide exactamente con ningún colaborador registrado en el sistema. Selecciónalo de la lista de sugerencias que aparece al escribir (debe quedar idéntico al nombre en "Gestión de Colaboradores"). Si el colaborador es nuevo, agrégalo primero ahí — de lo contrario, el permiso se podría aprobar pero NO se reflejaría en su tarjeta de tiempo ni se descontaría de su saldo de vacaciones.`,
+                        "error"
+                    );
+                }
 
                 // Regla: todo permiso debe solicitarse con mínimo 24 horas de anticipación (es decir, no el mismo
                 // día ni para fechas ya pasadas), salvo que se marque como calamidad doméstica o emergencia.
@@ -6262,13 +6331,27 @@
                     [`firmantes.${rolKey}.firmado_en`]: new Date().toISOString()
                 });
 
-                // Revisa si con esta firma ya quedaron las 4 completas, para marcar aprobado y notificar.
-                const snap = await getDoc(ref);
-                const data = snap.data();
-                const todasFirmadas = SIGNANTES.every(s => data.firmantes?.[s.key]?.firmado);
-                let quedoAprobado = false;
-                if (todasFirmadas && data.estado !== 'aprobado') {
-                    await updateDoc(ref, { estado: 'aprobado' });
+                // BUG CORREGIDO (auditoría 20/09, H4): antes esto era "leer, decidir, escribir" sin
+                // transacción. Si los últimos 2 firmantes confirmaban casi al mismo instante desde 2
+                // celulares distintos, las dos lecturas podían ver "todavía no aprobado" antes de que
+                // cualquiera de las dos terminara de escribir estado:'aprobado' — duplicando el descuento
+                // del saldo de vacaciones, la notificación y la sincronización con nómina.
+                // runTransaction() hace que Firestore reintente automáticamente la lectura+escritura si
+                // otra ya se le adelantó, así que de las dos ejecuciones solo UNA gana la transición de
+                // estado (la otra, en su reintento, ve que ya quedó 'aprobado' y no repite los efectos).
+                let data = null, todasFirmadas = false, quedoAprobado = false;
+                await runTransaction(db, async (tx) => {
+                    const snap = await tx.get(ref);
+                    data = snap.data();
+                    todasFirmadas = SIGNANTES.every(s => data.firmantes?.[s.key]?.firmado);
+                    quedoAprobado = todasFirmadas && data.estado !== 'aprobado';
+                    if (quedoAprobado) {
+                        tx.update(ref, { estado: 'aprobado' });
+                        data = { ...data, estado: 'aprobado' }; // para los efectos que van después de la transacción
+                    }
+                });
+
+                if (quedoAprobado) {
                     await enviarNotificacionPermiso(data);
                     await sincronizarPermisoConNomina(data);
                     // FASE 4: el saldo de vacaciones solo se descuenta cuando la solicitud queda
@@ -6283,12 +6366,11 @@
                             console.error('No se pudo descontar el saldo de vacaciones:', e);
                         }
                     }
-                    quedoAprobado = true;
                 }
 
                 document.getElementById('firmar-pendiente-box').classList.add('hidden');
                 document.getElementById('firmar-ya-firmado-box').classList.remove('hidden');
-                document.getElementById('firmar-ya-firmado-msg').textContent = quedoAprobado
+                document.getElementById('firmar-ya-firmado-msg').textContent = todasFirmadas
                     ? 'Firma registrada. El permiso quedó completamente aprobado y se notificó a RRHH y al coordinador de proyectos.'
                     : 'Firma registrada correctamente. Falta que firmen las demás personas.';
             } catch (e) {
