@@ -158,7 +158,7 @@
                         <div class="flex gap-2">
                             <div class="relative flex-1">
                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                                <input type="number" id="input-sueldo" class="w-full bg-white border border-slate-300 text-slate-900 rounded-lg py-2.5 pl-7 pr-3 focus:ring-2 focus:ring-blue-500 font-bold money-val blur-text" placeholder="Ej: 1300000">
+                                <input type="number" id="input-sueldo" class="w-full bg-white border border-slate-300 text-slate-900 rounded-lg py-2.5 pl-7 pr-3 focus:ring-2 focus:ring-blue-500 font-bold money-val blur-text" placeholder="Ej: 1750905">
                             </div>
                             <button id="btn-save-sueldo" class="bg-slate-800 hover:bg-slate-900 text-white px-4 rounded-lg font-semibold text-sm transition-colors shadow-sm">Guardar</button>
                         </div>
@@ -439,7 +439,7 @@
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase">Sueldo base mensual (Planta)</label>
-                            <input type="number" id="nuevo-colaborador-sueldo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1300000">
+                            <input type="number" id="nuevo-colaborador-sueldo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1750905">
                         </div>
                         <div class="hidden" id="wrap-nuevo-colaborador-tarifa">
                             <label class="text-[10px] font-bold text-slate-500 uppercase">Tarifa por hora (Contratista)</label>
@@ -2603,7 +2603,7 @@
                     document.getElementById('input-sueldo').value = perfil.tarifa_hora || '';
                 } else {
                     document.getElementById('label-sueldo-tarifa').textContent = 'Tu Salario Base (Mensual)';
-                    document.getElementById('input-sueldo').placeholder = 'Ej: 1300000';
+                    document.getElementById('input-sueldo').placeholder = 'Ej: 1750905';
                     document.getElementById('input-sueldo').value = perfil.sueldo_base || '';
                 }
 
@@ -3607,7 +3607,7 @@
                             const [existing, existingPub] = await Promise.all([getDoc(ref), getDoc(pubRef)]);
 
                             if (!existing.exists()) {
-                                batch.set(ref, { nombre: emp.nombre, cargo: emp.cargo, sueldo_base: 1300000, authUid: null });
+                                batch.set(ref, { nombre: emp.nombre, cargo: emp.cargo, sueldo_base: 1750905, authUid: null });
                                 nuevos++;
                             }
                             if (!existingPub.exists()) {
@@ -3997,7 +3997,7 @@
 
                 await setDoc(ref, {
                     nombre, cargo, tipo_vinculacion: tipoVinculacion,
-                    sueldo_base: sueldo ? Number(sueldo) : 1300000,
+                    sueldo_base: sueldo ? Number(sueldo) : 1750905,
                     tarifa_hora: tarifaHora ? Number(tarifaHora) : 0,
                     dias_vacaciones_disponibles: diasVacaciones !== '' ? Number(diasVacaciones) : 15,
                     authUid: null
