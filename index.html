@@ -1849,6 +1849,29 @@
         // queda marcado para que Admin lo revise (ver A4). Casi siempre es un olvido de marcar salida.
         const LIMITE_HORAS_TURNO_REVISION = 16;
 
+        // REFACTOR (auditoría 20/09, ronda 5): "¿esto es una tardanza o es otro turno?" estaba escrito
+        // DOS VECES — una vez dentro de calcularJornadaDiaria() (que liquida el día) y otra, por
+        // separado, en evaluarTardanza() (que dispara la alerta en vivo a RRHH y el contador de
+        // tardanzas del mes). Las dos rondas de bugs anteriores (A3 y la ronda 3) fueron, en el fondo,
+        // el mismo problema: se corrigió una copia y la otra quedó atrás. Esta función es ahora la
+        // ÚNICA fuente de verdad de la regla — ambos sitios la llaman, así que ya no pueden
+        // desincronizarse entre sí en el futuro.
+        //
+        // Devuelve los minutos de tardanza ya limpios de los dos ajustes de negocio:
+        //   1. Si el desfase pasa de MAX_HORAS_DESFASE_TARDANZA horas después de la hora oficial de la
+        //      obra, no es una tardanza — es otro turno (ej. turno nocturno en una obra con horario
+        //      diurno configurado) — se cuenta como 0.
+        //   2. Tolerancia de TOLERANCIA_TARDANZA_MIN minutos: por debajo de eso, puntual, 0.
+        // Una llegada TEMPRANO (minEntrada <= minEsperado) también da 0, nunca un número negativo.
+        function calcularMinutosTardanza(horaEntradaStr, horaEsperadaStr) {
+            const minEntrada = timeStrToFloat(horaEntradaStr) * 60;
+            const minEsperado = timeStrToFloat(horaEsperadaStr) * 60;
+            let minutosTarde = Math.round(minEntrada - minEsperado);
+            if (minutosTarde <= 0 || minutosTarde > MAX_HORAS_DESFASE_TARDANZA * 60) minutosTarde = 0;
+            if (minutosTarde < TOLERANCIA_TARDANZA_MIN) minutosTarde = 0;
+            return minutosTarde;
+        }
+
         // ============================ CATÁLOGO DE FESTIVOS DE COLOMBIA ============================
         // PROBLEMA QUE RESUELVE: la lista de festivos del catálogo estaba VACÍA en producción, así que
         // ningún festivo se estaba pagando con recargo — solo los domingos, que el sistema deduce solo.
@@ -2045,24 +2068,16 @@
             return { fuera: distanciaM > radio, distanciaM, radio };
         }
 
-        // BUG CORREGIDO (auditoría 20/09, ronda 3): esta función es la que dispara la alerta de
-        // tardanza EN VIVO por correo (enviarAlertaTardanza) y alimenta el contador de "tardanzas
-        // repetidas del mes" (verificarTardanzasRepetidasMes, que le manda un aviso disciplinario a
-        // RRHH si se repite). El bug A3, ya corregido en calcularJornadaDiaria(), nunca se aplicó
-        // AQUÍ: un colaborador de turno nocturno que entra a las 20:00 a una obra con horario oficial
-        // de 08:00 seguía calculando "720 minutos de tardanza" (12 horas) en este punto — disparando
-        // una alerta real a RRHH y contando como tardanza real en el mes, aunque llegara puntual a SU
-        // turno. calcularJornadaDiaria ya no lo cuenta así al liquidar el día, pero para entonces la
-        // alerta ya se había mandado y ya había contado para el patrón disciplinario. Se aplica aquí
-        // el mismo tope MAX_HORAS_DESFASE_TARDANZA (ver la nota en calcularJornadaDiaria) para que
-        // ambos cálculos queden consistentes.
+        // Esta función es la que dispara la alerta de tardanza EN VIVO por correo (enviarAlertaTardanza)
+        // y alimenta el contador de "tardanzas repetidas del mes" (verificarTardanzasRepetidasMes, que
+        // le manda un aviso disciplinario a RRHH si se repite). REFACTOR (ronda 5): ya no calcula la
+        // regla por su cuenta — llama a calcularMinutosTardanza(), la MISMA función que usa
+        // calcularJornadaDiaria() para liquidar el día, así que las dos SIEMPRE coinciden (ver la nota
+        // de esa función, más arriba, sobre por qué esto vivía duplicado y se unificó).
         function evaluarTardanza(obra, horaEntradaStr) {
             const horaEsperada = getHoraEsperadaObra(obra);
             if (!horaEsperada) return null;
-            const minEntrada = timeStrToFloat(horaEntradaStr) * 60;
-            const minEsperado = timeStrToFloat(horaEsperada) * 60;
-            let minutosTarde = Math.round(minEntrada - minEsperado);
-            if (minutosTarde <= 0 || minutosTarde > MAX_HORAS_DESFASE_TARDANZA * 60) minutosTarde = 0;
+            const minutosTarde = calcularMinutosTardanza(horaEntradaStr, horaEsperada);
             return { tarde: minutosTarde >= TOLERANCIA_TARDANZA_MIN, minutos: minutosTarde, horaEsperada };
         }
 
@@ -2202,34 +2217,25 @@
             // esa hora, el cálculo de horas empieza en la hora oficial (no se paga tiempo no autorizado
             // llegado antes de tiempo). La hora real marcada se sigue guardando tal cual para el registro.
             const horaEsperadaObra = getHoraEsperadaObra(reg.obra);
-            const hInReal = hIn; // se conserva la hora real marcada, antes de cualquier ajuste, para medir tardanza
             let minutosTarde = 0;
             if (horaEsperadaObra) {
                 const horaEsperadaFloat = timeStrToFloat(horaEsperadaObra);
                 if (hIn < horaEsperadaFloat && horaEsperadaFloat < hOut) hIn = horaEsperadaFloat;
-                if (hInReal > horaEsperadaFloat) {
-                    const desfaseHoras = hInReal - horaEsperadaFloat;
-                    // BUG CORREGIDO (A3): la hora oficial se configura POR OBRA, no por turno. Si una
-                    // obra abre a las 08:00 y alguien entra a las 19:00 a hacer el turno nocturno, la
-                    // cuenta anterior lo marcaba con 660 minutos de tardanza — 11 horas — y con eso
-                    // disparaba alertas por correo a RRHH y lo dejaba de primero en el informe de
-                    // tardanzas del mes, habiendo llegado puntual a SU turno. Nadie llega cinco horas
-                    // tarde: si el desfase pasa de ahí, no es una tardanza, es otro turno, y no se
-                    // cuenta. (La solución de fondo es configurar horarios por turno, no por obra.)
-                    if (desfaseHoras <= MAX_HORAS_DESFASE_TARDANZA) {
-                        minutosTarde = Math.round(desfaseHoras * 60);
-                    }
-                }
+                // REFACTOR (auditoría 20/09, ronda 5): "¿es tardanza o es otro turno?" ya no se calcula
+                // aquí por su cuenta — se llama a calcularMinutosTardanza(), la MISMA función que usa
+                // evaluarTardanza() para la alerta en vivo. Antes esta regla (el tope de
+                // MAX_HORAS_DESFASE_TARDANZA horas para no confundir un turno nocturno con una
+                // tardanza, más la tolerancia de TOLERANCIA_TARDANZA_MIN minutos) estaba escrita dos
+                // veces en el archivo, y dos auditorías distintas encontraron que una copia se corrigió
+                // y la otra no. Ahora solo existe en un lugar. Se usa reg.entrada (la hora real
+                // marcada, sin el ajuste de "hIn" de arriba) para que el desfase se mida siempre contra
+                // la entrada real, nunca contra una hora ya recortada.
+                minutosTarde = calcularMinutosTardanza(reg.entrada, horaEsperadaObra);
             }
-            // BUG CORREGIDO (M2): antes, al marcar ENTRADA se aplicaba la tolerancia de 15 minutos
-            // (una llegada de 5 minutos tarde se guardaba como 0) pero al marcar SALIDA se recalculaba
-            // SIN tolerancia y el mismo día pasaba a tener 5 minutos de tardanza. El informe mensual
-            // suma todo lo distinto de cero, así que terminaba contando llegadas que la propia regla
-            // de la empresa considera puntuales. Ahora se aplica la misma tolerancia en ambos lados.
-            if (minutosTarde < TOLERANCIA_TARDANZA_MIN) minutosTarde = 0;
-            // Tolerancia de 15 minutos: por debajo de eso no se descuenta nada. De ahí en adelante,
-            // se descuentan los minutos de tardanza directamente de las horas ordinarias pagadas del día
-            // (no afecta el cálculo de horas extra, que sigue el horario realmente trabajado).
+            // Tolerancia de 15 minutos: por debajo de eso no se descuenta nada (ya aplicada dentro de
+            // calcularMinutosTardanza). De ahí en adelante, se descuentan los minutos de tardanza
+            // directamente de las horas ordinarias pagadas del día (no afecta el cálculo de horas
+            // extra, que sigue el horario realmente trabajado).
             const horasDescontadasTardanza = minutosTarde >= 15 ? Number((minutosTarde / 60).toFixed(2)) : 0;
 
             // Intervalos efectivamente trabajados: se resta el almuerzo si hay horas EXPLÍCITAS.
