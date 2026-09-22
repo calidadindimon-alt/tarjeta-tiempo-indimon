@@ -2595,9 +2595,35 @@
 
                 const email = cedulaToAuthEmail(cedula);
                 if (esNuevo) {
-                    const cred = await createUserWithEmailAndPassword(auth, email, pin);
-                    await updateDoc(doc(db, 'empleados', cedula), { authUid: cred.user.uid });
-                    await updateDoc(doc(db, 'empleados_publico', cedula), { authUid: cred.user.uid });
+                    try {
+                        const cred = await createUserWithEmailAndPassword(auth, email, pin);
+                        await updateDoc(doc(db, 'empleados', cedula), { authUid: cred.user.uid });
+                        await updateDoc(doc(db, 'empleados_publico', cedula), { authUid: cred.user.uid });
+                    } catch (eCrear) {
+                        // BUG CORREGIDO (soporte, 22/09): Firestore puede pensar que un colaborador
+                        // "nunca creó PIN" (authUid: null) mientras que en Firebase Authentication SÍ
+                        // existe ya una cuenta con ese correo técnico — pasa cuando la cuenta se creó
+                        // bien, pero el guardado del authUid de vuelta en Firestore no llegó a
+                        // completarse (conexión cortada, pestaña cerrada a mitad de proceso, etc.). Antes
+                        // esto dejaba a la persona sin poder entrar NUNCA MÁS por su cuenta — el mensaje
+                        // le decía "pide a un administrador que lo restablezca" siempre, incluso si el
+                        // PIN que acababa de escribir era, de hecho, el correcto.
+                        //
+                        // Ahora, si el error es justo "ya existe esa cuenta", se intenta INICIAR SESIÓN
+                        // con el mismo PIN que la persona ya escribió: si es el PIN correcto (el caso
+                        // más común — la propia persona lo creó la primera vez y ahora solo se le olvidó
+                        // que ya lo había hecho), esto la deja entrar Y de paso repara el authUid que
+                        // faltaba en Firestore, sin necesitar a un Admin. Si el PIN NO es el correcto (la
+                        // cuenta la creó otra persona, o de verdad lo olvidó), el error real sube igual
+                        // al catch de más abajo y se le pide que hable con un Admin — como antes.
+                        if (eCrear.code === 'auth/email-already-in-use') {
+                            const cred = await signInWithEmailAndPassword(auth, email, pin);
+                            await updateDoc(doc(db, 'empleados', cedula), { authUid: cred.user.uid });
+                            await updateDoc(doc(db, 'empleados_publico', cedula), { authUid: cred.user.uid });
+                        } else {
+                            throw eCrear;
+                        }
+                    }
                 } else {
                     await signInWithEmailAndPassword(auth, email, pin);
                 }
