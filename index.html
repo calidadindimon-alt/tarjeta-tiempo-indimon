@@ -1273,8 +1273,7 @@
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') revisar();
                 });
-                const intervalRevisar = setInterval(revisar, 60 * 60 * 1000);
-                window.limpiarIntervalos = () => { if (intervalRevisar) clearInterval(intervalRevisar); };
+                setInterval(revisar, 60 * 60 * 1000);
             }).catch((e) => console.error('No se pudo registrar el service worker:', e));
         }
 
@@ -1795,10 +1794,7 @@
         // Respaldo por si la pestaña se queda al frente todo el día sin pasar nunca a segundo
         // plano: revisa igual cada 20 minutos (esto solo muestra el banner, no recarga sola,
         // porque la persona sí está mirando la pantalla en ese momento).
-        const intervalVersiones = setInterval(verificarNuevaVersion, 20 * 60 * 1000);
-        if (!window.limpiarIntervalos) window.limpiarIntervalos = () => {};
-        const oldCleanup = window.limpiarIntervalos;
-        window.limpiarIntervalos = () => { oldCleanup(); if (intervalVersiones) clearInterval(intervalVersiones); };
+        setInterval(verificarNuevaVersion, 20 * 60 * 1000);
 
         async function initApp() {
             await cargarCatalogos();
@@ -2770,7 +2766,6 @@
         }
 
         document.getElementById('btn-logout').addEventListener('click', async () => {
-            if (window.limpiarIntervalos) window.limpiarIntervalos();
             await signOut(auth).catch(e => console.warn('Logout fallido:', e));
             document.getElementById('view-identidad').classList.remove('hidden');
             document.getElementById('view-tarjeta').classList.add('hidden');
@@ -3663,7 +3658,6 @@
 
         document.getElementById('btn-admin-logout').addEventListener('click', async () => {
             if (unsubAdminTable) { unsubAdminTable(); unsubAdminTable = null; }
-            if (window.limpiarIntervalos) window.limpiarIntervalos();
             await signOut(auth).catch(e => console.warn('Admin logout fallido:', e));
             document.getElementById('admin-panel-view').classList.add('hidden');
             document.getElementById('admin-panel-view').classList.remove('flex');
@@ -6628,7 +6622,6 @@
         });
 
         document.getElementById('btn-desp-admin-logout').addEventListener('click', async () => {
-            if (window.limpiarIntervalos) window.limpiarIntervalos();
             await signOut(auth).catch(e => console.warn('Desprendibles logout fallido:', e));
             mostrarLoginDesprendibles();
         });
