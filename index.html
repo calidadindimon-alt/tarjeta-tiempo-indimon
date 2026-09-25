@@ -104,6 +104,17 @@
         html.dark .hover\:text-rose-600:hover, html.dark .hover\:text-rose-700:hover { color: #fda4af; }
 
         html.dark .firma-box.firmado { background: rgba(16,185,129,.12); }
+
+        /* El trazo de la firma se dibuja siempre en #1e293b (ver ctx.strokeStyle). Si estas miniaturas
+           heredaran bg-white/bg-slate-50 del tema oscuro, el fondo quedaría casi del mismo color que el
+           trazo y la firma —evidencia de aprobación de permisos y desprendibles— se volvería invisible.
+           Se fuerza fondo blanco real, en claro y en oscuro, para que el trazo siempre se vea. */
+        .firma-img { background-color: #fff; }
+        html.dark .firma-img { background-color: #fff !important; }
+
+        /* Este botón vive sobre el banner de "nueva versión", que siempre es indigo sin importar el
+           tema. Si el tema oscuro le repinta el fondo blanco, pierde el contraste que lo hace notorio. */
+        html.dark #btn-actualizar-version { background-color: #fff !important; color: #4338ca !important; }
     </style>
     <script>
         // Se aplica antes de pintar la página para que no haya un destello blanco al abrir en modo oscuro.
@@ -6349,7 +6360,7 @@
                                     <p class="text-[9px] font-bold text-slate-500 uppercase">${s.label}</p>
                                     <p class="text-[10px] font-semibold text-slate-700 mb-1 truncate">${escapeHtml(f?.nombre) || '—'}</p>
                                     ${f?.firmado
-                                        ? `<img src="${f.firma}" class="w-full h-12 object-contain bg-white rounded border border-slate-200">`
+                                        ? `<img src="${f.firma}" class="w-full h-12 object-contain firma-img rounded border border-slate-200">`
                                         : `<div class="flex gap-1">
                                              <button class="btn-copy-link-hist btn-touch flex-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar</button>
                                              <a href="https://wa.me/?text=${waTexto}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="btn-touch flex-1 text-center text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded py-1.5"><i class="ph-bold ph-whatsapp-logo"></i> Recordar</a>
@@ -6913,7 +6924,7 @@
                     <div id="detalle-desp-${d.id}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
                         <a href="${escapeHtml(sanitizeUrl(d.enlace_documento))}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 underline flex items-center gap-1"><i class="ph-bold ph-file-text"></i> Ver documento original</a>
                         ${firmado
-                            ? `<img src="${d.firma}" class="w-full h-16 object-contain bg-slate-50 rounded border border-slate-200 mt-1">
+                            ? `<img src="${d.firma}" class="w-full h-16 object-contain firma-img rounded border border-slate-200 mt-1">
                                <p class="text-[10px] text-slate-500">Firmado por ${escapeHtml(d.firmado_por) || escapeHtml(d.trabajador)} el ${d.firmado_en ? new Date(d.firmado_en).toLocaleString('es-CO') : ''}</p>`
                             : `<button class="btn-copy-link-desp-hist btn-touch w-full text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar enlace de firma</button>`
                         }
