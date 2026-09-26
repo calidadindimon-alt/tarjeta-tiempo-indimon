@@ -326,6 +326,9 @@
                             <div id="aviso-turno-ayer" class="hidden bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 text-xs font-semibold">
                                 <i class="ph-bold ph-warning-circle"></i> Este turno quedó abierto desde ayer. Si de verdad trabajaste toda la noche, pulsa "Fin de Jornada" para cerrarlo con la hora real. Si fue un olvido (no trabajaste toda la noche), avísale a SSTA para que lo corrija.
                             </div>
+                            <div id="aviso-recordar-almuerzo" class="hidden bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 text-xs font-semibold">
+                                <i class="ph-bold ph-coffee"></i> Ya llevas varias horas en turno y no has marcado tu almuerzo. Si ya almorzaste, pulsa "Iniciar Almuerzo" (aunque sea tarde) para que se descuente correctamente. Si hoy no tomas almuerzo, usa el botón de abajo.
+                            </div>
                             <div class="bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-200 flex justify-between items-center text-sm font-medium shadow-sm">
                                 <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> En Turno desde:</span>
                                 <span id="display-hora-entrada" class="font-bold font-mono text-emerald-900 bg-white px-2 py-0.5 rounded shadow-sm border border-emerald-100">--:--</span>
@@ -1630,6 +1633,7 @@
             // Reloj del encabezado también fijo a hora de Colombia (ver getHoraActualStr) — para que sea
             // consistente con lo que realmente se graba en cada fichaje, sin importar el país del celular.
             document.getElementById('header-date').textContent = n.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', weekday: 'short', month: 'short', day: 'numeric' }) + " - " + n.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false, hour: '2-digit', minute:'2-digit' });
+            evaluarAvisoAlmuerzo();
         }, 1000);
 
         document.getElementById('btn-close-alert').addEventListener('click', UI.closeAlert);
@@ -1674,6 +1678,26 @@
             const val = (tipo) => partes.find(p => p.type === tipo).value;
             return `${val('hour')}:${val('minute')}`;
         };
+
+        // MEJORA (sugerida por el usuario, 26/09): si al colaborador se le olvida marcar el inicio de
+        // almuerzo (o lo marca mucho después de haber almorzado en realidad), calcularJornadaDiaria()
+        // no tiene forma de saberlo — solo ve las horas que quedaron guardadas y calcula extra sobre
+        // eso. Este aviso no cambia ningún cálculo: solo recuerda a tiempo, mientras el turno sigue
+        // abierto, para que el propio colaborador corrija su fichaje antes de que termine el día.
+        const AVISO_ALMUERZO_TRAS_HORAS = 5;
+        let datosRegistroActivo = null;
+
+        function evaluarAvisoAlmuerzo() {
+            const aviso = document.getElementById('aviso-recordar-almuerzo');
+            const data = datosRegistroActivo;
+            if (!aviso || !data || !data.entrada || data.almuerzo_inicio || data.almuerzo_omitido) {
+                if (aviso) aviso.classList.add('hidden');
+                return;
+            }
+            let horasEnTurno = timeStrToFloat(getHoraActualStr()) - timeStrToFloat(data.entrada);
+            if (horasEnTurno < 0) horasEnTurno += 24; // turno que cruza medianoche
+            aviso.classList.toggle('hidden', horasEnTurno < AVISO_ALMUERZO_TRAS_HORAS);
+        }
 
         // ===================================== Diagnóstico de errores =====================================
         // Traduce el código técnico de Firebase a una instrucción concreta para el colaborador.
@@ -3683,6 +3707,7 @@
                 s1.classList.remove('hidden'); selects.classList.remove('hidden');
                 sc.disabled = false; so.disabled = false; sa.disabled = false;
                 validarSelectores();
+                datosRegistroActivo = null;
             } else if (state === 'turno') {
                 s2.classList.remove('hidden'); selects.classList.remove('hidden');
                 sc.disabled = true; so.disabled = true; sa.disabled = true;
@@ -3698,10 +3723,14 @@
                     ? '<i class="ph-bold ph-arrow-counter-clockwise text-base"></i> Quitar "no tomo almuerzo"'
                     : '<i class="ph-bold ph-prohibit text-base"></i> Hoy no tomo almuerzo (autorizado)';
                 btnOmitir.classList.toggle('hidden', !!data.almuerzo_inicio && !omitido);
+                datosRegistroActivo = data;
+                evaluarAvisoAlmuerzo();
             } else if (state === 'almuerzo') {
                 s3.classList.remove('hidden'); selects.classList.add('hidden');
                 document.getElementById('display-hora-almuerzo').textContent = data.almuerzo_inicio;
+                datosRegistroActivo = null;
             } else if (state === 'completado') {
+                datosRegistroActivo = null;
                 s4.classList.remove('hidden'); selects.classList.add('hidden');
                 document.getElementById('ui-res-ord').textContent = (data.horas_ordinarias || 0) + "h";
                 document.getElementById('ui-res-diurnas').textContent = (data.horas_extras_diurnas || 0) + "h";
