@@ -2,104 +2,346 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helpers
+
+    // Un admin es alguien cuyo UID de Firebase Auth tiene un documento en /admins/
     function esAdmin() {
-      let user = request.auth;
-      return user != null && exists(/databases/$(database)/documents/admins/$(user.uid));
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    function esColaboradorActivoAutenticado() {
-      let user = request.auth;
-      return user != null && exists(/databases/$(database)/documents/empleados/$(user.uid));
+    // ENDURECIDO (auditoría 20/09, ronda 2 — Crítico #2): las reglas de Firestore no pueden
+    // reproducir calcularJornadaDiaria() (esa lógica vive solo en el cliente), así que no hay forma
+    // de verificar en el servidor que las horas escritas correspondan exactamente a la entrada/salida
+    // real. Lo que SÍ se puede y se debe exigir es que el resultado sea FÍSICAMENTE posible: nadie
+    // trabaja más de 24 horas en un mismo día y ningún campo de horas es negativo. Esto no valida que
+    // el número sea el CORRECTO, pero cierra el caso concreto encontrado en la auditoría (un
+    // colaborador escribiendo, por ejemplo, horas_extras_nocturnas: 60 en su propio registro).
+    //
+    // BUG CORREGIDO (auditoría 20/09, ronda 3): la primera versión de esta función exigía
+    // "dom <= ord", asumiendo que las horas dominicales/festivas son siempre un subconjunto de las
+    // ordinarias. Eso es FALSO: calcularJornadaDiaria() también marca como dominicales las horas
+    // EXTRA trabajadas un domingo/festivo (Art. 179 CST: el recargo dominical es acumulable con el de
+    // horas extra), así que en un turno largo de domingo horas_dominicales puede superar a
+    // horas_ordinarias con toda razón. Con la regla vieja, un colaborador que de verdad trabajara
+    // extra un domingo habría visto su propio fichaje legítimo rechazado por el servidor
+    // (permission-denied), sin haber hecho nada malo. Ahora "dom" se compara contra el total FÍSICO
+    // de horas trabajadas ese día (ord + extD + extN, que es lo único de lo que "dom" puede ser
+    // subconjunto), y "recNoct" se compara contra "ord" (el recargo nocturno ORDINARIO sí es siempre
+    // un subconjunto de las horas ordinarias, eso no cambió). Se deja un margen de 0.02 para el
+    // redondeo de dos decimales que ya aplica calcularJornadaDiaria().
+    function horasDiaCoherentes() {
+      let d = request.resource.data;
+      let ord = d.get('horas_ordinarias', 0);
+      let extD = d.get('horas_extras_diurnas', 0);
+      let extN = d.get('horas_extras_nocturnas', 0);
+      let recNoct = d.get('horas_recargo_nocturno', 0);
+      let dom = d.get('horas_dominicales', 0);
+      let totalFisico = ord + extD + extN;
+      return ord >= 0 && extD >= 0 && extN >= 0 && recNoct >= 0 && dom >= 0 &&
+             totalFisico <= 24 && recNoct <= (ord + 0.02) && dom <= (totalFisico + 0.02);
     }
 
-    function horasDiaCoherentes(horas) {
-      return horas.horas_ordinarias >= 0 && horas.horas_ordinarias <= 24 &&
-             horas.horas_extras_diurnas >= 0 && horas.horas_extras_diurnas <= 24 &&
-             horas.horas_extras_nocturnas >= 0 && horas.horas_extras_nocturnas <= 24 &&
-             horas.horas_recargo_nocturno >= 0 && horas.horas_recargo_nocturno <= 24 &&
-             horas.horas_dominicales >= 0 && horas.horas_dominicales <= 24 &&
-             (horas.horas_ordinarias + horas.horas_extras_diurnas + horas.horas_extras_nocturnas +
-              horas.horas_recargo_nocturno + horas.horas_dominicales) <= 24;
+    // ENDURECIDO (auditoría 20/09, ronda 4): "Eliminar Colaborador" en el panel Admin marca
+    // activo:false y borra empleados_publico/{cedula} — eso bloquea el LOGIN normal (el buscador de
+    // nombres ya no lo encuentra), pero su cuenta de Firebase Authentication (el PIN) sigue existiendo
+    // tal cual, y el authUid guardado en empleados/{cedula} nunca se borra. La propia app ya avisa de
+    // esto en el mensaje de confirmación ("si ya había creado su PIN, elimínalo también a mano en
+    // Firebase Authentication"), pero mientras eso no se haga a mano, alguien despedido que YA se
+    // había registrado con PIN podía seguir autenticándose directo contra Firebase (sin pasar por la
+    // pantalla de la app) y, con las reglas de más abajo, seguir fichando/cambiando su sueldo como si
+    // nada. Esta función cierra ese hueco a nivel de reglas: además de que el authUid coincida, exige
+    // que el documento de empleados NO esté marcado activo:false.
+    function esColaboradorActivoAutenticado(cedula) {
+      let emp = get(/databases/$(database)/documents/empleados/$(cedula)).data;
+      return request.auth != null &&
+             emp.authUid == request.auth.uid &&
+             emp.get('activo', true) != false;
     }
 
-    function todosCeroExceptoPermiso() {
-      let r = request.resource.data;
-      return r.horas_ordinarias == 0 && r.horas_extras_diurnas == 0 &&
-             r.horas_extras_nocturnas == 0 && r.horas_recargo_nocturno == 0 &&
-             r.horas_dominicales == 0;
+    // ENDURECIDO (auditoría 27/09, ronda 5 — Crítico #3): la rama de "permiso sin horas" de
+    // /empleados/{cedula}/registros/{fecha} (usada por sincronizarPermisoConNomina() cuando un
+    // permiso aprobado no tiene un registro de tiempo real ese día) solo exigía que las horas
+    // fueran cero — sin ningún otro chequeo, ni siquiera request.auth != null. Eso permitía a
+    // cualquiera, incluso sin autenticarse y usando solo la API pública de Firestore, crear (o
+    // en 'update', modificar) un registro de "ausencia" para CUALQUIER cédula, con cualquier
+    // tipo_permiso/nota, sin que existiera ningún permiso real aprobado detrás. Ahora esa rama
+    // exige permiso_id apuntando a un documento real en /permisos/ que (a) pertenece a esa misma
+    // cédula y (b) está en estado 'aprobado' — así el registro solo puede reflejar un permiso que
+    // de verdad se aprobó, para el colaborador correcto.
+    function permisoAprobadoValido(permisoId, cedula) {
+      return permisoId != null &&
+             get(/databases/$(database)/documents/permisos/$(permisoId)).data.trabajador_cedula == cedula &&
+             get(/databases/$(database)/documents/permisos/$(permisoId)).data.estado == 'aprobado';
     }
 
-    // Collections
+    // ENDURECIDO (auditoría 27/09, ronda 5 — Crítico #3, parte 2): lo anterior verifica que el
+    // permiso referenciado esté 'aprobado', pero esa palabra no valía nada si /permisos/ permitía
+    // crear un documento YA con estado:'aprobado' desde el primer escrito (sin haber pasado por
+    // ninguna firma). Ahora un permiso SIEMPRE debe nacer sin estado 'aprobado' (create, más abajo),
+    // y solo puede llegar a 'aprobado' vía update si el propio documento que se está guardando
+    // muestra que los 4 roles (trabajador/jefe/supervisor/rrhh) ya tienen firmado:true. Esto no
+    // verifica la IDENTIDAD de quien firmó cada rol (eso requeriría una Cloud Function, fuera del
+    // alcance de reglas de Firestore — ya señalado en la nota de /permisos/ más abajo); lo que sí
+    // logra es que "aprobado" ya no se pueda alcanzar con una sola escritura arbitraria, sino que
+    // exija reproducir la estructura completa de las 4 firmas.
+    function permisoTieneLas4Firmas() {
+      let f = request.resource.data.firmantes;
+      return f.trabajador.firmado == true &&
+             f.jefe.firmado == true &&
+             f.supervisor.firmado == true &&
+             f.rrhh.firmado == true;
+    }
+
+    // -------------------------------------------------------------------------
+    // REGISTROS DE TIEMPO (consulta "collection group"): el panel Admin, cuando
+    // NO filtras por un colaborador específico, lee los registros de TODOS los
+    // colaboradores a la vez con una consulta especial de Firestore que junta
+    // todas las subcolecciones "registros" (de cualquier colaborador) en una
+    // sola búsqueda. Esa consulta especial necesita su PROPIA regla aparte —
+    // la regla anidada dentro de /empleados/{cedula}/registros/{fecha} de más
+    // abajo NO le aplica automáticamente (es una particularidad de Firestore).
+    // Sin este bloque, la tabla de "Todos los colaboradores" del Consolidado
+    // de Tiempos falla con "Error de permisos o conexión".
+    //
+    // ENDURECIDO (auditoría 20/09, H1): la escritura aquí queda en "false" a
+    // propósito — la app NUNCA escribe usando esta forma de "collection group"
+    // (siempre escribe con la ruta completa empleados/{cedula}/registros/{fecha},
+    // que es la que de verdad manda: ver más abajo). Este bloque solo necesita
+    // permitir la LECTURA agregada; dejar su escritura en "true" —como estaba—
+    // era una puerta de escritura sin ningún control que nadie usaba mal
+    // aposta, pero tampoco hacía falta dejar abierta.
+    // -------------------------------------------------------------------------
+    match /{path=**}/registros/{fecha} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // ADMINS: solo un admin ya autenticado puede leer la lista de admins
+    // (necesario para el propio chequeo de esAdmin()). Nadie puede crear admins
+    // desde la app — eso se hace a mano desde la consola de Firebase.
+    // -------------------------------------------------------------------------
+    match /admins/{uid} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // EMPLEADOS: cada colaborador necesita poder leer su propio documento para
+    // entrar a "Mi Tarjeta" (sin Firebase Auth real, ver limitación arriba).
+    // Escritura: un admin puede cambiar cualquier campo (agregar/editar/eliminar
+    // colaboradores). Sin ser admin, solo se permite actualizar el campo de
+    // salario/tarifa (lo que hace el propio colaborador desde "Mi Tarjeta"),
+    // nunca nombre, cargo, cédula o tipo de vinculación.
+    //
+    // ENDURECIDO (auditoría 20/09, ronda 2 — Crítico #1): esta rama "sin ser admin" solo exigía que
+    // los campos cambiados fueran sueldo_base/tarifa_hora, pero nunca verificaba QUIÉN escribía — le
+    // faltó el mismo candado de authUid que sí tiene 'registros'. Con eso, cualquiera con la consola
+    // del navegador podía ejecutar updateDoc sobre la cédula de OTRO colaborador y cambiarle el
+    // sueldo. Ahora, sin ser Admin, además de limitar los campos, se exige que el authUid del
+    // documento (resource.data, el que YA existe en el servidor) coincida con quien está autenticado
+    // — igual que en 'registros'.
+    // -------------------------------------------------------------------------
     match /empleados/{cedula} {
-      // Lectura: colaborador solo ve su propio documento, admin ve todos
-      allow read: if request.auth != null && (request.auth.uid == cedula || esAdmin());
-
-      // Actualización del perfil: solo el propietario o admin
-      allow update: if request.auth != null && (request.auth.uid == cedula || esAdmin());
+      allow read: if true;
+      allow create, delete: if esAdmin();
+      // ENDURECIDO (ronda 4): se agrega "resource.data.get('activo', true) != false" — si Admin ya
+      // marcó a este colaborador como inactivo (eliminado), ya no puede tocar ni su propio sueldo,
+      // sin depender de que alguien se acuerde de borrar también su cuenta en Firebase Authentication.
+      //
+      // BUG CORREGIDO (soporte, 22/09): esta regla se olvidó del PRIMER guardado del PIN. Cuando un
+      // colaborador crea su PIN por primera vez (o cuando la app repara un authUid que se quedó a
+      // medias, ver el catch de 'auth/email-already-in-use' en el login), el código necesita escribir
+      // SU PROPIO authUid en este documento — pero la única rendija que existía para "no-admin" exigía
+      // que el ÚNICO campo cambiado fuera sueldo_base/tarifa_hora, así que esa escritura de authUid
+      // quedaba rechazada con permission-denied, y la app lo mostraba como "Tu sesión ya no es válida"
+      // incluso para gente entrando por primera vez o cuyo PIN nunca terminó de vincularse (caso real:
+      // Doris, 22/09). Se agrega una rama nueva: solo cuando el documento TODAVÍA no tiene authUid
+      // (nadie se lo puede robar a alguien que ya tiene uno vinculado), el único campo que cambia es
+      // authUid, y el valor que se escribe es exactamente el UID de quien está autenticado (no puede
+      // escribir el UID de otra persona).
+      allow update: if esAdmin() ||
+        (request.auth != null &&
+         resource.data.get('authUid', null) == null &&
+         resource.data.get('activo', true) != false &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid']) &&
+         request.resource.data.authUid == request.auth.uid) ||
+        (request.auth != null &&
+         resource.data.authUid == request.auth.uid &&
+         resource.data.get('activo', true) != false &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['sueldo_base', 'tarifa_hora']));
 
       match /registros/{fecha} {
-        // Lectura: colaborador ve sus registros, admin ve todos
-        allow read: if request.auth != null && (request.auth.uid == cedula || esAdmin());
+        allow read: if true;
 
-        // Creación: tres caminos
-        // 1. Registro normal (con entrada-salida) desde Colaborador: debe tener entrada y validar horas
-        // 2. Registro manual (Cargar Días Anteriores) desde Admin: validar estructura
-        // 3. Sincronización permiso aprobado: verificar que permiso existe y está aprobado
-        allow create: if esColaboradorActivoAutenticado() && (
-          // Camino 1: entrada-salida real del colaborador
-          (request.resource.data.entrada != null && horasDiaCoherentes(request.resource.data)) ||
+        // ENDURECIDO (auditoría 20/09, H1): esto era "allow write: if true" — con las credenciales
+        // públicas de Firebase, cualquiera podía escribir horas fabricadas (extras, dominicales, etc.)
+        // para sí mismo o para OTRO colaborador, sin pasar por la app ni por la pantalla de PIN. Ahora
+        // quien escribe debe ser una de estas tres cosas:
+        //   1. Admin (esAdmin()).
+        //   2. El propio colaborador autenticado — su UID de Firebase Auth coincide con el authUid
+        //      guardado en empleados/{cedula} (ver la nota de "PIN" al inicio del archivo) — para su
+        //      propio fichaje de entrada/salida/almuerzo.
+        //   3. La sincronización de un permiso aprobado por firma remota (SIN login, a propósito — ver
+        //      /permisos/ más abajo): en creación, solo si las horas trabajadas quedan en cero (un
+        //      permiso nunca debe inventar horas de un turno real) Y el permiso_id referenciado
+        //      corresponde a un permiso real, aprobado, de este mismo colaborador (ver ronda 5); en
+        //      actualización, solo si los ÚNICOS campos que cambian son los informativos del permiso
+        //      (tipo/horas/nota/días de vacaciones/permiso_id), con la misma verificación.
+        //
+        // ENDURECIDO (auditoría 20/09, ronda 2 — Crítico #2): la rama 2 (el propio colaborador
+        // autenticado) dejaba escribir CUALQUIER valor en los campos de horas — un colaborador técnico
+        // podía, desde la consola del navegador, escribir horas_extras_nocturnas: 60 en su propio
+        // registro y esas horas se liquidaban, sin ninguna validación del servidor. Ahora esa rama
+        // exige además horasDiaCoherentes() (ver función arriba): valores no negativos y un total por
+        // día que no supere lo físicamente posible en 24 horas.
+        //
+        // ENDURECIDO (ronda 4): se reemplaza el chequeo suelto de authUid por
+        // esColaboradorActivoAutenticado(cedula), que además exige que el colaborador NO esté marcado
+        // activo:false — así "Eliminar Colaborador" corta también la capacidad de fichar, no solo el
+        // login por la pantalla normal de la app (ver la nota de la función).
+        //
+        // ENDURECIDO (ronda 5): ver permisoAprobadoValido() — la rama 3 ya no acepta cualquier
+        // registro con horas en cero, exige que exista un permiso real aprobado detrás.
+        allow create: if esAdmin() ||
+          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes()) ||
+          (request.resource.data.horas_ordinarias == 0 &&
+           request.resource.data.horas_extras_diurnas == 0 &&
+           request.resource.data.horas_extras_nocturnas == 0 &&
+           request.resource.data.horas_recargo_nocturno == 0 &&
+           request.resource.data.horas_dominicales == 0 &&
+           permisoAprobadoValido(request.resource.data.permiso_id, cedula));
 
-          // Camino 2: admin cargando días anteriores (cualquier estructura válida de horas)
-          (esAdmin() && horasDiaCoherentes(request.resource.data)) ||
+        allow update: if esAdmin() ||
+          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes()) ||
+          (request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['tipo_permiso', 'horas_permiso', 'nota_permiso', 'dias_vacaciones_permiso', 'permiso_id']) &&
+           permisoAprobadoValido(request.resource.data.permiso_id, cedula));
 
-          // Camino 3: sincronización de permiso aprobado (todas horas=0, permiso_id apuntando a permiso real)
-          (todosCeroExceptoPermiso() && request.resource.data.permiso_id != null &&
-           get(/databases/$(database)/documents/permisos/$(request.resource.data.permiso_id)).data.estado == 'aprobado' &&
-           get(/databases/$(database)/documents/permisos/$(request.resource.data.permiso_id)).data.trabajador_cedula == cedula)
-        );
-
-        // Actualización: solo el autor del registro o admin
-        allow update: if request.auth != null && (request.auth.uid == cedula || esAdmin());
-
-        // Eliminación: solo admin
-        allow delete: if esAdmin();
+        allow delete: if esAdmin(); // el único botón de borrar un registro individual vive en el panel Admin
       }
     }
 
-    // Permisos: cualquier usuario autenticado puede leer sus permisos
-    match /permisos/{permisoId} {
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.trabajador_cedula || esAdmin()
-      );
+    // Copia "pública" liviana de empleados (solo nombre), usada para el buscador
+    // por nombre al iniciar sesión. Solo admins la modifican (se sincroniza junto
+    // con /empleados/ al agregar/importar colaboradores).
+    match /empleados_publico/{cedula} {
+      allow read: if true;
+      allow create, delete: if esAdmin();
+      // BUG CORREGIDO (soporte, 22/09): igual que en /empleados/, faltaba la rendija para que el
+      // propio colaborador guarde aquí su authUid la primera vez que crea su PIN (o cuando se repara
+      // uno que quedó a medias) — antes esto exigía esAdmin() para CUALQUIER escritura, así que ese
+      // segundo guardado (el que hace posible que el buscador de nombres sepa que ya tiene PIN) también
+      // quedaba rechazado con permission-denied.
+      allow update: if esAdmin() ||
+        (request.auth != null &&
+         resource.data.get('authUid', null) == null &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authUid']) &&
+         request.resource.data.authUid == request.auth.uid);
+    }
 
-      // Crear permiso: colaborador o admin
-      allow create: if request.auth != null && (esColaboradorActivoAutenticado() || esAdmin());
+    // -------------------------------------------------------------------------
+    // CATÁLOGOS: listas compartidas (clientes, obras, supervisores, festivos,
+    // horarios por obra, correos de notificación, límites de permisos, etc.)
+    // Todos las necesitan leer para que funcionen los formularios; solo un
+    // admin puede cambiarlas.
+    // -------------------------------------------------------------------------
+    match /catalogos/{doc} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
 
-      // Actualizar: el dueño del permiso o admin
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.trabajador_cedula || esAdmin()
-      );
+    // -------------------------------------------------------------------------
+    // PERMISOS: se crean y se firman por enlace SIN que la persona inicie
+    // sesión (así fue diseñado a propósito, para que cada firmante entre desde
+    // su propio celular con solo el enlace). Por eso necesita quedar abierto.
+    // Eliminar un permiso por error también está permitido desde la app sin
+    // login (según se pidió); si quieres restringir esto solo a Admin, cambia
+    // la línea de "delete" para exigir esAdmin().
+    //
+    // ENDURECIDO: antes "update" era 100% libre — cualquiera con el ID del
+    // documento (no hace falta ni el enlace de firma) podía reescribir CUALQUIER
+    // campo, incluidas las cédulas de los firmantes, el trabajador, las fechas,
+    // etc. Ahora, sin ser Admin, una escritura solo se permite si el ÚNICO campo
+    // de nivel superior que cambia es 'firmantes' (donde vive la firma de cada
+    // persona) o 'estado' (que pasa a "aprobado" cuando ya firmaron los 4). No
+    // protege campo por campo dentro de 'firmantes' — eso requeriría validar
+    // identidad en un backend (Cloud Function), fuera del alcance de reglas de
+    // Firestore — pero sí evita que alguien reescriba los datos base del
+    // permiso (trabajador, cédula, tipo, fechas) sin ser Admin.
+    // -------------------------------------------------------------------------
+    match /permisos/{id} {
+      allow read: if true;
+      // ENDURECIDO (ronda 5, parte 2): un permiso nace SIEMPRE en un estado distinto de 'aprobado'
+      // (típicamente 'pendiente') — nadie puede crear uno que ya llegue "pre-aprobado".
+      allow create: if request.resource.data.estado != 'aprobado';
+      allow update: if esAdmin() ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firmantes', 'estado']) &&
+         (request.resource.data.estado != 'aprobado' || permisoTieneLas4Firmas()));
+      allow delete: if true; // cámbialo a "esAdmin()" si quieres exigir login de Admin para borrar
+    }
 
-      // Eliminar: solo admin
+    // -------------------------------------------------------------------------
+    // AVISOS DE SEMANA INCUMPLIDA: marcador que crea el propio celular del
+    // colaborador (sin login real, igual que "registros") para no enviar dos
+    // veces el mismo correo de "esta semana no alcanzó las 42h" a RRHH. Solo
+    // Admin puede leerlos y nadie puede modificarlos o borrarlos (registro de
+    // qué avisos ya se mandaron).
+    // -------------------------------------------------------------------------
+    match /avisos_semana_incumplida/{id} {
+      allow create: if true;
+      allow read: if esAdmin();
+      allow update, delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // DESPRENDIBLES DE PAGO: igual que permisos, se crean y se firman por enlace
+    // sin que la persona inicie sesión (cada colaborador firma desde su propio
+    // celular). El ARCHIVO del desprendible en sí NO se guarda aquí — solo el
+    // enlace a Google Drive (o donde lo suban) y la firma del colaborador.
+    // -------------------------------------------------------------------------
+    // ENDURECIDO: igual que en 'permisos', "update" era 100% libre antes. Ahora, sin ser Admin,
+    // solo se permite si los campos que cambian son EXACTAMENTE los que pone la firma remota
+    // (firmado_por, firma, estado, firmado_en) — así no se puede reescribir el monto, el período,
+    // la cédula del trabajador ni el enlace al documento sin iniciar sesión de Admin.
+    match /desprendibles/{id} {
+      allow read, create: if true;
+      allow update: if esAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['firmado_por', 'firma', 'estado', 'firmado_en']);
       allow delete: if esAdmin();
     }
 
-    // Admin settings
-    match /config/{docId} {
-      allow read: if request.auth != null;
-      allow write: if esAdmin();
+    // -------------------------------------------------------------------------
+    // INCAPACIDADES: el formulario para crearlas y el botón de borrar viven SOLO
+    // en el panel Admin, así que crear/borrar exige esAdmin(). Pero la lectura
+    // debe quedar abierta: cada colaborador, sin iniciar sesión, consulta si
+    // tiene una incapacidad activa al entrar a "Mi Tarjeta" (y así bloquear su
+    // fichaje). Además, la función que avisa por correo cuando una incapacidad
+    // está por terminar corre en el arranque de CUALQUIER sesión (incluida la
+    // de un colaborador) y necesita poder marcar 'alerta_ultimo_dia_enviada' en
+    // true; por eso, sin ser admin, solo se permite tocar ese único campo.
+    // -------------------------------------------------------------------------
+    match /incapacidades/{id} {
+      allow read: if true;
+      allow create, delete: if esAdmin();
+      allow update: if esAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['alerta_ultimo_dia_enviada']);
     }
 
-    // Admins (gestión de roles)
-    match /admins/{uid} {
+    // -------------------------------------------------------------------------
+    // AUDITORÍA: cualquiera puede agregar una entrada (para que quede rastro
+    // incluso de acciones hechas sin login, como eliminar un permiso desde la
+    // pestaña Permisos), pero solo un Admin puede LEER el registro completo, y
+    // nadie puede modificar o borrar entradas ya escritas (para que no se pueda
+    // "limpiar el rastro").
+    // -------------------------------------------------------------------------
+    match /auditoria/{id} {
+      allow create: if true;
       allow read: if esAdmin();
-      allow write: if esAdmin();
-    }
-
-    // Deny all others
-    match /{document=**} {
-      allow read, write: if false;
+      allow update, delete: if false;
     }
   }
 }

@@ -6725,7 +6725,8 @@
                         tipo_permiso: data.tipo || null,
                         horas_permiso: parseFloat(data.horas) || 0,
                         dias_vacaciones_permiso: data.tipo === 'Vacaciones' ? (data.dias_vacaciones || 0) : null,
-                        nota_permiso: data.nota || null
+                        nota_permiso: data.nota || null,
+                        permiso_id: permisoId || null
                     });
                 } else {
                     await setDoc(ref, {
