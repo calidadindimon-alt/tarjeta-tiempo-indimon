@@ -5059,7 +5059,28 @@
                     estado: 'completado', loc_entrada: null, loc_salida: null
                 };
 
-                if (entrada && salida) {
+                // MEJORA (sugerida por el usuario, 27/09): "Ausencia injustificada"/"Ausencia
+                // justificada" significan que el colaborador NO trabajó ese día. Si el Admin de
+                // todos modos dejó algo digitado en Entrada/Salida (por ejemplo, quedó de cuando
+                // editaba el registro anterior, o el colaborador llegó unos minutos y se devolvió),
+                // sin este chequeo esas horas se pagaban igual, contradiciendo lo que el propio
+                // Admin ya declaró en "Tipo de permiso". El tipo de permiso manda: se fuerza todo a
+                // 0 sin importar el horario. Ojo: "Se devolvió sin completar la jornada" NO entra
+                // aquí a propósito — ese colaborador sí trabajó una parte real del día y esas horas
+                // deben pagarse, por eso el chequeo es "incluye la palabra Ausencia", no una lista
+                // que también agrupe "Se devolvió" (como sí hace TIPOS_AUSENCIA, usada para el
+                // informe PDF de ausencias, un propósito distinto).
+                const esAusenciaTotal = tipoPermiso.includes('Ausencia');
+                if (esAusenciaTotal) {
+                    data.horas_ordinarias = 0;
+                    data.horas_extras_diurnas = 0;
+                    data.horas_extras_nocturnas = 0;
+                    data.horas_recargo_nocturno = 0;
+                    data.es_dominical_festivo = esDominicalOFestivo(fecha);
+                    data.horas_dominicales = 0;
+                    data.minutos_tarde = 0;
+                    data.horas_descuento_tardanza = 0;
+                } else if (entrada && salida) {
                     const acumuladaSemana = await getOrdinariasAcumuladasSemana(cedula, fecha);
                     const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
                     const calc = calcularJornadaDiaria(data, topeDia);
@@ -5072,7 +5093,7 @@
                     data.minutos_tarde = calc.minutosTarde;
                     data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                 } else {
-                    // Día 100% permiso, sin horario trabajado
+                    // Día 100% permiso (no ausencia), sin horario trabajado
                     data.horas_ordinarias = 0;
                     data.horas_extras_diurnas = 0;
                     data.horas_extras_nocturnas = 0;
