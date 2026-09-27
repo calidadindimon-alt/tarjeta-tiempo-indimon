@@ -1,0 +1,105 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helpers
+    function esAdmin() {
+      let user = request.auth;
+      return user != null && exists(/databases/$(database)/documents/admins/$(user.uid));
+    }
+
+    function esColaboradorActivoAutenticado() {
+      let user = request.auth;
+      return user != null && exists(/databases/$(database)/documents/empleados/$(user.uid));
+    }
+
+    function horasDiaCoherentes(horas) {
+      return horas.horas_ordinarias >= 0 && horas.horas_ordinarias <= 24 &&
+             horas.horas_extras_diurnas >= 0 && horas.horas_extras_diurnas <= 24 &&
+             horas.horas_extras_nocturnas >= 0 && horas.horas_extras_nocturnas <= 24 &&
+             horas.horas_recargo_nocturno >= 0 && horas.horas_recargo_nocturno <= 24 &&
+             horas.horas_dominicales >= 0 && horas.horas_dominicales <= 24 &&
+             (horas.horas_ordinarias + horas.horas_extras_diurnas + horas.horas_extras_nocturnas +
+              horas.horas_recargo_nocturno + horas.horas_dominicales) <= 24;
+    }
+
+    function todosCeroExceptoPermiso() {
+      let r = request.resource.data;
+      return r.horas_ordinarias == 0 && r.horas_extras_diurnas == 0 &&
+             r.horas_extras_nocturnas == 0 && r.horas_recargo_nocturno == 0 &&
+             r.horas_dominicales == 0;
+    }
+
+    // Collections
+    match /empleados/{cedula} {
+      // Lectura: colaborador solo ve su propio documento, admin ve todos
+      allow read: if request.auth != null && (request.auth.uid == cedula || esAdmin());
+
+      // Actualización del perfil: solo el propietario o admin
+      allow update: if request.auth != null && (request.auth.uid == cedula || esAdmin());
+
+      match /registros/{fecha} {
+        // Lectura: colaborador ve sus registros, admin ve todos
+        allow read: if request.auth != null && (request.auth.uid == cedula || esAdmin());
+
+        // Creación: tres caminos
+        // 1. Registro normal (con entrada-salida) desde Colaborador: debe tener entrada y validar horas
+        // 2. Registro manual (Cargar Días Anteriores) desde Admin: validar estructura
+        // 3. Sincronización permiso aprobado: verificar que permiso existe y está aprobado
+        allow create: if esColaboradorActivoAutenticado() && (
+          // Camino 1: entrada-salida real del colaborador
+          (request.resource.data.entrada != null && horasDiaCoherentes(request.resource.data)) ||
+
+          // Camino 2: admin cargando días anteriores (cualquier estructura válida de horas)
+          (esAdmin() && horasDiaCoherentes(request.resource.data)) ||
+
+          // Camino 3: sincronización de permiso aprobado (todas horas=0, permiso_id apuntando a permiso real)
+          (todosCeroExceptoPermiso() && request.resource.data.permiso_id != null &&
+           get(/databases/$(database)/documents/permisos/$(request.resource.data.permiso_id)).data.estado == 'aprobado' &&
+           get(/databases/$(database)/documents/permisos/$(request.resource.data.permiso_id)).data.trabajador_cedula == cedula)
+        );
+
+        // Actualización: solo el autor del registro o admin
+        allow update: if request.auth != null && (request.auth.uid == cedula || esAdmin());
+
+        // Eliminación: solo admin
+        allow delete: if esAdmin();
+      }
+    }
+
+    // Permisos: cualquier usuario autenticado puede leer sus permisos
+    match /permisos/{permisoId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.trabajador_cedula || esAdmin()
+      );
+
+      // Crear permiso: colaborador o admin
+      allow create: if request.auth != null && (esColaboradorActivoAutenticado() || esAdmin());
+
+      // Actualizar: el dueño del permiso o admin
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.trabajador_cedula || esAdmin()
+      );
+
+      // Eliminar: solo admin
+      allow delete: if esAdmin();
+    }
+
+    // Admin settings
+    match /config/{docId} {
+      allow read: if request.auth != null;
+      allow write: if esAdmin();
+    }
+
+    // Admins (gestión de roles)
+    match /admins/{uid} {
+      allow read: if esAdmin();
+      allow write: if esAdmin();
+    }
+
+    // Deny all others
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

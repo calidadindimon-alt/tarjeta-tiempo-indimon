@@ -6713,7 +6713,9 @@
         // si el día ya tiene un registro de tiempo trabajado, solo añade la etiqueta del permiso como información
         // adicional; si no existe ningún registro ese día, crea uno con horas_ordinarias en 0 (día 100% permiso),
         // igual que hace el formulario manual — así el permiso nunca infla la nómina.
-        async function sincronizarPermisoConNomina(data) {
+        // Nota de seguridad: cuando se crea un registro con todas horas=0, incluye permiso_id para que las rules
+        // de Firestore puedan verificar que el permiso existe y está realmente aprobado, evitando registros falsos.
+        async function sincronizarPermisoConNomina(data, permisoId) {
             if (!data.trabajador_cedula) return; // no se pudo vincular con un colaborador conocido, se omite
             try {
                 const ref = doc(db, 'empleados', data.trabajador_cedula, 'registros', data.fecha);
@@ -6733,6 +6735,7 @@
                         tipo_permiso: data.tipo || null, horas_permiso: parseFloat(data.horas) || 0,
                         dias_vacaciones_permiso: data.tipo === 'Vacaciones' ? (data.dias_vacaciones || 0) : null,
                         nota_permiso: data.nota || null,
+                        permiso_id: permisoId || null,
                         estado: 'completado', loc_entrada: null, loc_salida: null,
                         horas_ordinarias: 0, horas_extras_diurnas: 0, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0,
                         horas_dominicales: 0,
@@ -6784,7 +6787,7 @@
 
                 if (quedoAprobado) {
                     await enviarNotificacionPermiso(data);
-                    await sincronizarPermisoConNomina(data);
+                    await sincronizarPermisoConNomina(data, permisoId);
                     // FASE 4: el saldo de vacaciones solo se descuenta cuando la solicitud queda
                     // realmente aprobada (4 firmas) — no al crearla, porque hasta entonces podría
                     // rechazarse o quedar vencida sin firmarse.
