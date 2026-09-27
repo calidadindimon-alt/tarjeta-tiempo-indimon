@@ -326,6 +326,9 @@
                             <div id="aviso-turno-ayer" class="hidden bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 text-xs font-semibold">
                                 <i class="ph-bold ph-warning-circle"></i> Este turno quedó abierto desde ayer. Si de verdad trabajaste toda la noche, pulsa "Fin de Jornada" para cerrarlo con la hora real. Si fue un olvido (no trabajaste toda la noche), avísale a SSTA para que lo corrija.
                             </div>
+                            <div id="aviso-recordar-almuerzo" class="hidden bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 text-xs font-semibold">
+                                <i class="ph-bold ph-coffee"></i> Ya llevas varias horas en turno y no has marcado tu almuerzo. Si ya almorzaste, pulsa "Iniciar Almuerzo" (aunque sea tarde) para que se descuente correctamente. Si hoy no tomas almuerzo, usa el botón de abajo.
+                            </div>
                             <div class="bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-200 flex justify-between items-center text-sm font-medium shadow-sm">
                                 <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> En Turno desde:</span>
                                 <span id="display-hora-entrada" class="font-bold font-mono text-emerald-900 bg-white px-2 py-0.5 rounded shadow-sm border border-emerald-100">--:--</span>
@@ -1630,6 +1633,7 @@
             // Reloj del encabezado también fijo a hora de Colombia (ver getHoraActualStr) — para que sea
             // consistente con lo que realmente se graba en cada fichaje, sin importar el país del celular.
             document.getElementById('header-date').textContent = n.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', weekday: 'short', month: 'short', day: 'numeric' }) + " - " + n.toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false, hour: '2-digit', minute:'2-digit' });
+            evaluarAvisoAlmuerzo();
         }, 1000);
 
         document.getElementById('btn-close-alert').addEventListener('click', UI.closeAlert);
@@ -1674,6 +1678,26 @@
             const val = (tipo) => partes.find(p => p.type === tipo).value;
             return `${val('hour')}:${val('minute')}`;
         };
+
+        // MEJORA (sugerida por el usuario, 26/09): si al colaborador se le olvida marcar el inicio de
+        // almuerzo (o lo marca mucho después de haber almorzado en realidad), calcularJornadaDiaria()
+        // no tiene forma de saberlo — solo ve las horas que quedaron guardadas y calcula extra sobre
+        // eso. Este aviso no cambia ningún cálculo: solo recuerda a tiempo, mientras el turno sigue
+        // abierto, para que el propio colaborador corrija su fichaje antes de que termine el día.
+        const AVISO_ALMUERZO_TRAS_HORAS = 5;
+        let datosRegistroActivo = null;
+
+        function evaluarAvisoAlmuerzo() {
+            const aviso = document.getElementById('aviso-recordar-almuerzo');
+            const data = datosRegistroActivo;
+            if (!aviso || !data || !data.entrada || data.almuerzo_inicio || data.almuerzo_omitido) {
+                if (aviso) aviso.classList.add('hidden');
+                return;
+            }
+            let horasEnTurno = timeStrToFloat(getHoraActualStr()) - timeStrToFloat(data.entrada);
+            if (horasEnTurno < 0) horasEnTurno += 24; // turno que cruza medianoche
+            aviso.classList.toggle('hidden', horasEnTurno < AVISO_ALMUERZO_TRAS_HORAS);
+        }
 
         // ===================================== Diagnóstico de errores =====================================
         // Traduce el código técnico de Firebase a una instrucción concreta para el colaborador.
@@ -2303,6 +2327,19 @@
             const f = new Date(y, m - 1, d);
             f.setDate(f.getDate() - 1);
             return f.toLocaleDateString('en-CA');
+        }
+
+        // MEJORA (27/09): "Ausencia injustificada"/"Ausencia justificada" en tipo_permiso significan
+        // que el colaborador NO trabajó ese día, sin importar qué haya quedado digitado en
+        // Entrada/Salida (dato residual de una edición anterior, por ejemplo). "Se devolvió sin
+        // completar la jornada" queda fuera a propósito: ese colaborador sí trabajó una parte real
+        // del día y esas horas deben pagarse. Se centraliza aquí porque tanto el guardado manual
+        // (btn-save-manual) como recalcularSemana() liquidan horas a partir del horario, y las DOS
+        // necesitan respetar esta regla — si solo una lo hace, la otra deshace el efecto de la
+        // primera en cuanto corre (ver auditoría 27/09: recalcularSemana() se dispara automático
+        // justo después de guardar un día pasado, y sobrescribía los ceros con el cálculo normal).
+        function esAusenciaSinHoras(tipoPermiso) {
+            return !!(tipoPermiso && tipoPermiso.includes('Ausencia'));
         }
 
         function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
@@ -3360,6 +3397,15 @@
                 }
 
                 if (action === 'in') {
+                    // Si Admin había marcado este día como Ausencia (ej. a media mañana, pensando
+                    // que el colaborador no llegaría) y la persona SÍ se presenta y ficha entrada de
+                    // verdad, esa marca ya no aplica. Se limpia aquí mismo: sin esto, tipo_permiso
+                    // seguiría diciendo "Ausencia..." sobre un día con horas reales trabajadas, y
+                    // esAusenciaSinHoras() (ver junto a calcularJornadaDiaria) le pondría esas horas
+                    // en 0 en el próximo recalcularSemana(), quitándole horas que sí trabajó.
+                    if (esAusenciaSinHoras(data.tipo_permiso)) {
+                        data.tipo_permiso = null; data.horas_permiso = 0; data.nota_permiso = null;
+                    }
                     data.entrada = tTime; data.loc_entrada = loc; data.gps_motivo_entrada = gpsMotivo;
                     data.foto_entrada = selfieUrl; data.estado = 'activo';
                     const evalTardanza = evaluarTardanza(data.obra, tTime);
@@ -3683,6 +3729,7 @@
                 s1.classList.remove('hidden'); selects.classList.remove('hidden');
                 sc.disabled = false; so.disabled = false; sa.disabled = false;
                 validarSelectores();
+                datosRegistroActivo = null;
             } else if (state === 'turno') {
                 s2.classList.remove('hidden'); selects.classList.remove('hidden');
                 sc.disabled = true; so.disabled = true; sa.disabled = true;
@@ -3698,10 +3745,14 @@
                     ? '<i class="ph-bold ph-arrow-counter-clockwise text-base"></i> Quitar "no tomo almuerzo"'
                     : '<i class="ph-bold ph-prohibit text-base"></i> Hoy no tomo almuerzo (autorizado)';
                 btnOmitir.classList.toggle('hidden', !!data.almuerzo_inicio && !omitido);
+                datosRegistroActivo = data;
+                evaluarAvisoAlmuerzo();
             } else if (state === 'almuerzo') {
                 s3.classList.remove('hidden'); selects.classList.add('hidden');
                 document.getElementById('display-hora-almuerzo').textContent = data.almuerzo_inicio;
+                datosRegistroActivo = null;
             } else if (state === 'completado') {
+                datosRegistroActivo = null;
                 s4.classList.remove('hidden'); selects.classList.add('hidden');
                 document.getElementById('ui-res-ord').textContent = (data.horas_ordinarias || 0) + "h";
                 document.getElementById('ui-res-diurnas').textContent = (data.horas_extras_diurnas || 0) + "h";
@@ -5030,7 +5081,20 @@
                     estado: 'completado', loc_entrada: null, loc_salida: null
                 };
 
-                if (entrada && salida) {
+                // Ver esAusenciaSinHoras() (arriba, junto a calcularJornadaDiaria) para el porqué:
+                // si el Admin dejó algo digitado en Entrada/Salida en un día marcado como Ausencia,
+                // esas horas NO deben pagarse. El mismo chequeo se aplica también dentro de
+                // recalcularSemana(), que corre automáticamente justo después de este guardado.
+                if (esAusenciaSinHoras(tipoPermiso)) {
+                    data.horas_ordinarias = 0;
+                    data.horas_extras_diurnas = 0;
+                    data.horas_extras_nocturnas = 0;
+                    data.horas_recargo_nocturno = 0;
+                    data.es_dominical_festivo = esDominicalOFestivo(fecha);
+                    data.horas_dominicales = 0;
+                    data.minutos_tarde = 0;
+                    data.horas_descuento_tardanza = 0;
+                } else if (entrada && salida) {
                     const acumuladaSemana = await getOrdinariasAcumuladasSemana(cedula, fecha);
                     const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
                     const calc = calcularJornadaDiaria(data, topeDia);
@@ -5043,7 +5107,7 @@
                     data.minutos_tarde = calc.minutosTarde;
                     data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                 } else {
-                    // Día 100% permiso, sin horario trabajado
+                    // Día 100% permiso (no ausencia), sin horario trabajado
                     data.horas_ordinarias = 0;
                     data.horas_extras_diurnas = 0;
                     data.horas_extras_nocturnas = 0;
@@ -5109,7 +5173,13 @@
             const batch = writeBatch(db);
             for (const dia of dias) {
                 const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumulada;
-                const calc = calcularJornadaDiaria(dia.data, topeDia);
+                // Un día marcado como Ausencia no debe recalcularse desde su horario — ver
+                // esAusenciaSinHoras() junto a calcularJornadaDiaria(). Sin este chequeo, este mismo
+                // recálculo (que corre automático justo después de guardar un día pasado) pisaba los
+                // ceros que btn-save-manual acababa de guardar con las horas del horario digitado.
+                const calc = esAusenciaSinHoras(dia.data.tipo_permiso)
+                    ? { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: esDominicalOFestivo(dia.data.fecha), horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 }
+                    : calcularJornadaDiaria(dia.data, topeDia);
                 batch.update(dia.ref, {
                     horas_ordinarias: calc.ord,
                     horas_extras_diurnas: calc.extD,
