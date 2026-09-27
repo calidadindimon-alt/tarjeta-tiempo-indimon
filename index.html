@@ -2329,6 +2329,19 @@
             return f.toLocaleDateString('en-CA');
         }
 
+        // MEJORA (27/09): "Ausencia injustificada"/"Ausencia justificada" en tipo_permiso significan
+        // que el colaborador NO trabajó ese día, sin importar qué haya quedado digitado en
+        // Entrada/Salida (dato residual de una edición anterior, por ejemplo). "Se devolvió sin
+        // completar la jornada" queda fuera a propósito: ese colaborador sí trabajó una parte real
+        // del día y esas horas deben pagarse. Se centraliza aquí porque tanto el guardado manual
+        // (btn-save-manual) como recalcularSemana() liquidan horas a partir del horario, y las DOS
+        // necesitan respetar esta regla — si solo una lo hace, la otra deshace el efecto de la
+        // primera en cuanto corre (ver auditoría 27/09: recalcularSemana() se dispara automático
+        // justo después de guardar un día pasado, y sobrescribía los ceros con el cálculo normal).
+        function esAusenciaSinHoras(tipoPermiso) {
+            return !!(tipoPermiso && tipoPermiso.includes('Ausencia'));
+        }
+
         function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
             if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 };
 
@@ -5059,19 +5072,11 @@
                     estado: 'completado', loc_entrada: null, loc_salida: null
                 };
 
-                // MEJORA (sugerida por el usuario, 27/09): "Ausencia injustificada"/"Ausencia
-                // justificada" significan que el colaborador NO trabajó ese día. Si el Admin de
-                // todos modos dejó algo digitado en Entrada/Salida (por ejemplo, quedó de cuando
-                // editaba el registro anterior, o el colaborador llegó unos minutos y se devolvió),
-                // sin este chequeo esas horas se pagaban igual, contradiciendo lo que el propio
-                // Admin ya declaró en "Tipo de permiso". El tipo de permiso manda: se fuerza todo a
-                // 0 sin importar el horario. Ojo: "Se devolvió sin completar la jornada" NO entra
-                // aquí a propósito — ese colaborador sí trabajó una parte real del día y esas horas
-                // deben pagarse, por eso el chequeo es "incluye la palabra Ausencia", no una lista
-                // que también agrupe "Se devolvió" (como sí hace TIPOS_AUSENCIA, usada para el
-                // informe PDF de ausencias, un propósito distinto).
-                const esAusenciaTotal = tipoPermiso.includes('Ausencia');
-                if (esAusenciaTotal) {
+                // Ver esAusenciaSinHoras() (arriba, junto a calcularJornadaDiaria) para el porqué:
+                // si el Admin dejó algo digitado en Entrada/Salida en un día marcado como Ausencia,
+                // esas horas NO deben pagarse. El mismo chequeo se aplica también dentro de
+                // recalcularSemana(), que corre automáticamente justo después de este guardado.
+                if (esAusenciaSinHoras(tipoPermiso)) {
                     data.horas_ordinarias = 0;
                     data.horas_extras_diurnas = 0;
                     data.horas_extras_nocturnas = 0;
@@ -5159,7 +5164,13 @@
             const batch = writeBatch(db);
             for (const dia of dias) {
                 const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumulada;
-                const calc = calcularJornadaDiaria(dia.data, topeDia);
+                // Un día marcado como Ausencia no debe recalcularse desde su horario — ver
+                // esAusenciaSinHoras() junto a calcularJornadaDiaria(). Sin este chequeo, este mismo
+                // recálculo (que corre automático justo después de guardar un día pasado) pisaba los
+                // ceros que btn-save-manual acababa de guardar con las horas del horario digitado.
+                const calc = esAusenciaSinHoras(dia.data.tipo_permiso)
+                    ? { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: esDominicalOFestivo(dia.data.fecha), horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 }
+                    : calcularJornadaDiaria(dia.data, topeDia);
                 batch.update(dia.ref, {
                     horas_ordinarias: calc.ord,
                     horas_extras_diurnas: calc.extD,
