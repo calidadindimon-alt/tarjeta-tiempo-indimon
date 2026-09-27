@@ -3397,6 +3397,15 @@
                 }
 
                 if (action === 'in') {
+                    // Si Admin había marcado este día como Ausencia (ej. a media mañana, pensando
+                    // que el colaborador no llegaría) y la persona SÍ se presenta y ficha entrada de
+                    // verdad, esa marca ya no aplica. Se limpia aquí mismo: sin esto, tipo_permiso
+                    // seguiría diciendo "Ausencia..." sobre un día con horas reales trabajadas, y
+                    // esAusenciaSinHoras() (ver junto a calcularJornadaDiaria) le pondría esas horas
+                    // en 0 en el próximo recalcularSemana(), quitándole horas que sí trabajó.
+                    if (esAusenciaSinHoras(data.tipo_permiso)) {
+                        data.tipo_permiso = null; data.horas_permiso = 0; data.nota_permiso = null;
+                    }
                     data.entrada = tTime; data.loc_entrada = loc; data.gps_motivo_entrada = gpsMotivo;
                     data.foto_entrada = selfieUrl; data.estado = 'activo';
                     const evalTardanza = evaluarTardanza(data.obra, tTime);
