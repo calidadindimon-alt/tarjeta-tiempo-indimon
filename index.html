@@ -472,6 +472,12 @@
                     </div>
                     <p class="text-[10px] text-slate-400 -mt-1">Si son varios correos, sepáralos con punto y coma ( ; ).</p>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alerta de ausencia injustificada</label>
+                        <input type="text" id="input-email-alerta-ausencia" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="analistagh@indimon.com.co; ana.bohorquez@indimon.com.co">
+                        <button id="btn-save-email-alerta-ausencia" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 -mt-1">Se envía cuando se registra una Ausencia injustificada desde "Cargar Días Anteriores". Si son varios correos, sepáralos con punto y coma ( ; ).</p>
+                    <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
                         <label class="text-[10px] font-bold text-slate-500 uppercase">Correo de RRHH (notificación de permisos)</label>
                         <input type="email" id="input-email-rrhh" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="rrhh@indimon.com">
                     </div>
@@ -1261,6 +1267,14 @@
         // Pega aquí el Template ID de esa plantilla (la misma que ya creaste como "Patrón de Tardanzas"):
         const EMAILJS_TEMPLATE_GENERAL_ID = "template_q7nomyb";
 
+        // MEJORA (sugerida por el usuario, 27/09): alerta por correo cuando se registra una Ausencia
+        // injustificada (ver btn-save-manual, más abajo). Se deja como valor por defecto aquí para que
+        // funcione sin necesidad de configurar nada primero; si Admin quiere cambiar los destinatarios
+        // más adelante, puede editarlos en Configuración → "Correo(s) para alerta de ausencia
+        // injustificada" (se guardan en catalogos/listas.email_alerta_ausencia, que tiene prioridad
+        // sobre este valor por defecto una vez configurado).
+        const EMAIL_ALERTA_AUSENCIA_DEFAULT = "analistagh@indimon.com.co;ana.bohorquez@indimon.com.co";
+
         // =====================================================================================
         //  CONFIGURACIÓN DE FIREBASE
         //  1. Crea un proyecto en https://console.firebase.google.com
@@ -1441,6 +1455,7 @@
             email_alertas: "",                     // correo del administrador que recibe alertas de tardanza
             email_rrhh: "",                        // correo de RRHH que recibe notificación cuando un permiso queda aprobado (4 firmas)
             email_coordinador: "",                  // correo del coordinador de proyectos que recibe la misma notificación
+            email_alerta_ausencia: EMAIL_ALERTA_AUSENCIA_DEFAULT, // correo(s) que reciben la alerta de Ausencia injustificada
             dias_vencimiento_permiso: 5,             // días sin completar las 4 firmas antes de marcar un permiso como "Vencido"
             limite_permisos_tipo_mes: 3,               // aviso si un colaborador supera esta cantidad del mismo tipo de permiso en un mes
             limite_tardanzas_mes: 3,                   // aviso a RRHH/coordinador cuando un colaborador acumula esta cantidad de tardanzas en el mes
@@ -2222,6 +2237,28 @@
                     });
                 } catch (e) {
                     console.error(`No se pudo enviar la alerta de tardanza a ${destino}:`, e);
+                }
+            }
+        }
+
+        // Alerta por correo cuando Admin registra una Ausencia injustificada desde "Guardar Registro
+        // Pasado" (ver btn-save-manual). Usa el correo configurado en Configuración → "Correo(s) para
+        // alerta de ausencia injustificada"; si nunca se configuró, cae al valor por defecto
+        // (EMAIL_ALERTA_AUSENCIA_DEFAULT) para que funcione sin pasos previos. Como las demás alertas,
+        // si falla el envío no interrumpe el guardado del registro — solo se deja constancia en consola.
+        async function enviarAlertaAusenciaInjustificada({ empleado, fecha, cliente, obra, autoriza, nota }) {
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
+            const destinos = (catalogosCache.email_alerta_ausencia || EMAIL_ALERTA_AUSENCIA_DEFAULT)
+                .split(';').map(e => e.trim()).filter(Boolean);
+            for (const destino of destinos) {
+                try {
+                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
+                        to_email: destino,
+                        asunto: `Ausencia injustificada — ${empleado} (${fecha})`,
+                        cuerpo: `${empleado} fue registrado con Ausencia injustificada el ${fecha}.\nCliente/Obra: ${cliente} / ${obra}\nRegistrado por: ${autoriza}${nota ? `\nNota: ${nota}` : ''}`
+                    });
+                } catch (e) {
+                    console.error(`No se pudo enviar la alerta de ausencia injustificada a ${destino}:`, e);
                 }
             }
         }
@@ -3788,6 +3825,7 @@
                 document.getElementById('admin-pass').value = '';
                 await initAdminManualEntry();
                 document.getElementById('input-email-alertas').value = catalogosCache.email_alertas || '';
+                document.getElementById('input-email-alerta-ausencia').value = catalogosCache.email_alerta_ausencia || EMAIL_ALERTA_AUSENCIA_DEFAULT;
                 document.getElementById('input-email-rrhh').value = catalogosCache.email_rrhh || '';
                 document.getElementById('input-email-coordinador').value = catalogosCache.email_coordinador || '';
                 document.getElementById('input-dias-vencimiento').value = catalogosCache.dias_vencimiento_permiso ?? 5;
@@ -3997,6 +4035,20 @@
                 await cargarCatalogos();
                 UI.showAlert("Guardado", `Las alertas de tardanza se enviarán a ${email}.`, "success");
                 registrarAuditoria('Cambiar correo de alertas de tardanza', email);
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar el correo.", "error");
+            }
+        });
+
+        document.getElementById('btn-save-email-alerta-ausencia').addEventListener('click', async () => {
+            const email = document.getElementById('input-email-alerta-ausencia').value.trim();
+            if (!email || !email.includes('@')) return UI.showAlert("Correo inválido", "Ingresa un correo válido.", "error");
+            try {
+                await updateDoc(doc(db, 'catalogos', 'listas'), { email_alerta_ausencia: email });
+                await cargarCatalogos();
+                UI.showAlert("Guardado", `Las alertas de ausencia injustificada se enviarán a ${email}.`, "success");
+                registrarAuditoria('Cambiar correo de alerta de ausencia injustificada', email);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo guardar el correo.", "error");
@@ -5119,6 +5171,14 @@
                 }
 
                 await setDoc(doc(db, 'empleados', cedula, 'registros', fecha), data);
+
+                // MEJORA (sugerida por el usuario, 27/09): alerta a RRHH/Analista GH cuando se
+                // registra una Ausencia injustificada — ver enviarAlertaAusenciaInjustificada() más
+                // arriba. Sin await a propósito (igual que las demás alertas de este flujo): es un
+                // best-effort que no debe demorar ni bloquear el guardado del registro.
+                if (tipoPermiso === 'Ausencia injustificada') {
+                    enviarAlertaAusenciaInjustificada({ empleado: nombre, fecha, cliente, obra, autoriza, nota: notaPermiso });
+                }
                 // BUG CORREGIDO (M1): el tope de 42 horas semanales se repartía según lo ya acumulado
                 // en la semana, y los días ya guardados no se volvían a calcular. Al capturar a mano un
                 // día PASADO, las extras terminaban cargadas en un día distinto al que corresponde — y
