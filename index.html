@@ -2219,12 +2219,17 @@
             return { tarde: minutosTarde >= TOLERANCIA_TARDANZA_MIN, minutos: minutosTarde, horaEsperada };
         }
 
+        // Varios campos de correo de Configuración admiten uno o VARIOS correos separados por ";"
+        // (ver "Correo(s) para alertas de tardanza" y "...para alerta de ausencia injustificada").
+        function parseListaCorreos(str) {
+            return (str || '').split(';').map(e => e.trim()).filter(Boolean);
+        }
+
         // Envía la alerta de tardanza por correo al administrador (vía EmailJS, sin backend).
         // Si EmailJS no está configurado, o falla el envío, no interrumpe el registro del empleado.
-        // El campo "Correo para alertas de tardanza" admite uno o VARIOS correos separados por ";"
         async function enviarAlertaTardanza({ empleado, obra, fecha, horaEntrada, horaEsperada, minutos }) {
             if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) return;
-            const destinos = (catalogosCache.email_alertas || '').split(';').map(e => e.trim()).filter(Boolean);
+            const destinos = parseListaCorreos(catalogosCache.email_alertas);
             if (destinos.length === 0) return;
             for (const destino of destinos) {
                 try {
@@ -2248,8 +2253,7 @@
         // si falla el envío no interrumpe el guardado del registro — solo se deja constancia en consola.
         async function enviarAlertaAusenciaInjustificada({ empleado, fecha, cliente, obra, autoriza, nota }) {
             if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
-            const destinos = (catalogosCache.email_alerta_ausencia || EMAIL_ALERTA_AUSENCIA_DEFAULT)
-                .split(';').map(e => e.trim()).filter(Boolean);
+            const destinos = parseListaCorreos(catalogosCache.email_alerta_ausencia || EMAIL_ALERTA_AUSENCIA_DEFAULT);
             for (const destino of destinos) {
                 try {
                     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
