@@ -1,0 +1,29 @@
+name: Prueba de cálculo de jornada
+
+# Corre sola cada vez que se modifica index.html (push o pull request), para detectar en segundos
+# si un cambio rompió el cálculo de horas de nómina — antes de que llegue a producción.
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'tests/**'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'tests/**'
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Probar calcularJornadaDiaria()
+        run: node tests/test-jornada-diaria.mjs
