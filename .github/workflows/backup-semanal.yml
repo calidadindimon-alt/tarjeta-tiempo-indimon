@@ -47,25 +47,24 @@ jobs:
             git push
           fi
 
-      - name: Instalar rclone
-        if: ${{ secrets.RCLONE_CONFIG_ONEDRIVE_INDIMON_TOKEN != '' }}
-        run: curl https://rclone.org/install.sh | sudo bash
-
-      - name: Subir copia a OneDrive
-        if: ${{ secrets.RCLONE_CONFIG_ONEDRIVE_INDIMON_TOKEN != '' }}
+      - name: Subir copia a OneDrive (si ya está configurado)
+        # Nota: GitHub Actions no permite usar "secrets" directo dentro de un "if:" de YAML
+        # (solo se puebla cuando el job ya está corriendo) — por eso el chequeo de si el
+        # secreto existe se hace aquí adentro, en bash, en vez de en la condición del step.
         env:
           RCLONE_CONFIG_ONEDRIVE_INDIMON_TYPE: onedrive
           RCLONE_CONFIG_ONEDRIVE_INDIMON_TOKEN: ${{ secrets.RCLONE_CONFIG_ONEDRIVE_INDIMON_TOKEN }}
           RCLONE_CONFIG_ONEDRIVE_INDIMON_DRIVE_ID: ${{ secrets.RCLONE_CONFIG_ONEDRIVE_INDIMON_DRIVE_ID }}
           RCLONE_CONFIG_ONEDRIVE_INDIMON_DRIVE_TYPE: personal
         run: |
+          if [ -z "$RCLONE_CONFIG_ONEDRIVE_INDIMON_TOKEN" ]; then
+            echo "::warning::No se subió copia a OneDrive porque el secreto RCLONE_CONFIG_ONEDRIVE_INDIMON_TOKEN todavía no está configurado. El backup en el repositorio (backups/) sí se guardó."
+            exit 0
+          fi
+          curl https://rclone.org/install.sh | sudo bash
           rclone copy "${{ steps.backup.outputs.archivo }}" \
             "onedrive_indimon:Documents/información personal tarjeta INDIMON/backups" \
             --no-traverse
           # Poda backups de más de ~100 días en OneDrive para no crecer sin control
           rclone delete "onedrive_indimon:Documents/información personal tarjeta INDIMON/backups" \
             --min-age 100d --no-traverse || true
-
-      - name: Aviso si falta configurar OneDrive
-        if: ${{ secrets.RCLONE_CONFIG_ONEDRIVE_INDIMON_TOKEN == '' }}
-        run: echo "::warning::No se subió copia a OneDrive porque el secreto RCLONE_CONFIG_ONEDRIVE_INDIMON_TOKEN todavía no está configurado. El backup en el repositorio (backups/) sí se guardó."
