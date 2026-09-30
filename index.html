@@ -273,6 +273,7 @@
                             <div class="bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
                                 <p class="text-[9px] font-bold text-slate-400 uppercase leading-tight mb-1">Proyección Nómina</p>
                                 <p id="ui-deducciones" class="text-[10px] font-semibold text-rose-500 money-val blur-text">-8% Seg.Social</p>
+                                <p id="ui-descuento-ausencias" class="hidden text-[10px] font-semibold text-rose-500 money-val blur-text"></p>
                                 <p id="ui-total-neto" class="text-sm font-bold text-slate-800 money-val blur-text mt-0.5">$0</p>
                             </div>
                         </div>
@@ -2383,6 +2384,48 @@
             return !!(tipoPermiso && tipoPermiso.includes('Ausencia'));
         }
 
+        // NORMA LEGAL (30/09, Art. 173 CST): el auxilio de descanso dominical remunerado solo aplica
+        // a quien cumplió TODA su jornada semanal. Si el colaborador falta un día sin causa
+        // justificada (a diferencia de "Ausencia justificada": incapacidad, calamidad o permiso
+        // autorizado — esos SÍ conservan el derecho), pierde el pago del domingo de esa semana. Por
+        // eso una sola falta injustificada descuenta 2 días: el día no laborado + el domingo. A
+        // propósito compara con IGUALDAD exacta ('Ausencia injustificada'), nunca con .includes()
+        // como esAusenciaSinHoras() de arriba — esa función trata ambos tipos de ausencia igual
+        // porque las dos dejan el día en cero horas, pero para ESTE descuento la diferencia entre
+        // justificada e injustificada es exactamente el punto de la norma.
+        function esAusenciaInjustificada(tipoPermiso) {
+            return tipoPermiso === 'Ausencia injustificada';
+        }
+
+        // Cuántos días de sueldo se pierden en UNA semana (lunes-domingo) ya agrupada. El domingo
+        // solo se pierde una vez por semana sin importar cuántos días se haya faltado esa semana —
+        // no hay dos domingos que perder.
+        function diasADescontarPorSemana(registrosSemana) {
+            const diasAusenciaInjustificada = registrosSemana.filter(r => esAusenciaInjustificada(r.tipo_permiso)).length;
+            if (diasAusenciaInjustificada === 0) return 0;
+            return diasAusenciaInjustificada + 1; // +1 = el domingo perdido de esa semana
+        }
+
+        // Recorre TODOS los registros del colaborador (no solo los del mes) porque una semana puede
+        // cruzar el límite entre dos meses — y agrupa por semana ISO (getRangoSemana) para aplicar
+        // diasADescontarPorSemana() a cada una. El descuento de una semana se le atribuye al mes en
+        // el que cae su DOMINGO (el día que realmente se pierde), sin importar en qué mes cayeron
+        // los demás días de esa semana.
+        function calcularDiasDescontadosPorAusenciasMes(todosLosRegistros, mesPrefix) {
+            const porSemana = new Map();
+            for (const r of todosLosRegistros) {
+                if (!r.fecha) continue;
+                const [lunes, domingo] = getRangoSemana(r.fecha);
+                if (!porSemana.has(lunes)) porSemana.set(lunes, { domingo, registros: [] });
+                porSemana.get(lunes).registros.push(r);
+            }
+            let diasTotal = 0;
+            for (const { domingo, registros } of porSemana.values()) {
+                if (domingo.startsWith(mesPrefix)) diasTotal += diasADescontarPorSemana(registros);
+            }
+            return diasTotal;
+        }
+
         function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
             if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 };
 
@@ -2602,10 +2645,16 @@
             }
 
             let totalOrd = 0, totalExtD = 0, totalExtN = 0, totalRecNoct = 0, totalDomHoras = 0;
+            const todosLosRegistros = [];
 
             const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
             snap.forEach(d => {
                 const reg = d.data();
+                // NORMA LEGAL (30/09): se guarda CADA registro (no solo los del mes actual) porque
+                // calcularDiasDescontadosPorAusenciasMes() necesita la semana COMPLETA de cada
+                // ausencia injustificada para saber si esa semana perdió el domingo — una semana
+                // puede empezar en un mes y terminar en el siguiente.
+                if (reg.fecha) todosLosRegistros.push(reg);
                 if (reg.fecha && reg.fecha.startsWith(currentMonthPrefix) && reg.estado === 'completado') {
                     totalOrd += (reg.horas_ordinarias || 0);
                     totalExtD += (reg.horas_extras_diurnas || 0);
@@ -2632,13 +2681,26 @@
 
             document.getElementById('ui-horas-mes').textContent = `${(totalExtD + totalExtN).toFixed(1)}h`;
 
+            // NORMA LEGAL (30/09, Art. 173 CST): ver calcularDiasDescontadosPorAusenciasMes() más
+            // arriba. Se aplica por igual a nómina fija y a contratistas (tarifa por hora) — para
+            // un contratista, "el valor del día" es su tarifa por hora multiplicada por la jornada
+            // legal diaria (8h), ya que no tiene un sueldo mensual del que derivarlo dividiendo por 30.
+            const diasDescontados = calcularDiasDescontadosPorAusenciasMes(todosLosRegistros, currentMonthPrefix);
+            const valorDia = esContratista ? tarifaHora * LEY.JORNADA_ORDINARIA_DIARIA : base / 30;
+            const montoDescuentoAusencias = diasDescontados * (valorDia || 0);
+            const elDescuentoAusencias = document.getElementById('ui-descuento-ausencias');
+            elDescuentoAusencias.classList.toggle('hidden', diasDescontados === 0);
+            if (diasDescontados > 0) {
+                elDescuentoAusencias.textContent = `-${UI.formatCOP(montoDescuentoAusencias)} (${diasDescontados} día${diasDescontados === 1 ? '' : 's'} por ausencia injustificada, Art. 173 CST)`;
+            }
+
             if (esContratista) {
                 // Contratista: no hay salario fijo mensual, se paga cada hora ordinaria trabajada
                 // más los recargos de ley (extra diurna/nocturna, recargo nocturno, dominical/festivo)
                 // calculados sobre su tarifa por hora directamente (sin dividir por 210 como en nómina fija).
                 const pagoOrdinarias = totalOrd * tarifaHora;
                 const pagoExtras = calcularPagoExtras(null, totalExtD, totalExtN, totalRecNoct, totalDomHoras, tarifaHora);
-                const totalBruto = pagoOrdinarias + pagoExtras;
+                const totalBruto = pagoOrdinarias + pagoExtras - montoDescuentoAusencias;
 
                 document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
                 document.getElementById('ui-deducciones').textContent = `${totalOrd.toFixed(1)}h ordinarias × ${UI.formatCOP(tarifaHora)}`;
@@ -2651,7 +2713,7 @@
                 // (en el ejemplo de la auditoría, $61.920 de más en un mes) — y ese es justamente el
                 // número que la gente mira y por el que después reclama.
                 const deducciones = (base + pagoExtras) * LEY.DEDUCCIONES;
-                const netoEstimado = (base + pagoExtras) - deducciones;
+                const netoEstimado = (base + pagoExtras) - deducciones - montoDescuentoAusencias;
 
                 document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
                 document.getElementById('ui-deducciones').textContent = "-" + UI.formatCOP(deducciones) + " (Seg.Social)";

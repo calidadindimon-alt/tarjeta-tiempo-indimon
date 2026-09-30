@@ -5,7 +5,7 @@ export function leerFuente(rutaIndexHtml) {
 }
 
 // Extrae desde el marcador hasta el ";" de nivel superior más cercano (para const de una sola línea).
-function hastaPuntoYComa(fuente, marcador) {
+export function hastaPuntoYComa(fuente, marcador) {
   const inicio = fuente.indexOf(marcador);
   if (inicio === -1) throw new Error(`No se encontró el marcador: "${marcador}"`);
   const fin = fuente.indexOf(';', inicio);
@@ -14,7 +14,7 @@ function hastaPuntoYComa(fuente, marcador) {
 }
 
 // Extrae desde el marcador hasta que el primer "{" o "[" que aparezca quede balanceado con su cierre.
-function bloqueBalanceado(fuente, marcador) {
+export function bloqueBalanceado(fuente, marcador) {
   const inicio = fuente.indexOf(marcador);
   if (inicio === -1) throw new Error(`No se encontró el marcador: "${marcador}"`);
   let i = inicio;
