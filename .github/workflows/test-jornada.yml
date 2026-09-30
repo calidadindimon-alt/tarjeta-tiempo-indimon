@@ -1,7 +1,7 @@
-name: Prueba de cálculo de jornada
+name: Pruebas de nómina (jornada y descuentos)
 
 # Corre sola cada vez que se modifica index.html (push o pull request), para detectar en segundos
-# si un cambio rompió el cálculo de horas de nómina — antes de que llegue a producción.
+# si un cambio rompió el cálculo de horas o de descuentos de nómina — antes de que llegue a producción.
 on:
   push:
     paths:
@@ -27,3 +27,6 @@ jobs:
 
       - name: Probar calcularJornadaDiaria()
         run: node tests/test-jornada-diaria.mjs
+
+      - name: Probar descuento por ausencia injustificada (Art. 173 CST)
+        run: node tests/test-descuento-ausencias.mjs
