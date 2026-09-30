@@ -147,6 +147,7 @@
          a la última versión compatible sin arriesgarse a que cdnjs retire justo el archivo que se pidió. -->
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col relative">
 
@@ -2447,6 +2448,32 @@
             return diasTotal;
         }
 
+        // MEJORA (30/09, sugerida por el usuario): en INDIMON el horario varía por obra — unas
+        // completan las 42 horas legales de lunes a viernes, otras necesitan trabajar también el
+        // sábado. En vez de agregar una configuración manual de "¿qué días se trabajan?" por obra
+        // (que habría que mantener al día y podría quedar desactualizada), la app INFIERE sola: un
+        // sábado, domingo o festivo SIN ningún registro de tiempo se muestra como "Descanso
+        // remunerado" únicamente si esa semana YA completó las 42 horas ordinarias reglamentarias
+        // (LEY.JORNADA_ORDINARIA_SEMANAL). Si no las completó -por ejemplo, porque hubo una falta esa
+        // semana, como el caso de Jhon Freddy- el día NO se infiere como descanso, para no confundirlo
+        // nunca con una ausencia real; en ese caso el hueco queda visible tal cual, junto al descuento
+        // del Art. 173 CST (ver diasADescontarPorSemana arriba), que es justo lo que se quiere ver.
+        //
+        // Es puramente una ETIQUETA calculada al mostrar el historial -nunca se escribe un documento
+        // en Firestore para esto- así que no hay riesgo de que quede desactualizada ni de que choque
+        // con un fichaje real si la persona sí trabajó ese día.
+        function esFinDeSemanaOFestivo(fecha) {
+            const [y, m, d] = fecha.split('-').map(Number);
+            const dow = new Date(y, m - 1, d).getDay(); // 0=domingo, 6=sábado
+            return dow === 6 || esDominicalOFestivo(fecha); // esDominicalOFestivo ya cubre domingo y festivos
+        }
+
+        function esDiaDescansoInferido(fecha, registrosSemana) {
+            if (!esFinDeSemanaOFestivo(fecha)) return false;
+            const totalOrdinariasSemana = registrosSemana.reduce((acc, r) => acc + (r.horas_ordinarias || 0), 0);
+            return totalOrdinariasSemana >= LEY.JORNADA_ORDINARIA_SEMANAL;
+        }
+
         function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
             if (!reg.entrada || !reg.salida) return { ord: 0, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 };
 
@@ -2752,7 +2779,12 @@
             try {
                 const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
                 const registrosPorFecha = {};
-                snap.forEach(d => { const r = d.data(); if ((r.fecha || '').startsWith(mesStr)) registrosPorFecha[r.fecha] = r; });
+                const todosLosRegistros = [];
+                snap.forEach(d => {
+                    const r = d.data();
+                    if (r.fecha) todosLosRegistros.push(r);
+                    if ((r.fecha || '').startsWith(mesStr)) registrosPorFecha[r.fecha] = r;
+                });
 
                 // Permisos del colaborador para este mes: primero por cédula (vínculo confiable);
                 // si un permiso viejo no tiene cédula guardada, se vincula por coincidencia exacta de nombre como respaldo.
@@ -2773,18 +2805,49 @@
                     console.error('No se pudieron cargar los permisos del historial:', e);
                 }
 
-                const fechas = Array.from(new Set([...Object.keys(registrosPorFecha), ...Object.keys(permisosPorFecha)])).sort((a, b) => b.localeCompare(a));
+                const fechas = new Set([...Object.keys(registrosPorFecha), ...Object.keys(permisosPorFecha)]);
 
-                if (fechas.length === 0) {
+                // MEJORA (30/09, sugerida por el usuario): agrega los sábados/domingos/festivos del
+                // mes que no tengan ningún registro ni permiso, pero que la app infiere como
+                // "Descanso remunerado" (ver esDiaDescansoInferido) — así el historial no deja huecos
+                // silenciosos. Si esa semana tuvo una falta injustificada (caso Jhon Freddy), el hueco
+                // queda visible tal cual, sin inventar un descanso que no corresponde.
+                const hoy = getTodayStr();
+                const [anioMes, mesNum] = mesStr.split('-').map(Number);
+                const ultimoDiaMes = new Date(anioMes, mesNum, 0).getDate();
+                const diasDescansoInferido = new Set();
+                for (let dia = 1; dia <= ultimoDiaMes; dia++) {
+                    const fecha = `${mesStr}-${String(dia).padStart(2, '0')}`;
+                    if (fecha >= hoy || registrosPorFecha[fecha] || permisosPorFecha[fecha] || !esFinDeSemanaOFestivo(fecha)) continue;
+                    const [lunes, domingo] = getRangoSemana(fecha);
+                    const registrosSemana = todosLosRegistros.filter(r => r.fecha >= lunes && r.fecha <= domingo);
+                    if (esDiaDescansoInferido(fecha, registrosSemana)) {
+                        diasDescansoInferido.add(fecha);
+                        fechas.add(fecha);
+                    }
+                }
+
+                if (fechas.size === 0) {
                     lista.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No tienes registros en este mes.</p>';
                     return;
                 }
 
-                lista.innerHTML = fechas.map(fecha => {
+                lista.innerHTML = Array.from(fechas).sort((a, b) => b.localeCompare(a)).map(fecha => {
                     const d = registrosPorFecha[fecha];
                     const permisosDia = permisosPorFecha[fecha] || [];
+                    const esDescanso = diasDescansoInferido.has(fecha);
                     const enTurno = d && d.estado !== 'completado';
                     const extrasDia = d ? (d.horas_extras_diurnas || 0) + (d.horas_extras_nocturnas || 0) : 0;
+
+                    if (esDescanso) {
+                        return `
+                        <div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                            <div>
+                                <div class="text-xs font-bold text-slate-700 font-mono">${fecha}</div>
+                                <div class="text-[10px] text-emerald-700 font-semibold mt-0.5 flex items-center gap-1"><i class="ph-bold ph-moon-stars"></i> Descanso remunerado — completaste las 42h de la semana</div>
+                            </div>
+                        </div>`;
+                    }
 
                     const filaPermisos = permisosDia.map(p => {
                         const aprobado = p.estado === 'aprobado';
@@ -5455,7 +5518,57 @@
             return { total, numColaboradores: porColaborador.size, colaboradoresSinPerfil, colaboradoresSinSueldoConfigurado };
         }
 
-        function aplicarFiltrosYRenderizar() {
+        // MEJORA (30/09, sugerida por el usuario): mismo criterio que cargarHistorialPersonal — un
+        // sábado/domingo/festivo sin registro se muestra en el Consolidado como "Descanso remunerado"
+        // si esa semana del colaborador ya completó las 42h legales. Solo se calcula cuando el admin
+        // ya filtró a UN colaborador y UN mes específicos: allRegsCache trae como máximo los 500
+        // registros más recientes de TODA la empresa (collectionGroup con límite), así que no alcanza
+        // para saber con certeza si la semana de un colaborador cualquiera llegó a 42h — por eso aquí
+        // se consulta directo su colección completa, igual que hace la tarjeta personal.
+        async function calcularDiasDescansoInferidoAdmin(cedula, mesStr) {
+            try {
+                const snap = await getDocs(collection(db, 'empleados', cedula, 'registros'));
+                const todosLosRegistros = [];
+                const registrosPorFecha = {};
+                snap.forEach(d => {
+                    const r = d.data();
+                    if (!r.fecha) return;
+                    todosLosRegistros.push(r);
+                    if (r.fecha.startsWith(mesStr)) registrosPorFecha[r.fecha] = r;
+                });
+
+                const permisosPorFecha = {};
+                try {
+                    const permisosSnap = await getDocs(collection(db, 'permisos'));
+                    permisosSnap.forEach(d => {
+                        const p = d.data();
+                        if (!(p.fecha || '').startsWith(mesStr)) return;
+                        if (p.trabajador_cedula !== cedula) return;
+                        permisosPorFecha[p.fecha] = true;
+                    });
+                } catch (e) {
+                    console.error('No se pudieron cargar los permisos para inferir descanso (admin):', e);
+                }
+
+                const hoy = getTodayStr();
+                const [anioMes, mesNum] = mesStr.split('-').map(Number);
+                const ultimoDiaMes = new Date(anioMes, mesNum, 0).getDate();
+                const dias = [];
+                for (let dia = 1; dia <= ultimoDiaMes; dia++) {
+                    const fecha = `${mesStr}-${String(dia).padStart(2, '0')}`;
+                    if (fecha >= hoy || registrosPorFecha[fecha] || permisosPorFecha[fecha] || !esFinDeSemanaOFestivo(fecha)) continue;
+                    const [lunes, domingo] = getRangoSemana(fecha);
+                    const registrosSemana = todosLosRegistros.filter(r => r.fecha >= lunes && r.fecha <= domingo);
+                    if (esDiaDescansoInferido(fecha, registrosSemana)) dias.push(fecha);
+                }
+                return dias;
+            } catch (e) {
+                console.error('No se pudo calcular el descanso inferido para el admin:', e);
+                return [];
+            }
+        }
+
+        async function aplicarFiltrosYRenderizar() {
             const cedulaFiltro = document.getElementById('filtro-colaborador').value;
             const mesFiltro = document.getElementById('filtro-mes').value; // formato AAAA-MM
             const obraFiltro = document.getElementById('filtro-obra').value;
@@ -5506,7 +5619,16 @@
                 cajaCosto.classList.remove('hidden');
             }
 
-            renderAdminTable(filtrados);
+            let filasParaRenderizar = filtrados;
+            if (cedulaFiltro && mesFiltro) {
+                const diasDescanso = await calcularDiasDescansoInferidoAdmin(cedulaFiltro, mesFiltro);
+                if (diasDescanso.length > 0) {
+                    const nombreColaborador = colaboradoresAdminCache.find(c => c.cedula === cedulaFiltro)?.nombre || '';
+                    const filasDescanso = diasDescanso.map(fecha => ({ esDescansoInferido: true, fecha, cedula: cedulaFiltro, empleado_nombre: nombreColaborador }));
+                    filasParaRenderizar = [...filtrados, ...filasDescanso].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+                }
+            }
+            renderAdminTable(filasParaRenderizar);
         }
 
         document.getElementById('filtro-colaborador').addEventListener('change', aplicarFiltrosYRenderizar);
@@ -5559,6 +5681,17 @@
             }
 
             regs.forEach(r => {
+                if (r.esDescansoInferido) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="p-4 border-b border-emerald-100"></td>
+                        <td colspan="6" class="p-4 border-b border-emerald-100 bg-emerald-50">
+                            <div class="font-mono font-bold text-slate-700 text-xs">${escHtml(r.fecha)}</div>
+                            <div class="text-[10px] text-emerald-700 font-semibold mt-0.5 flex items-center gap-1"><i class="ph-bold ph-moon-stars"></i> Descanso remunerado — ${escHtml(r.empleado_nombre || 'colaborador')} completó las 42h de la semana</div>
+                        </td>`;
+                    tbody.appendChild(tr);
+                    return;
+                }
                 const ETIQUETAS_GPS = {
                     webview: 'Abrió desde WhatsApp',
                     permiso_denegado: 'Permiso bloqueado',
@@ -5906,6 +6039,122 @@
             setTimeout(() => URL.revokeObjectURL(url), 5000);
         }
 
+        // ===================================== Exportar a Excel (XLSX, 3 tablas) =====================================
+        // MEJORA (30/09, sugerida por el usuario): el CSV plano de antes salía con columnas angostas y
+        // todo mezclado en una sola tabla. Ahora se genera un .xlsx real (con SheetJS, cargado como
+        // window.XLSX) con columnas anchas y la información separada en 3 tablas, una debajo de la
+        // otra, para que RRHH la lea de un vistazo:
+        //   1) HORAS EXTRA TOTALIZADAS — resumen por colaborador (no día a día).
+        //   2) PERMISOS — incapacidades, citas médicas, vacaciones, etc. (las ausencias van aparte).
+        //   3) AUSENCIAS — incluye cuántos días de sueldo se descuentan esa semana por el Art. 173 CST
+        //      (el caso de Jhon Freddy), agrupando las ausencias del propio archivo por semana ISO.
+        //
+        // Este export es SOLO el reporte visual para RRHH — el respaldo CSV completo antes de "Borrar
+        // Todo" (descargarCsvDeRegistros, arriba) NO se toca: ese debe seguir siendo un volcado plano
+        // y completo de cada campo, sin reformatear nada, porque es la red de seguridad ante un borrado.
+        function construirFilasHorasExtra(rows) {
+            const porColaborador = new Map();
+            rows.forEach(r => {
+                if (!r.cedula) return;
+                const acc = porColaborador.get(r.cedula) || {
+                    nombre: r.empleado_nombre || '', diasTrabajados: 0, ord: 0, extD: 0, extN: 0, recNoct: 0, dom: 0
+                };
+                if (r.estado === 'completado') acc.diasTrabajados++;
+                acc.ord += (r.horas_ordinarias || 0);
+                acc.extD += (r.horas_extras_diurnas || 0);
+                acc.extN += (r.horas_extras_nocturnas || 0);
+                acc.recNoct += (r.horas_recargo_nocturno || 0);
+                acc.dom += (r.horas_dominicales != null ? r.horas_dominicales : (r.es_dominical_festivo ? (r.horas_ordinarias || 0) : 0));
+                porColaborador.set(r.cedula, acc);
+            });
+            return [...porColaborador.entries()]
+                .sort((a, b) => (a[1].nombre || '').localeCompare(b[1].nombre || ''))
+                .map(([cedula, acc]) => [
+                    cedula, acc.nombre, acc.diasTrabajados,
+                    Number(acc.ord.toFixed(2)), Number(acc.extD.toFixed(2)), Number(acc.extN.toFixed(2)),
+                    Number(acc.recNoct.toFixed(2)), Number(acc.dom.toFixed(2))
+                ]);
+        }
+
+        function construirFilasPermisos(rows) {
+            const permisos = rows.filter(r => r.tipo_permiso && !TIPOS_AUSENCIA.includes(r.tipo_permiso));
+            permisos.sort((a, b) => (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '') || (a.fecha || '').localeCompare(b.fecha || ''));
+            return permisos.map(r => [
+                r.cedula, r.empleado_nombre, r.fecha, r.tipo_permiso,
+                r.tipo_permiso === 'Vacaciones' ? `${r.dias_vacaciones_permiso || 0} día(s)` : `${r.horas_permiso || 0}h`,
+                r.nota_permiso || ''
+            ]);
+        }
+
+        function construirFilasAusencias(rows) {
+            const ausencias = rows.filter(r => TIPOS_AUSENCIA.includes(r.tipo_permiso));
+            // Agrupa por colaborador + semana ISO (lunes-domingo) para aplicar diasADescontarPorSemana()
+            // -la MISMA función que ya usa el descuento automático del Art. 173 CST- y mostrar cuántos
+            // días de sueldo se pierden esa semana. OJO: si la semana cruza el límite del filtro de mes
+            // aplicado a este export, el conteo solo ve los días de esa semana que quedaron dentro del
+            // archivo (misma limitación que calcularDiasDescontadosPorAusenciasMes al cruzar de mes).
+            const porSemana = new Map();
+            ausencias.forEach(r => {
+                if (!r.fecha) return;
+                const [lunes] = getRangoSemana(r.fecha);
+                const clave = `${r.cedula}|${lunes}`;
+                if (!porSemana.has(clave)) porSemana.set(clave, []);
+                porSemana.get(clave).push(r);
+            });
+            ausencias.sort((a, b) => (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '') || (a.fecha || '').localeCompare(b.fecha || ''));
+            return ausencias.map(r => {
+                const [lunes] = getRangoSemana(r.fecha);
+                const diasDescontados = diasADescontarPorSemana(porSemana.get(`${r.cedula}|${lunes}`) || []);
+                return [
+                    r.cedula, r.empleado_nombre, r.fecha, r.tipo_permiso,
+                    diasDescontados > 0 ? `${diasDescontados} día(s) (incluye el domingo, Art. 173 CST)` : '—',
+                    r.nota_permiso || ''
+                ];
+            });
+        }
+
+        function descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion) {
+            const aoa = [];
+            const merges = [];
+            const agregarTitulo = (texto, anchoColumnas) => {
+                aoa.push([texto]);
+                merges.push({ s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: anchoColumnas - 1 } });
+            };
+
+            aoa.push(['TARJETA DE TIEMPO INDIMON — Consolidado de Nómina']);
+            merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } });
+            aoa.push([`Filtro: ${filtroDescripcion}`, '', '', '', `Generado: ${getTodayStr()}`]);
+            aoa.push([]);
+
+            agregarTitulo('HORAS EXTRA TOTALIZADAS (resumen por colaborador)', 8);
+            aoa.push(['CEDULA', 'NOMBRE', 'DIAS TRABAJADOS', 'HORAS ORDINARIAS', 'EXTRAS DIURNAS', 'EXTRAS NOCTURNAS', 'RECARGO NOCTURNO', 'HORAS DOMINICALES/FESTIVAS']);
+            const filasExtras = construirFilasHorasExtra(rows);
+            (filasExtras.length > 0 ? filasExtras : [['(sin datos en este filtro)']]).forEach(f => aoa.push(f));
+            aoa.push([]);
+            aoa.push([]);
+
+            agregarTitulo('PERMISOS (incapacidades, citas médicas, vacaciones, etc.)', 6);
+            aoa.push(['CEDULA', 'NOMBRE', 'FECHA', 'TIPO', 'CANTIDAD', 'NOTA']);
+            const filasPermisos = construirFilasPermisos(rows);
+            (filasPermisos.length > 0 ? filasPermisos : [['(sin permisos en este filtro)']]).forEach(f => aoa.push(f));
+            aoa.push([]);
+            aoa.push([]);
+
+            agregarTitulo('AUSENCIAS (descuento del descanso dominical remunerado — Art. 173 CST)', 6);
+            aoa.push(['CEDULA', 'NOMBRE', 'FECHA', 'TIPO', 'DIAS DESCONTADOS ESA SEMANA', 'NOTA']);
+            const filasAusencias = construirFilasAusencias(rows);
+            (filasAusencias.length > 0 ? filasAusencias : [['(sin ausencias en este filtro)']]).forEach(f => aoa.push(f));
+
+            const ws = window.XLSX.utils.aoa_to_sheet(aoa);
+            ws['!merges'] = merges;
+            ws['!cols'] = [
+                { wch: 14 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 30 }
+            ];
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
+            window.XLSX.writeFile(wb, nombreArchivo);
+        }
+
         document.getElementById('btn-export-excel').addEventListener('click', async () => {
             try {
                 const cedulaFiltro = document.getElementById('filtro-colaborador').value;
@@ -5935,16 +6184,25 @@
                 if (rows.length === 0) return UI.showAlert("Aviso", "No hay registros para exportar con ese filtro.", "info");
 
                 let nombreArchivo = "Tiempos_INDIMON";
+                const partesFiltro = [];
                 if (cedulaFiltro) {
                     const selEl = document.getElementById('filtro-colaborador');
-                    const nombreEmpleado = selEl.options[selEl.selectedIndex].text.trim().replace(/[^a-zA-Z0-9]+/g, '_');
-                    nombreArchivo += `_${nombreEmpleado}`;
+                    const nombreEmpleado = selEl.options[selEl.selectedIndex].text.trim();
+                    nombreArchivo += `_${nombreEmpleado.replace(/[^a-zA-Z0-9]+/g, '_')}`;
+                    partesFiltro.push(`Colaborador: ${nombreEmpleado}`);
                 }
-                if (obraFiltro) nombreArchivo += `_${obraFiltro.trim().toUpperCase().replace(/[^a-zA-Z0-9]+/g, '_')}`;
-                if (mesFiltro) nombreArchivo += `_${mesFiltro}`;
-                nombreArchivo += `_${getTodayStr()}.csv`;
+                if (obraFiltro) {
+                    nombreArchivo += `_${obraFiltro.trim().toUpperCase().replace(/[^a-zA-Z0-9]+/g, '_')}`;
+                    partesFiltro.push(`Obra: ${obraFiltro}`);
+                }
+                if (mesFiltro) {
+                    nombreArchivo += `_${mesFiltro}`;
+                    partesFiltro.push(`Mes: ${mesFiltro}`);
+                }
+                nombreArchivo += `_${getTodayStr()}.xlsx`;
+                const filtroDescripcion = partesFiltro.length > 0 ? partesFiltro.join(' · ') : 'Todos los colaboradores, todos los meses';
 
-                descargarCsvDeRegistros(rows, nombreArchivo);
+                descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo generar el archivo de exportación.", "error");

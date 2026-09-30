@@ -1,3 +1,5 @@
 node_modules/
 tests/_extraido.cjs
 tests/_extraido-descuento.cjs
+tests/_extraido-descanso.cjs
+tests/_extraido-excel.cjs

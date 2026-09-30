@@ -30,3 +30,9 @@ jobs:
 
       - name: Probar descuento por ausencia injustificada (Art. 173 CST)
         run: node tests/test-descuento-ausencias.mjs
+
+      - name: Probar inferencia de descanso remunerado (sábado/domingo/festivo)
+        run: node tests/test-descanso-inferido.mjs
+
+      - name: Probar las 3 tablas del export a Excel (extras, permisos, ausencias)
+        run: node tests/test-excel-consolidado.mjs
