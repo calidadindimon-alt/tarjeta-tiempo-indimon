@@ -1,0 +1,100 @@
+// Prueba de regresión de las 3 tablas del export a Excel (Horas extra totalizadas, Permisos,
+// Ausencias): confirma que el resumen por colaborador suma bien, que Permisos y Ausencias quedan
+// separados correctamente, y que el descuento semanal del Art. 173 CST (caso Jhon Freddy) se calcula
+// igual que en el resto de la app dentro de la tabla de Ausencias del Excel.
+import fs from 'fs';
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { leerFuente } from './extraer-calculadora.mjs';
+import { extraerExcelConsolidado } from './extraer-excel-consolidado.mjs';
+
+const DIR_TESTS = dirname(fileURLToPath(import.meta.url));
+const RUTA_INDEX = process.argv[2] || join(DIR_TESTS, '..', 'index.html');
+const RUTA_EXTRAIDO = join(DIR_TESTS, '_extraido-excel.cjs');
+
+const fuente = leerFuente(RUTA_INDEX);
+fs.writeFileSync(RUTA_EXTRAIDO, extraerExcelConsolidado(fuente));
+const require = createRequire(import.meta.url);
+delete require.cache[RUTA_EXTRAIDO];
+const { construirFilasHorasExtra, construirFilasPermisos, construirFilasAusencias } = require('./_extraido-excel.cjs');
+
+const results = [];
+function caso(nombre, fn) {
+  try {
+    fn();
+    results.push({ nombre, ok: true });
+    console.log(`✅ PASS — ${nombre}`);
+  } catch (e) {
+    results.push({ nombre, ok: false, error: e.message });
+    console.log(`❌ FAIL — ${nombre}  (${e.message})`);
+  }
+}
+function assertEqual(obtenido, esperado, msg) {
+  const a = JSON.stringify(obtenido);
+  const b = JSON.stringify(esperado);
+  if (a !== b) throw new Error(`${msg}: esperado ${b}, obtuvo ${a}`);
+}
+
+// ---- Horas extra totalizadas: agrupa por colaborador y suma, sin importar cuántos días tenga ----
+caso('1. Horas extra totalizadas suma por colaborador (no día a día)', () => {
+  const rows = [
+    { cedula: '111', empleado_nombre: 'ANA', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 2, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0, fecha: '2026-06-01' },
+    { cedula: '111', empleado_nombre: 'ANA', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 1, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0, fecha: '2026-06-02' },
+    { cedula: '222', empleado_nombre: 'BEA', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 0, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0, fecha: '2026-06-01' },
+  ];
+  const filas = construirFilasHorasExtra(rows);
+  // Orden alfabético por nombre: ANA antes que BEA.
+  assertEqual(filas.length, 2, 'cantidad de colaboradores');
+  assertEqual(filas[0], ['111', 'ANA', 2, 16, 3, 0, 0, 0], 'fila de ANA (2 días, 16h ord, 3h extra diurna)');
+  assertEqual(filas[1], ['222', 'BEA', 1, 8, 0, 0, 0, 0], 'fila de BEA');
+});
+
+// ---- Permisos: incluye incapacidad/vacaciones pero EXCLUYE las ausencias (van en su propia tabla) ----
+caso('2. Permisos excluye ausencias y muestra días para Vacaciones, horas para el resto', () => {
+  const rows = [
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-06-03', tipo_permiso: 'Incapacidad', horas_permiso: 8, nota_permiso: 'Gripa' },
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-06-04', tipo_permiso: 'Vacaciones', dias_vacaciones_permiso: 5 },
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-06-05', tipo_permiso: 'Ausencia injustificada' },
+  ];
+  const filas = construirFilasPermisos(rows);
+  assertEqual(filas.length, 2, 'cantidad de filas de permisos (sin la ausencia)');
+  assertEqual(filas[0], ['111', 'ANA', '2026-06-03', 'Incapacidad', '8h', 'Gripa'], 'fila de incapacidad');
+  assertEqual(filas[1], ['111', 'ANA', '2026-06-04', 'Vacaciones', '5 día(s)', ''], 'fila de vacaciones');
+});
+
+// ---- Ausencias: caso real Jhon Freddy — falta injustificada un viernes descuenta 2 días (el día + el domingo) ----
+caso('3. Ausencias calcula el descuento semanal del Art. 173 CST (caso Jhon Freddy)', () => {
+  // Semana lunes 2026-06-01 a domingo 2026-06-07 (verificada). Viernes = 2026-06-05.
+  const rows = [
+    { cedula: '333', empleado_nombre: 'JHON FREDDY', estado: 'completado', horas_ordinarias: 8, fecha: '2026-06-01' },
+    { cedula: '333', empleado_nombre: 'JHON FREDDY', estado: 'completado', horas_ordinarias: 8, fecha: '2026-06-02' },
+    { cedula: '333', empleado_nombre: 'JHON FREDDY', estado: 'completado', horas_ordinarias: 8, fecha: '2026-06-03' },
+    { cedula: '333', empleado_nombre: 'JHON FREDDY', estado: 'completado', horas_ordinarias: 8, fecha: '2026-06-04' },
+    { cedula: '333', empleado_nombre: 'JHON FREDDY', fecha: '2026-06-05', tipo_permiso: 'Ausencia injustificada' },
+  ];
+  const filas = construirFilasAusencias(rows);
+  assertEqual(filas.length, 1, 'una sola fila de ausencia');
+  assertEqual(filas[0], ['333', 'JHON FREDDY', '2026-06-05', 'Ausencia injustificada', '2 día(s) (incluye el domingo, Art. 173 CST)', ''], 'descuento de 2 días para Jhon Freddy');
+});
+
+// ---- Ausencia justificada NUNCA descuenta el domingo (conserva el derecho) ----
+caso('4. Ausencia justificada no descuenta ningún día', () => {
+  const rows = [
+    { cedula: '444', empleado_nombre: 'CARLOS', fecha: '2026-06-05', tipo_permiso: 'Ausencia justificada', nota_permiso: 'Cita médica' },
+  ];
+  const filas = construirFilasAusencias(rows);
+  assertEqual(filas[0], ['444', 'CARLOS', '2026-06-05', 'Ausencia justificada', '—', 'Cita médica'], 'sin descuento para ausencia justificada');
+});
+
+console.log('\n========== RESUMEN ==========');
+const fails = results.filter((r) => !r.ok);
+console.log(`${results.length - fails.length} / ${results.length} casos correctos`);
+if (fails.length > 0) {
+  console.log('\nFALLARON:');
+  fails.forEach((f) => console.log(` - ${f.nombre}`));
+  process.exit(1);
+} else {
+  console.log('\nLas 3 tablas del nuevo export a Excel calculan exactamente lo esperado en los casos probados.');
+  process.exit(0);
+}
