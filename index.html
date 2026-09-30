@@ -273,6 +273,7 @@
                             <div class="bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
                                 <p class="text-[9px] font-bold text-slate-400 uppercase leading-tight mb-1">Proyección Nómina</p>
                                 <p id="ui-deducciones" class="text-[10px] font-semibold text-rose-500 money-val blur-text">-8% Seg.Social</p>
+                                <p id="ui-descuento-ausencias" class="hidden text-[10px] font-semibold text-rose-500 money-val blur-text"></p>
                                 <p id="ui-total-neto" class="text-sm font-bold text-slate-800 money-val blur-text mt-0.5">$0</p>
                             </div>
                         </div>
@@ -2219,12 +2220,17 @@
             return { tarde: minutosTarde >= TOLERANCIA_TARDANZA_MIN, minutos: minutosTarde, horaEsperada };
         }
 
+        // Varios campos de correo de Configuración admiten uno o VARIOS correos separados por ";"
+        // (ver "Correo(s) para alertas de tardanza" y "...para alerta de ausencia injustificada").
+        function parseListaCorreos(str) {
+            return (str || '').split(';').map(e => e.trim()).filter(Boolean);
+        }
+
         // Envía la alerta de tardanza por correo al administrador (vía EmailJS, sin backend).
         // Si EmailJS no está configurado, o falla el envío, no interrumpe el registro del empleado.
-        // El campo "Correo para alertas de tardanza" admite uno o VARIOS correos separados por ";"
         async function enviarAlertaTardanza({ empleado, obra, fecha, horaEntrada, horaEsperada, minutos }) {
             if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) return;
-            const destinos = (catalogosCache.email_alertas || '').split(';').map(e => e.trim()).filter(Boolean);
+            const destinos = parseListaCorreos(catalogosCache.email_alertas);
             if (destinos.length === 0) return;
             for (const destino of destinos) {
                 try {
@@ -2241,21 +2247,41 @@
             }
         }
 
+        // Consulta la semana (lunes-domingo) de esta ausencia y devuelve cuántos días de sueldo se
+        // pierden por el Art. 173 CST (ver diasADescontarPorSemana más abajo) — se llama justo
+        // después de guardar la ausencia, así que el registro recién guardado ya queda incluido en
+        // la consulta.
+        async function calcularDiasPerdidosDominicalSemana(cedula, fecha) {
+            const [lunes, domingo] = getRangoSemana(fecha);
+            const snap = await getDocs(query(
+                collection(db, 'empleados', cedula, 'registros'),
+                where(documentId(), '>=', lunes),
+                where(documentId(), '<=', domingo)
+            ));
+            return diasADescontarPorSemana(snap.docs.map(d => d.data()));
+        }
+
         // Alerta por correo cuando Admin registra una Ausencia injustificada desde "Guardar Registro
         // Pasado" (ver btn-save-manual). Usa el correo configurado en Configuración → "Correo(s) para
         // alerta de ausencia injustificada"; si nunca se configuró, cae al valor por defecto
         // (EMAIL_ALERTA_AUSENCIA_DEFAULT) para que funcione sin pasos previos. Como las demás alertas,
         // si falla el envío no interrumpe el guardado del registro — solo se deja constancia en consola.
-        async function enviarAlertaAusenciaInjustificada({ empleado, fecha, cliente, obra, autoriza, nota }) {
+        //
+        // MEJORA (30/09, sugerida por el usuario): incluye también el impacto en nómina del Art. 173
+        // CST (ver calcularDiasPerdidosDominicalSemana arriba) — así RRHH ve en el mismo correo tanto
+        // la falta como cuántos días de sueldo se van a descontar, sin tener que ir a calcularlo aparte.
+        async function enviarAlertaAusenciaInjustificada({ empleado, fecha, cliente, obra, autoriza, nota, diasDescontados = 0 }) {
             if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
-            const destinos = (catalogosCache.email_alerta_ausencia || EMAIL_ALERTA_AUSENCIA_DEFAULT)
-                .split(';').map(e => e.trim()).filter(Boolean);
+            const destinos = parseListaCorreos(catalogosCache.email_alerta_ausencia || EMAIL_ALERTA_AUSENCIA_DEFAULT);
+            const lineaDescuento = diasDescontados > 0
+                ? `\n\nPor el Art. 173 CST, esta falta le hace perder también el pago del domingo de esta semana: se van a descontar ${diasDescontados} día${diasDescontados === 1 ? '' : 's'} de sueldo en la nómina (el día no laborado${diasDescontados > 1 ? ' + los adicionales de esta semana' : ''} + el domingo). El detalle exacto en pesos ya está calculado en "Mi Tarjeta" del colaborador.`
+                : '';
             for (const destino of destinos) {
                 try {
                     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
                         to_email: destino,
                         asunto: `Ausencia injustificada — ${empleado} (${fecha})`,
-                        cuerpo: `${empleado} fue registrado con Ausencia injustificada el ${fecha}.\nCliente/Obra: ${cliente} / ${obra}\nRegistrado por: ${autoriza}${nota ? `\nNota: ${nota}` : ''}`
+                        cuerpo: `${empleado} fue registrado con Ausencia injustificada el ${fecha}.\nCliente/Obra: ${cliente} / ${obra}\nRegistrado por: ${autoriza}${nota ? `\nNota: ${nota}` : ''}${lineaDescuento}`
                     });
                 } catch (e) {
                     console.error(`No se pudo enviar la alerta de ausencia injustificada a ${destino}:`, e);
@@ -2377,6 +2403,48 @@
         // justo después de guardar un día pasado, y sobrescribía los ceros con el cálculo normal).
         function esAusenciaSinHoras(tipoPermiso) {
             return !!(tipoPermiso && tipoPermiso.includes('Ausencia'));
+        }
+
+        // NORMA LEGAL (30/09, Art. 173 CST): el auxilio de descanso dominical remunerado solo aplica
+        // a quien cumplió TODA su jornada semanal. Si el colaborador falta un día sin causa
+        // justificada (a diferencia de "Ausencia justificada": incapacidad, calamidad o permiso
+        // autorizado — esos SÍ conservan el derecho), pierde el pago del domingo de esa semana. Por
+        // eso una sola falta injustificada descuenta 2 días: el día no laborado + el domingo. A
+        // propósito compara con IGUALDAD exacta ('Ausencia injustificada'), nunca con .includes()
+        // como esAusenciaSinHoras() de arriba — esa función trata ambos tipos de ausencia igual
+        // porque las dos dejan el día en cero horas, pero para ESTE descuento la diferencia entre
+        // justificada e injustificada es exactamente el punto de la norma.
+        function esAusenciaInjustificada(tipoPermiso) {
+            return tipoPermiso === 'Ausencia injustificada';
+        }
+
+        // Cuántos días de sueldo se pierden en UNA semana (lunes-domingo) ya agrupada. El domingo
+        // solo se pierde una vez por semana sin importar cuántos días se haya faltado esa semana —
+        // no hay dos domingos que perder.
+        function diasADescontarPorSemana(registrosSemana) {
+            const diasAusenciaInjustificada = registrosSemana.filter(r => esAusenciaInjustificada(r.tipo_permiso)).length;
+            if (diasAusenciaInjustificada === 0) return 0;
+            return diasAusenciaInjustificada + 1; // +1 = el domingo perdido de esa semana
+        }
+
+        // Recorre TODOS los registros del colaborador (no solo los del mes) porque una semana puede
+        // cruzar el límite entre dos meses — y agrupa por semana ISO (getRangoSemana) para aplicar
+        // diasADescontarPorSemana() a cada una. El descuento de una semana se le atribuye al mes en
+        // el que cae su DOMINGO (el día que realmente se pierde), sin importar en qué mes cayeron
+        // los demás días de esa semana.
+        function calcularDiasDescontadosPorAusenciasMes(todosLosRegistros, mesPrefix) {
+            const porSemana = new Map();
+            for (const r of todosLosRegistros) {
+                if (!r.fecha) continue;
+                const [lunes, domingo] = getRangoSemana(r.fecha);
+                if (!porSemana.has(lunes)) porSemana.set(lunes, { domingo, registros: [] });
+                porSemana.get(lunes).registros.push(r);
+            }
+            let diasTotal = 0;
+            for (const { domingo, registros } of porSemana.values()) {
+                if (domingo.startsWith(mesPrefix)) diasTotal += diasADescontarPorSemana(registros);
+            }
+            return diasTotal;
         }
 
         function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
@@ -2598,10 +2666,16 @@
             }
 
             let totalOrd = 0, totalExtD = 0, totalExtN = 0, totalRecNoct = 0, totalDomHoras = 0;
+            const todosLosRegistros = [];
 
             const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
             snap.forEach(d => {
                 const reg = d.data();
+                // NORMA LEGAL (30/09): se guarda CADA registro (no solo los del mes actual) porque
+                // calcularDiasDescontadosPorAusenciasMes() necesita la semana COMPLETA de cada
+                // ausencia injustificada para saber si esa semana perdió el domingo — una semana
+                // puede empezar en un mes y terminar en el siguiente.
+                if (reg.fecha) todosLosRegistros.push(reg);
                 if (reg.fecha && reg.fecha.startsWith(currentMonthPrefix) && reg.estado === 'completado') {
                     totalOrd += (reg.horas_ordinarias || 0);
                     totalExtD += (reg.horas_extras_diurnas || 0);
@@ -2628,13 +2702,26 @@
 
             document.getElementById('ui-horas-mes').textContent = `${(totalExtD + totalExtN).toFixed(1)}h`;
 
+            // NORMA LEGAL (30/09, Art. 173 CST): ver calcularDiasDescontadosPorAusenciasMes() más
+            // arriba. Se aplica por igual a nómina fija y a contratistas (tarifa por hora) — para
+            // un contratista, "el valor del día" es su tarifa por hora multiplicada por la jornada
+            // legal diaria (8h), ya que no tiene un sueldo mensual del que derivarlo dividiendo por 30.
+            const diasDescontados = calcularDiasDescontadosPorAusenciasMes(todosLosRegistros, currentMonthPrefix);
+            const valorDia = esContratista ? tarifaHora * LEY.JORNADA_ORDINARIA_DIARIA : base / 30;
+            const montoDescuentoAusencias = diasDescontados * (valorDia || 0);
+            const elDescuentoAusencias = document.getElementById('ui-descuento-ausencias');
+            elDescuentoAusencias.classList.toggle('hidden', diasDescontados === 0);
+            if (diasDescontados > 0) {
+                elDescuentoAusencias.textContent = `-${UI.formatCOP(montoDescuentoAusencias)} (${diasDescontados} día${diasDescontados === 1 ? '' : 's'} por ausencia injustificada, Art. 173 CST)`;
+            }
+
             if (esContratista) {
                 // Contratista: no hay salario fijo mensual, se paga cada hora ordinaria trabajada
                 // más los recargos de ley (extra diurna/nocturna, recargo nocturno, dominical/festivo)
                 // calculados sobre su tarifa por hora directamente (sin dividir por 210 como en nómina fija).
                 const pagoOrdinarias = totalOrd * tarifaHora;
                 const pagoExtras = calcularPagoExtras(null, totalExtD, totalExtN, totalRecNoct, totalDomHoras, tarifaHora);
-                const totalBruto = pagoOrdinarias + pagoExtras;
+                const totalBruto = pagoOrdinarias + pagoExtras - montoDescuentoAusencias;
 
                 document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
                 document.getElementById('ui-deducciones').textContent = `${totalOrd.toFixed(1)}h ordinarias × ${UI.formatCOP(tarifaHora)}`;
@@ -2647,7 +2734,7 @@
                 // (en el ejemplo de la auditoría, $61.920 de más en un mes) — y ese es justamente el
                 // número que la gente mira y por el que después reclama.
                 const deducciones = (base + pagoExtras) * LEY.DEDUCCIONES;
-                const netoEstimado = (base + pagoExtras) - deducciones;
+                const netoEstimado = (base + pagoExtras) - deducciones - montoDescuentoAusencias;
 
                 document.getElementById('ui-pago-extras').textContent = "+" + UI.formatCOP(pagoExtras);
                 document.getElementById('ui-deducciones').textContent = "-" + UI.formatCOP(deducciones) + " (Seg.Social)";
@@ -5175,9 +5262,15 @@
                 // MEJORA (sugerida por el usuario, 27/09): alerta a RRHH/Analista GH cuando se
                 // registra una Ausencia injustificada — ver enviarAlertaAusenciaInjustificada() más
                 // arriba. Sin await a propósito (igual que las demás alertas de este flujo): es un
-                // best-effort que no debe demorar ni bloquear el guardado del registro.
+                // best-effort que no debe demorar ni bloquear el guardado del registro. Se envuelve en
+                // una función async aparte (MEJORA 30/09) porque ahora primero hay que consultar la
+                // semana completa para saber cuántos días se pierden por el Art. 173 CST antes de
+                // poder componer el correo — esa consulta tampoco debe bloquear el guardado.
                 if (tipoPermiso === 'Ausencia injustificada') {
-                    enviarAlertaAusenciaInjustificada({ empleado: nombre, fecha, cliente, obra, autoriza, nota: notaPermiso });
+                    (async () => {
+                        const diasDescontados = await calcularDiasPerdidosDominicalSemana(cedula, fecha).catch(() => 0);
+                        enviarAlertaAusenciaInjustificada({ empleado: nombre, fecha, cliente, obra, autoriza, nota: notaPermiso, diasDescontados });
+                    })();
                 }
                 // BUG CORREGIDO (M1): el tope de 42 horas semanales se repartía según lo ya acumulado
                 // en la semana, y los días ya guardados no se volvían a calcular. Al capturar a mano un
@@ -6709,7 +6802,9 @@
         // si el día ya tiene un registro de tiempo trabajado, solo añade la etiqueta del permiso como información
         // adicional; si no existe ningún registro ese día, crea uno con horas_ordinarias en 0 (día 100% permiso),
         // igual que hace el formulario manual — así el permiso nunca infla la nómina.
-        async function sincronizarPermisoConNomina(data) {
+        // Nota de seguridad: cuando se crea un registro con todas horas=0, incluye permiso_id para que las rules
+        // de Firestore puedan verificar que el permiso existe y está realmente aprobado, evitando registros falsos.
+        async function sincronizarPermisoConNomina(data, permisoId) {
             if (!data.trabajador_cedula) return; // no se pudo vincular con un colaborador conocido, se omite
             try {
                 const ref = doc(db, 'empleados', data.trabajador_cedula, 'registros', data.fecha);
@@ -6719,7 +6814,8 @@
                         tipo_permiso: data.tipo || null,
                         horas_permiso: parseFloat(data.horas) || 0,
                         dias_vacaciones_permiso: data.tipo === 'Vacaciones' ? (data.dias_vacaciones || 0) : null,
-                        nota_permiso: data.nota || null
+                        nota_permiso: data.nota || null,
+                        permiso_id: permisoId || null
                     });
                 } else {
                     await setDoc(ref, {
@@ -6729,6 +6825,7 @@
                         tipo_permiso: data.tipo || null, horas_permiso: parseFloat(data.horas) || 0,
                         dias_vacaciones_permiso: data.tipo === 'Vacaciones' ? (data.dias_vacaciones || 0) : null,
                         nota_permiso: data.nota || null,
+                        permiso_id: permisoId || null,
                         estado: 'completado', loc_entrada: null, loc_salida: null,
                         horas_ordinarias: 0, horas_extras_diurnas: 0, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0,
                         horas_dominicales: 0,
@@ -6780,7 +6877,7 @@
 
                 if (quedoAprobado) {
                     await enviarNotificacionPermiso(data);
-                    await sincronizarPermisoConNomina(data);
+                    await sincronizarPermisoConNomina(data, permisoId);
                     // FASE 4: el saldo de vacaciones solo se descuenta cuando la solicitud queda
                     // realmente aprobada (4 firmas) — no al crearla, porque hasta entonces podría
                     // rechazarse o quedar vencida sin firmarse.
