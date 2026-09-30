@@ -2247,20 +2247,41 @@
             }
         }
 
+        // Consulta la semana (lunes-domingo) de esta ausencia y devuelve cuántos días de sueldo se
+        // pierden por el Art. 173 CST (ver diasADescontarPorSemana más abajo) — se llama justo
+        // después de guardar la ausencia, así que el registro recién guardado ya queda incluido en
+        // la consulta.
+        async function calcularDiasPerdidosDominicalSemana(cedula, fecha) {
+            const [lunes, domingo] = getRangoSemana(fecha);
+            const snap = await getDocs(query(
+                collection(db, 'empleados', cedula, 'registros'),
+                where(documentId(), '>=', lunes),
+                where(documentId(), '<=', domingo)
+            ));
+            return diasADescontarPorSemana(snap.docs.map(d => d.data()));
+        }
+
         // Alerta por correo cuando Admin registra una Ausencia injustificada desde "Guardar Registro
         // Pasado" (ver btn-save-manual). Usa el correo configurado en Configuración → "Correo(s) para
         // alerta de ausencia injustificada"; si nunca se configuró, cae al valor por defecto
         // (EMAIL_ALERTA_AUSENCIA_DEFAULT) para que funcione sin pasos previos. Como las demás alertas,
         // si falla el envío no interrumpe el guardado del registro — solo se deja constancia en consola.
-        async function enviarAlertaAusenciaInjustificada({ empleado, fecha, cliente, obra, autoriza, nota }) {
+        //
+        // MEJORA (30/09, sugerida por el usuario): incluye también el impacto en nómina del Art. 173
+        // CST (ver calcularDiasPerdidosDominicalSemana arriba) — así RRHH ve en el mismo correo tanto
+        // la falta como cuántos días de sueldo se van a descontar, sin tener que ir a calcularlo aparte.
+        async function enviarAlertaAusenciaInjustificada({ empleado, fecha, cliente, obra, autoriza, nota, diasDescontados = 0 }) {
             if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
             const destinos = parseListaCorreos(catalogosCache.email_alerta_ausencia || EMAIL_ALERTA_AUSENCIA_DEFAULT);
+            const lineaDescuento = diasDescontados > 0
+                ? `\n\nPor el Art. 173 CST, esta falta le hace perder también el pago del domingo de esta semana: se van a descontar ${diasDescontados} día${diasDescontados === 1 ? '' : 's'} de sueldo en la nómina (el día no laborado${diasDescontados > 1 ? ' + los adicionales de esta semana' : ''} + el domingo). El detalle exacto en pesos ya está calculado en "Mi Tarjeta" del colaborador.`
+                : '';
             for (const destino of destinos) {
                 try {
                     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
                         to_email: destino,
                         asunto: `Ausencia injustificada — ${empleado} (${fecha})`,
-                        cuerpo: `${empleado} fue registrado con Ausencia injustificada el ${fecha}.\nCliente/Obra: ${cliente} / ${obra}\nRegistrado por: ${autoriza}${nota ? `\nNota: ${nota}` : ''}`
+                        cuerpo: `${empleado} fue registrado con Ausencia injustificada el ${fecha}.\nCliente/Obra: ${cliente} / ${obra}\nRegistrado por: ${autoriza}${nota ? `\nNota: ${nota}` : ''}${lineaDescuento}`
                     });
                 } catch (e) {
                     console.error(`No se pudo enviar la alerta de ausencia injustificada a ${destino}:`, e);
@@ -5241,9 +5262,15 @@
                 // MEJORA (sugerida por el usuario, 27/09): alerta a RRHH/Analista GH cuando se
                 // registra una Ausencia injustificada — ver enviarAlertaAusenciaInjustificada() más
                 // arriba. Sin await a propósito (igual que las demás alertas de este flujo): es un
-                // best-effort que no debe demorar ni bloquear el guardado del registro.
+                // best-effort que no debe demorar ni bloquear el guardado del registro. Se envuelve en
+                // una función async aparte (MEJORA 30/09) porque ahora primero hay que consultar la
+                // semana completa para saber cuántos días se pierden por el Art. 173 CST antes de
+                // poder componer el correo — esa consulta tampoco debe bloquear el guardado.
                 if (tipoPermiso === 'Ausencia injustificada') {
-                    enviarAlertaAusenciaInjustificada({ empleado: nombre, fecha, cliente, obra, autoriza, nota: notaPermiso });
+                    (async () => {
+                        const diasDescontados = await calcularDiasPerdidosDominicalSemana(cedula, fecha).catch(() => 0);
+                        enviarAlertaAusenciaInjustificada({ empleado: nombre, fecha, cliente, obra, autoriza, nota: notaPermiso, diasDescontados });
+                    })();
                 }
                 // BUG CORREGIDO (M1): el tope de 42 horas semanales se repartía según lo ya acumulado
                 // en la semana, y los días ya guardados no se volvían a calcular. Al capturar a mano un
