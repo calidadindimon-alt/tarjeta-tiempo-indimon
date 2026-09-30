@@ -17,7 +17,7 @@ const fuente = leerFuente(RUTA_INDEX);
 fs.writeFileSync(RUTA_EXTRAIDO, extraerDescansoInferido(fuente));
 const require = createRequire(import.meta.url);
 delete require.cache[RUTA_EXTRAIDO];
-const { esDiaDescansoInferido } = require('./_extraido-descanso.cjs');
+const { esDiaDescansoInferido, diasADescontarPorSemana } = require('./_extraido-descanso.cjs');
 
 const results = [];
 function caso(nombre, fecha, horasPorDia, esperado) {
@@ -41,6 +41,25 @@ caso('5. Festivo entre semana sin registro, semana completó 42h -> Descanso', '
 // infiere como descanso (para no taparle el descuento del Art. 173 CST con un "descanso" falso).
 caso('6. Semana con falta injustificada (Jhon Freddy) -> sábado NO se infiere como descanso', '2026-06-06', [8, 8, 8, 8, 0], false);
 
+// Caso Jhon Freddy, el domingo de esa misma semana: tampoco se infiere como descanso remunerado (ya
+// lo cubre el caso 6), PERO diasADescontarPorSemana() sí debe marcarlo con sanción (2 días: la falta
+// + el domingo perdido) -esta es la combinación exacta que usa el historial (personal y admin) para
+// decidir si un domingo sin registro se muestra como "Descanso remunerado" o como "sanción".
+{
+  const registrosSemanaJhonFreddy = [
+    { fecha: '2026-06-01', horas_ordinarias: 8 },
+    { fecha: '2026-06-02', horas_ordinarias: 8 },
+    { fecha: '2026-06-03', horas_ordinarias: 8 },
+    { fecha: '2026-06-04', horas_ordinarias: 8 },
+    { fecha: '2026-06-05', tipo_permiso: 'Ausencia injustificada' },
+  ];
+  caso('7. Domingo de la semana de Jhon Freddy -> NO es descanso remunerado', '2026-06-07', [8, 8, 8, 8, 0], false);
+  const diasDescontados = diasADescontarPorSemana(registrosSemanaJhonFreddy);
+  const ok7b = diasDescontados === 2;
+  results.push({ nombre: '7b. Esa misma semana SÍ marca sanción (2 días descontados)', ok: ok7b });
+  console.log(`${ok7b ? '✅ PASS' : '❌ FAIL'} — 7b. Esa misma semana SÍ marca sanción (2 días descontados)${ok7b ? '' : `  (esperado 2, obtuvo ${diasDescontados})`}`);
+}
+
 console.log('\n========== RESUMEN ==========');
 const fails = results.filter((r) => !r.ok);
 console.log(`${results.length - fails.length} / ${results.length} casos correctos`);
@@ -49,6 +68,6 @@ if (fails.length > 0) {
   fails.forEach((f) => console.log(` - ${f.nombre}`));
   process.exit(1);
 } else {
-  console.log('\nesDiaDescansoInferido() calcula exactamente lo esperado en los 6 casos probados.');
+  console.log(`\nesDiaDescansoInferido() y diasADescontarPorSemana() calculan exactamente lo esperado en los ${results.length} casos probados.`);
   process.exit(0);
 }
