@@ -1,7 +1,9 @@
-// Prueba de regresión de las 3 tablas del export a Excel (Horas extra totalizadas, Permisos,
-// Ausencias): confirma que el resumen por colaborador suma bien, que Permisos y Ausencias quedan
-// separados correctamente, y que el descuento semanal del Art. 173 CST (caso Jhon Freddy) se calcula
-// igual que en el resto de la app dentro de la tabla de Ausencias del Excel.
+// Prueba de regresión de las 3 tablas del export a Excel (Detalle de horas y extras día por día,
+// Permisos, Ausencias): confirma que la tabla de horas conserva el detalle diario (no lo resume en un
+// total por colaborador — el usuario pidió explícitamente mantener el mismo nivel de detalle que el
+// CSV anterior), que Permisos y Ausencias quedan separados correctamente, y que el descuento semanal
+// del Art. 173 CST (caso Jhon Freddy) se calcula igual que en el resto de la app dentro de la tabla de
+// Ausencias del Excel.
 import fs from 'fs';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
@@ -17,7 +19,7 @@ const fuente = leerFuente(RUTA_INDEX);
 fs.writeFileSync(RUTA_EXTRAIDO, extraerExcelConsolidado(fuente));
 const require = createRequire(import.meta.url);
 delete require.cache[RUTA_EXTRAIDO];
-const { construirFilasHorasExtra, construirFilasPermisos, construirFilasAusencias } = require('./_extraido-excel.cjs');
+const { construirFilasDetalleHoras, construirFilasPermisos, construirFilasAusencias } = require('./_extraido-excel.cjs');
 
 const results = [];
 function caso(nombre, fn) {
@@ -36,18 +38,25 @@ function assertEqual(obtenido, esperado, msg) {
   if (a !== b) throw new Error(`${msg}: esperado ${b}, obtuvo ${a}`);
 }
 
-// ---- Horas extra totalizadas: agrupa por colaborador y suma, sin importar cuántos días tenga ----
-caso('1. Horas extra totalizadas suma por colaborador (no día a día)', () => {
+// ---- Detalle de horas: una fila POR DÍA (no resume en un total por colaborador), con las mismas
+// columnas que ya traía el CSV anterior, y EXCLUYE los días con tipo_permiso (van en otra tabla) ----
+caso('1. Detalle de horas conserva una fila por día, con todas las columnas del CSV anterior', () => {
   const rows = [
-    { cedula: '111', empleado_nombre: 'ANA', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 2, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0, fecha: '2026-06-01' },
-    { cedula: '111', empleado_nombre: 'ANA', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 1, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0, fecha: '2026-06-02' },
-    { cedula: '222', empleado_nombre: 'BEA', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 0, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0, fecha: '2026-06-01' },
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-06-01', estado: 'completado', es_dominical_festivo: false, cliente: 'INDIMON', obra: 'BOGOTA', autoriza: 'JEFE', entrada: '07:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', salida: '17:00', horas_ordinarias: 8, horas_extras_diurnas: 2, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0, minutos_tarde: 0, almuerzo_omitido: false, tardanza_justificada: false },
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-06-02', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 1, horas_extras_nocturnas: 0, horas_recargo_nocturno: 0 },
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-06-03', tipo_permiso: 'Incapacidad', horas_permiso: 8 }, // NO debe aparecer aquí
+    { cedula: '222', empleado_nombre: 'BEA', fecha: '2026-06-01', estado: 'completado', horas_ordinarias: 8 },
   ];
-  const filas = construirFilasHorasExtra(rows);
-  // Orden alfabético por nombre: ANA antes que BEA.
-  assertEqual(filas.length, 2, 'cantidad de colaboradores');
-  assertEqual(filas[0], ['111', 'ANA', 2, 16, 3, 0, 0, 0], 'fila de ANA (2 días, 16h ord, 3h extra diurna)');
-  assertEqual(filas[1], ['222', 'BEA', 1, 8, 0, 0, 0, 0], 'fila de BEA');
+  const filas = construirFilasDetalleHoras(rows);
+  // Orden alfabético por nombre y luego por fecha: ANA (2 días trabajados, sin el permiso) antes que BEA.
+  assertEqual(filas.length, 3, 'cantidad de filas (2 días de ANA + 1 de BEA, sin el permiso)');
+  assertEqual(filas[0], [
+    '111', 'ANA', '2026-06-01', 'NO', 'INDIMON', 'BOGOTA', 'JEFE',
+    '07:00', '12:00', '13:00', '17:00', 8, 2, 0, 0, 0, 0,
+    'COMPLETADO', 'NO', '', 'NO', '', ''
+  ], 'fila completa del día 1 de ANA');
+  assertEqual(filas[1][2], '2026-06-02', 'fila del día 2 de ANA (segunda por orden de fecha)');
+  assertEqual(filas[2], ['222', 'BEA', '2026-06-01', 'NO', '', '', '', '', '', '', '', 8, 0, 0, 0, 0, 0, 'COMPLETADO', 'NO', '', 'NO', '', ''], 'fila de BEA');
 });
 
 // ---- Permisos: incluye incapacidad/vacaciones pero EXCLUYE las ausencias (van en su propia tabla) ----
