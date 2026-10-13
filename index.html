@@ -5671,9 +5671,16 @@
             aplicarFiltrosYRenderizar();
         });
 
+        // BUG CORREGIDO (auditoría 13/10 — XSS almacenado): el thumbnail de la foto ya escapaba su
+        // "src" con escHtml(), pero esta función -que abre la foto en grande al hacer clic- interpolaba
+        // el mismo dataUrl SIN escapar dentro de un document.write(). Como un colaborador autenticado
+        // puede escribir cualquier valor en foto_entrada/foto_salida de su propio registro (las reglas
+        // de Firestore solo validan las horas, no la foto — ver horasDiaCoherentes() en firestore.rules),
+        // un empleado podía inyectar HTML/JS que se ejecutara en la sesión de quien abriera esa foto
+        // -normalmente Admin revisando fichajes- escalando de cuenta de empleado a sesión de Admin.
         window.verFotoCompleta = (dataUrl) => {
             const w = window.open('', '_blank');
-            if (w) w.document.write(`<title>Foto de verificación</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${dataUrl}" style="max-width:100%;max-height:100vh"></body>`);
+            if (w) w.document.write(`<title>Foto de verificación</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${escHtml(dataUrl)}" style="max-width:100%;max-height:100vh"></body>`);
         };
 
         // BUG CORREGIDO: fotoBtn() interpolaba el data:URL de la foto directo dentro de un atributo
@@ -6892,12 +6899,19 @@
                                 const f = p.firmantes?.[s.key];
                                 const link = buildEnlacePermiso(p.id, s.key);
                                 const waTexto = encodeURIComponent(`Hola ${f?.nombre || ''}, te recuerdo que tienes pendiente firmar el permiso de ${p.trabajador} (${p.tipo}, ${p.fecha}). Enlace: ${link}`);
+                                // BUG CORREGIDO (auditoría 13/10 — XSS almacenado): "firma" es el único campo que
+                                // firestore.rules deja escribir a CUALQUIERA sin login (el flujo de firma remota lo
+                                // exige), y las reglas solo controlan QUÉ campo cambia, nunca su contenido. Antes se
+                                // interpolaba sin escapar dentro de src="...": un valor con una comilla rompía el
+                                // atributo e inyectaba HTML/JS que se ejecutaba en la sesión de quien viera este
+                                // historial (normalmente Admin). Mismo tipo de bug que ya se había corregido en
+                                // enlace_documento (ver sanitizeUrl() más abajo), pero se quedó sin tapar aquí.
                                 return `
                                 <div class="bg-slate-50 rounded-lg p-2 border border-slate-100">
                                     <p class="text-[9px] font-bold text-slate-500 uppercase">${s.label}</p>
                                     <p class="text-[10px] font-semibold text-slate-700 mb-1 truncate">${escapeHtml(f?.nombre) || '—'}</p>
                                     ${f?.firmado
-                                        ? `<img src="${f.firma}" class="w-full h-12 object-contain firma-img rounded border border-slate-200">`
+                                        ? `<img src="${escapeHtml(f.firma)}" class="w-full h-12 object-contain firma-img rounded border border-slate-200">`
                                         : `<div class="flex gap-1">
                                              <button class="btn-copy-link-hist btn-touch flex-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar</button>
                                              <a href="https://wa.me/?text=${waTexto}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="btn-touch flex-1 text-center text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded py-1.5"><i class="ph-bold ph-whatsapp-logo"></i> Recordar</a>
@@ -7453,6 +7467,10 @@
                     ? `<span class="text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0"><i class="ph-bold ph-check-circle"></i> Firmado</span>`
                     : `<span class="text-[10px] font-bold uppercase bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0"><i class="ph-bold ph-clock"></i> Pendiente</span>`;
                 const link = buildEnlaceDesprendible(d.id);
+                // BUG CORREGIDO (auditoría 13/10 — XSS almacenado): mismo caso que en permisos (ver
+                // comentario en renderHistorialPermisos). "firma" es el único campo que firestore.rules
+                // deja escribir sin login en /desprendibles/, y se interpolaba sin escapar dentro de
+                // src="..." más abajo.
                 return `
                 <div class="bg-white border border-slate-200 rounded-xl p-3">
                     <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.toggleDesprendibleDetalle('${d.id}')">
@@ -7465,7 +7483,7 @@
                     <div id="detalle-desp-${d.id}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
                         <a href="${escapeHtml(sanitizeUrl(d.enlace_documento))}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 underline flex items-center gap-1"><i class="ph-bold ph-file-text"></i> Ver documento original</a>
                         ${firmado
-                            ? `<img src="${d.firma}" class="w-full h-16 object-contain firma-img rounded border border-slate-200 mt-1">
+                            ? `<img src="${escapeHtml(d.firma)}" class="w-full h-16 object-contain firma-img rounded border border-slate-200 mt-1">
                                <p class="text-[10px] text-slate-500">Firmado por ${escapeHtml(d.firmado_por) || escapeHtml(d.trabajador)} el ${d.firmado_en ? new Date(d.firmado_en).toLocaleString('es-CO') : ''}</p>`
                             : `<button class="btn-copy-link-desp-hist btn-touch w-full text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar enlace de firma</button>`
                         }
