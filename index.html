@@ -1228,6 +1228,49 @@
         </div>
     </div>
 
+    <!-- Modal "Editar Registro" (Admin): corrige entrada/salida/almuerzo de un día ya guardado -por
+         ejemplo uno marcado "Necesita revisión"- sin tocar el GPS ni la foto de verificación, que se
+         guardan aparte y este modal nunca envía al servidor. -->
+    <div id="modal-editar-registro" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-200 px-4">
+        <div id="modal-editar-registro-box" class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] overflow-y-auto">
+            <div class="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
+                <i class="ph-fill ph-pencil-simple-line text-2xl text-amber-600"></i>
+            </div>
+            <h3 class="text-lg font-bold text-center text-slate-800 mb-1">Editar Registro</h3>
+            <p id="editar-registro-subtitulo" class="text-xs text-center text-slate-500 mb-5">—</p>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label>
+                    <input type="time" id="editar-registro-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Salida</label>
+                    <input type="time" id="editar-registro-salida" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio</label>
+                        <input type="time" id="editar-registro-almuerzo-inicio" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin</label>
+                        <input type="time" id="editar-registro-almuerzo-fin" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-slate-600">
+                    <input type="checkbox" id="editar-registro-almuerzo-omitido" class="w-4 h-4 rounded border-slate-300">
+                    Trabajó corrido, sin almuerzo (autorizado por producción)
+                </label>
+            </div>
+
+            <p class="text-[10px] text-slate-400 mt-3 mb-1">Al guardar se recalculan las horas automáticamente y el registro queda como "Completado". La ubicación GPS y la foto de verificación (si existen) no se tocan.</p>
+
+            <button id="btn-editar-registro-guardar" class="btn-touch w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md mb-2 mt-3">Guardar y recalcular</button>
+            <button id="btn-editar-registro-cancelar" class="btn-touch w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-3 rounded-xl text-sm">Cancelar</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
         import {
@@ -5838,13 +5881,21 @@
                         }
                     </td>
                     <td class="p-4 border-b border-slate-100 text-center">
-                        <button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-borrar-registro w-8 h-8 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors flex items-center justify-center mx-auto shadow-sm" title="Eliminar Registro">
-                            <i class="ph-bold ph-trash text-lg"></i>
-                        </button>
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-editar-registro w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-colors flex items-center justify-center shadow-sm" title="Editar Registro (entrada, salida, almuerzo)">
+                                <i class="ph-bold ph-pencil-simple-line text-lg"></i>
+                            </button>
+                            <button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-borrar-registro w-8 h-8 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors flex items-center justify-center shadow-sm" title="Eliminar Registro">
+                                <i class="ph-bold ph-trash text-lg"></i>
+                            </button>
+                        </div>
                     </td>`;
                 tbody.appendChild(tr);
             });
 
+            tbody.querySelectorAll('.btn-editar-registro').forEach(btn => {
+                btn.addEventListener('click', () => abrirEditarRegistro(btn.dataset.cedula, btn.dataset.fecha));
+            });
             tbody.querySelectorAll('.btn-borrar-registro').forEach(btn => {
                 btn.addEventListener('click', () => borrarRegistro(btn.dataset.cedula, btn.dataset.fecha));
             });
@@ -5996,6 +6047,116 @@
             if (str === null || str === undefined) return '';
             return String(str).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
         }
+
+        // ===================================== Editar Registro (Admin) =====================================
+        // Corrige entrada/salida/almuerzo de un día ya guardado -el caso típico es un turno marcado
+        // "Necesita revisión" porque el colaborador olvidó cerrarlo (ver el "out" del fichaje: cuando
+        // el turno queda abierto demasiado tiempo, la app guarda el fichaje real pero NO calcula horas
+        // y deja la decisión a Admin- sin tener que entrar a la consola de Firebase. Antes la propia app
+        // mencionaba esta pantalla en sus mensajes ("Admin debe revisar y corregir en 'Editar
+        // Registro'") pero esa pantalla nunca se construyó; esto la reemplaza.
+        //
+        // A propósito solo toca entrada/salida/almuerzo/horas/estado: NUNCA toca loc_entrada,
+        // loc_salida, foto_entrada ni foto_salida -la ubicación GPS y la foto de verificación, que es
+        // justo lo que no se quiere perder al corregir un día- porque updateDoc() con un objeto parcial
+        // solo escribe los campos que se le pasan, sin tocar el resto del documento.
+        let editarRegistroActual = null; // { cedula, fecha, obra } del registro que está abierto en el modal
+
+        async function abrirEditarRegistro(cedula, fecha) {
+            try {
+                const snap = await getDoc(doc(db, 'empleados', cedula, 'registros', fecha));
+                if (!snap.exists()) return UI.showAlert("No encontrado", "Este registro ya no existe (puede que lo hayan borrado).", "error");
+                const d = snap.data();
+                editarRegistroActual = { cedula, fecha, obra: d.obra || '' };
+
+                document.getElementById('editar-registro-subtitulo').textContent = `${d.empleado_nombre || cedula} · ${fecha}`;
+                document.getElementById('editar-registro-entrada').value = d.entrada || '';
+                document.getElementById('editar-registro-salida').value = d.salida || '';
+                document.getElementById('editar-registro-almuerzo-inicio').value = d.almuerzo_inicio || '';
+                document.getElementById('editar-registro-almuerzo-fin').value = d.almuerzo_fin || '';
+                document.getElementById('editar-registro-almuerzo-omitido').checked = !!d.almuerzo_omitido;
+
+                const m = document.getElementById('modal-editar-registro');
+                const b = document.getElementById('modal-editar-registro-box');
+                m.classList.remove('hidden'); m.classList.add('flex');
+                setTimeout(() => { m.classList.remove('opacity-0'); b.classList.remove('scale-95'); }, 10);
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo cargar el registro para editar.", "error");
+            }
+        }
+
+        function cerrarEditarRegistro() {
+            const m = document.getElementById('modal-editar-registro');
+            const b = document.getElementById('modal-editar-registro-box');
+            m.classList.add('opacity-0'); b.classList.add('scale-95');
+            setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
+            editarRegistroActual = null;
+        }
+        document.getElementById('btn-editar-registro-cancelar').addEventListener('click', cerrarEditarRegistro);
+
+        document.getElementById('btn-editar-registro-guardar').addEventListener('click', async () => {
+            if (!editarRegistroActual) return;
+            const { cedula, fecha, obra } = editarRegistroActual;
+            const entrada = document.getElementById('editar-registro-entrada').value;
+            const salida = document.getElementById('editar-registro-salida').value;
+            const almuerzoInicio = document.getElementById('editar-registro-almuerzo-inicio').value;
+            const almuerzoFin = document.getElementById('editar-registro-almuerzo-fin').value;
+            const almuerzoOmitido = document.getElementById('editar-registro-almuerzo-omitido').checked;
+
+            if (!entrada || !salida) {
+                return UI.showAlert("Faltan datos", "Entrada y salida son obligatorias.", "error");
+            }
+            if ((almuerzoInicio && !almuerzoFin) || (!almuerzoInicio && almuerzoFin)) {
+                return UI.showAlert("Almuerzo incompleto", "Si pones hora de inicio de almuerzo, también pon la de fin (o deja las dos vacías).", "error");
+            }
+
+            const btn = document.getElementById('btn-editar-registro-guardar');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i> Guardando...';
+            try {
+                // Mismo tope semanal de 42h que usa el fichaje normal: se excluye el propio día que se
+                // está editando (getOrdinariasAcumuladasSemana ya lo hace) para no restarse a sí mismo.
+                const acumuladaSemana = await getOrdinariasAcumuladasSemana(cedula, fecha);
+                const topeDia = LEY.JORNADA_ORDINARIA_SEMANAL - acumuladaSemana;
+                const calc = calcularJornadaDiaria({
+                    entrada, salida, fecha, obra,
+                    almuerzo_inicio: almuerzoInicio || null,
+                    almuerzo_fin: almuerzoFin || null,
+                    almuerzo_omitido: almuerzoOmitido
+                }, topeDia);
+
+                const datosNuevos = {
+                    entrada, salida,
+                    almuerzo_inicio: almuerzoInicio || null,
+                    almuerzo_fin: almuerzoFin || null,
+                    almuerzo_omitido: almuerzoOmitido,
+                    estado: 'completado',
+                    nota_revision: null,
+                    horas_ordinarias: calc.ord,
+                    horas_extras_diurnas: calc.extD,
+                    horas_extras_nocturnas: calc.extN,
+                    horas_recargo_nocturno: calc.recNoct,
+                    es_dominical_festivo: calc.dominical,
+                    horas_dominicales: calc.horas_dominicales,
+                    minutos_tarde: calc.minutosTarde,
+                    horas_descuento_tardanza: calc.horasDescontadasTardanza
+                };
+                await updateDoc(doc(db, 'empleados', cedula, 'registros', fecha), datosNuevos);
+                registrarAuditoria('Editar registro (Admin)', `CC ${cedula} · ${fecha}: entrada ${entrada}, salida ${salida}${almuerzoOmitido ? ' · sin almuerzo (autorizado)' : almuerzoInicio ? ` · almuerzo ${almuerzoInicio}-${almuerzoFin}` : ''} → ${calc.ord}h ord., +${calc.extD}h ED, +${calc.extN}h EN`);
+
+                cerrarEditarRegistro();
+                aplicarFiltrosYRenderizar();
+                UI.showAlert("Guardado", `El registro del ${fecha} quedó corregido y recalculado (${calc.ord}h ordinarias). El GPS y la foto de verificación, si existían, no se tocaron.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo guardar el registro editado.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        });
 
         function borrarRegistro(cedula, fecha) {
             UI.showConfirm("Eliminar Registro", `¿Estás seguro que deseas eliminar permanentemente el registro del ${fecha}? Esta acción no se puede deshacer.`, async () => {
