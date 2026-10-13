@@ -5587,12 +5587,38 @@
         // sábado/domingo/festivo sin registro se muestra en el Consolidado como "Descanso remunerado"
         // si esa semana del colaborador ya completó las 42h legales; y si esa semana tuvo una falta
         // injustificada, el domingo se muestra como "sanción" (Art. 173 CST) en vez de quedar como un
-        // hueco silencioso. Solo se calcula cuando el admin ya filtró a UN colaborador y UN mes
-        // específicos: allRegsCache trae como máximo los 500 registros más recientes de TODA la
-        // empresa (collectionGroup con límite), así que no alcanza para saber con certeza si la
-        // semana de un colaborador cualquiera llegó a 42h — por eso aquí se consulta directo su
-        // colección completa, igual que hace la tarjeta personal.
-        async function calcularDiasDescansoInferidoAdmin(cedula, mesStr) {
+        // hueco silencioso.
+        //
+        // MEJORA (13/10, ronda 2 — reportado por el usuario): esto antes solo se calculaba cuando el
+        // admin filtraba por UN colaborador Y UN mes a la vez -si solo filtraba por mes, sin elegir a
+        // nadie en particular, no aparecía nada, aunque "Mi Tarjeta" sí lo muestra siempre-. Ahora, con
+        // solo el filtro de Mes activo, se calcula para TODOS los colaboradores que tengan al menos un
+        // registro ese mes (ver aplicarFiltrosYRenderizar). allRegsCache trae como máximo los 500
+        // registros más recientes de TODA la empresa (collectionGroup con límite), así que no alcanza
+        // para saber con certeza si la semana de un colaborador cualquiera llegó a 42h — por eso aquí
+        // se consulta directo la colección completa de cada colaborador, igual que hace la tarjeta
+        // personal.
+        //
+        // Los permisos del mes se cargan UNA SOLA VEZ para todos los colaboradores (cargarPermisosPorCedulaYFecha,
+        // llamado desde aplicarFiltrosYRenderizar) y se pasan aquí ya armados — así, al revisar varios
+        // colaboradores a la vez, no se repite la misma consulta completa de /permisos/ una vez por cada uno.
+        async function cargarPermisosPorCedulaYFecha(mesStr) {
+            const mapa = new Map(); // cedula -> Set(fechas con permiso)
+            try {
+                const permisosSnap = await getDocs(collection(db, 'permisos'));
+                permisosSnap.forEach(d => {
+                    const p = d.data();
+                    if (!(p.fecha || '').startsWith(mesStr) || !p.trabajador_cedula) return;
+                    if (!mapa.has(p.trabajador_cedula)) mapa.set(p.trabajador_cedula, new Set());
+                    mapa.get(p.trabajador_cedula).add(p.fecha);
+                });
+            } catch (e) {
+                console.error('No se pudieron cargar los permisos para inferir descanso (admin):', e);
+            }
+            return mapa;
+        }
+
+        async function calcularDiasDescansoInferidoAdmin(cedula, mesStr, permisosPorCedula) {
             try {
                 const snap = await getDocs(collection(db, 'empleados', cedula, 'registros'));
                 const todosLosRegistros = [];
@@ -5603,19 +5629,7 @@
                     todosLosRegistros.push(r);
                     if (r.fecha.startsWith(mesStr)) registrosPorFecha[r.fecha] = r;
                 });
-
-                const permisosPorFecha = {};
-                try {
-                    const permisosSnap = await getDocs(collection(db, 'permisos'));
-                    permisosSnap.forEach(d => {
-                        const p = d.data();
-                        if (!(p.fecha || '').startsWith(mesStr)) return;
-                        if (p.trabajador_cedula !== cedula) return;
-                        permisosPorFecha[p.fecha] = true;
-                    });
-                } catch (e) {
-                    console.error('No se pudieron cargar los permisos para inferir descanso (admin):', e);
-                }
+                const fechasConPermiso = permisosPorCedula?.get(cedula) || new Set();
 
                 const hoy = getTodayStr();
                 const [anioMes, mesNum] = mesStr.split('-').map(Number);
@@ -5624,7 +5638,7 @@
                 const sancion = [];
                 for (let dia = 1; dia <= ultimoDiaMes; dia++) {
                     const fecha = `${mesStr}-${String(dia).padStart(2, '0')}`;
-                    if (fecha >= hoy || registrosPorFecha[fecha] || permisosPorFecha[fecha] || !esFinDeSemanaOFestivo(fecha)) continue;
+                    if (fecha >= hoy || registrosPorFecha[fecha] || fechasConPermiso.has(fecha) || !esFinDeSemanaOFestivo(fecha)) continue;
                     const [lunes, domingo] = getRangoSemana(fecha);
                     const registrosSemana = todosLosRegistros.filter(r => r.fecha >= lunes && r.fecha <= domingo);
                     if (fecha === domingo && diasADescontarPorSemana(registrosSemana) > 0) {
@@ -5692,13 +5706,26 @@
             }
 
             let filasParaRenderizar = filtrados;
-            if (cedulaFiltro && mesFiltro) {
-                const { descanso: diasDescanso, sancion: diasSancion } = await calcularDiasDescansoInferidoAdmin(cedulaFiltro, mesFiltro);
-                if (diasDescanso.length > 0 || diasSancion.length > 0) {
-                    const nombreColaborador = colaboradoresAdminCache.find(c => c.cedula === cedulaFiltro)?.nombre || '';
-                    const filasDescanso = diasDescanso.map(fecha => ({ esDescansoInferido: true, fecha, cedula: cedulaFiltro, empleado_nombre: nombreColaborador }));
-                    const filasSancion = diasSancion.map(fecha => ({ esSancionDominical: true, fecha, cedula: cedulaFiltro, empleado_nombre: nombreColaborador }));
-                    filasParaRenderizar = [...filtrados, ...filasDescanso, ...filasSancion].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+            if (mesFiltro) {
+                // Con cédula elegida, solo esa persona; sin cédula, todo el que tenga algún registro
+                // ese mes (ya filtrado por obra si aplica) — así "solo Mes" también muestra el
+                // descanso/sanción de cada colaborador, no solo cuando además se elige a alguien puntual.
+                const cedulasAInferir = cedulaFiltro ? [cedulaFiltro] : [...new Set(filtrados.map(r => r.cedula).filter(Boolean))];
+                if (cedulasAInferir.length > 0) {
+                    const permisosPorCedula = await cargarPermisosPorCedulaYFecha(mesFiltro);
+                    const nombrePorCedula = new Map(colaboradoresAdminCache.map(c => [c.cedula, c.nombre]));
+                    const filasDescanso = [];
+                    const filasSancion = [];
+                    for (const cedula of cedulasAInferir) {
+                        const { descanso, sancion } = await calcularDiasDescansoInferidoAdmin(cedula, mesFiltro, permisosPorCedula);
+                        const nombreColaborador = nombrePorCedula.get(cedula)
+                            || filtrados.find(r => r.cedula === cedula)?.empleado_nombre || '';
+                        descanso.forEach(fecha => filasDescanso.push({ esDescansoInferido: true, fecha, cedula, empleado_nombre: nombreColaborador }));
+                        sancion.forEach(fecha => filasSancion.push({ esSancionDominical: true, fecha, cedula, empleado_nombre: nombreColaborador }));
+                    }
+                    if (filasDescanso.length > 0 || filasSancion.length > 0) {
+                        filasParaRenderizar = [...filtrados, ...filasDescanso, ...filasSancion].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+                    }
                 }
             }
             renderAdminTable(filasParaRenderizar);
