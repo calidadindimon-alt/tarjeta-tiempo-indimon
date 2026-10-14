@@ -168,9 +168,13 @@
     <header class="bg-slate-900 text-white p-4 sticky top-0 z-40 shadow-md">
         <div class="max-w-5xl mx-auto w-full flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <i class="ph-bold ph-hard-hat text-2xl text-white"></i>
-                </div>
+                <!-- MEJORA (14/10, sugerida por el usuario): logo real de INDIMON en vez del ícono
+                     genérico de casco. El logo original (ver artefacto "Logo INDIMON en la app") es un
+                     lockup ancho con eslogan, pensado para membretes, no para un ícono de 40px — así que
+                     se recortó solo el emblema circular del soldador y se le quitó el fondo gris plano
+                     (era opaco, sin transparencia) para que se vea limpio sobre el header oscuro. El
+                     texto "INDIMON S.A.S." se mantiene aparte porque el emblema solo no lo incluye. -->
+                <img src="logo-indimon.png" alt="INDIMON" class="w-10 h-10 object-contain flex-shrink-0">
                 <div>
                     <h1 class="text-sm md:text-base font-bold leading-tight">INDIMON S.A.S.</h1>
                     <p class="text-[11px] text-slate-400 font-medium" id="header-date">Cargando fecha...</p>
@@ -5953,7 +5957,15 @@
                              <span class="text-[10px] text-violet-700">+${r.horas_recargo_nocturno || 0}RN</span>`
                         : r.estado === 'requiere_revision_admin' ?
                             `<span class="text-[10px] bg-rose-100 text-rose-700 px-2 py-1 rounded-full font-bold uppercase" title="${escHtml(r.nota_revision || '')}">⚠️ Revisión</span>`
-                        : `<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase animate-pulse">En Turno</span>`
+                        // MEJORA (14/10, sugerida por el usuario): el colaborador ya tiene un aviso en
+                        // su propio celular tras 5h en turno sin marcar almuerzo (evaluarAvisoAlmuerzo),
+                        // pero eso solo funciona si tiene la app abierta en pantalla. Este badge es el
+                        // mismo aviso, visible para Admin en el Consolidado sin tener que preguntarle a
+                        // cada quien. Se marca con data-* en vez de calcularlo ya mismo porque esta
+                        // celda no se vuelve a pintar sola con el paso del tiempo (solo cuando cambian
+                        // los datos) — pintarBadgesEnTurnoAdmin(), en un setInterval de 1 minuto, la
+                        // recalcula en vivo sin tener que re-renderizar toda la tabla.
+                        : `<span class="badge-en-turno-admin text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase animate-pulse" data-entrada="${escHtml(r.entrada || '')}" data-fecha="${escHtml(r.fecha || '')}" data-almuerzo="${(r.almuerzo_inicio || r.almuerzo_omitido) ? '1' : '0'}">En Turno</span>`
                         }
                     </td>
                     <td class="p-2 border-b border-slate-100 text-center">
@@ -5989,7 +6001,37 @@
                 });
             });
             actualizarPanelAccionesMasivas();
+            pintarBadgesEnTurnoAdmin(); // deja los badges "En Turno"/"Sin almuerzo" correctos de inmediato, sin esperar el próximo tick del setInterval
         }
+
+        // MEJORA (14/10, sugerida por el usuario): mismo criterio que evaluarAvisoAlmuerzo() (el aviso
+        // que ya ve el propio colaborador en su celular tras 5h en turno sin marcar almuerzo), pero
+        // visible para Admin en el Consolidado — así no depende de que el colaborador tenga la app
+        // abierta en pantalla para que alguien se entere. Actualiza en vivo (cada minuto) los badges
+        // "En Turno" ya pintados en el DOM, sin tener que re-renderizar ni volver a leer Firestore.
+        function pintarBadgesEnTurnoAdmin() {
+            const hoy = getTodayStr();
+            document.querySelectorAll('.badge-en-turno-admin').forEach(el => {
+                const entrada = el.dataset.entrada;
+                const fecha = el.dataset.fecha;
+                const tieneAlmuerzo = el.dataset.almuerzo === '1';
+                if (!entrada || fecha !== hoy || tieneAlmuerzo) {
+                    el.textContent = 'En Turno';
+                    el.className = 'badge-en-turno-admin text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase animate-pulse';
+                    return;
+                }
+                let horas = timeStrToFloat(getHoraActualStr()) - timeStrToFloat(entrada);
+                if (horas < 0) horas += 24; // turno que cruza medianoche
+                if (horas >= AVISO_ALMUERZO_TRAS_HORAS) {
+                    el.innerHTML = `<i class="ph-bold ph-coffee"></i> Sin almuerzo (${horas.toFixed(1)}h)`;
+                    el.className = 'badge-en-turno-admin text-[10px] bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold uppercase inline-flex items-center gap-1';
+                } else {
+                    el.textContent = 'En Turno';
+                    el.className = 'badge-en-turno-admin text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full font-bold uppercase animate-pulse';
+                }
+            });
+        }
+        setInterval(pintarBadgesEnTurnoAdmin, 60 * 1000);
 
         // FASE 3: Operaciones Masivas (Multiselección). La selección vive en este Set en memoria
         // (claves "cedula|fecha"), no en Firestore — se limpia sola al recargar la página o al aplicar
