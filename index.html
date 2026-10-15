@@ -4641,6 +4641,9 @@
                             </div>
                         </div>
                         <div class="flex gap-2 mt-2.5">
+                            <button class="btn-editar-sueldo btn-touch flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}" data-contratista="${esContratista ? '1' : '0'}" data-valor="${esContratista ? (c.tarifa_hora || 0) : (c.sueldo_base || 0)}">
+                                <i class="ph-bold ph-wallet"></i> Editar ${esContratista ? 'Tarifa' : 'Sueldo'}
+                            </button>
                             <button class="btn-editar-vacaciones btn-touch flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5" data-cedula="${c.cedula}" data-nombre="${escapeHtml(c.nombre)}" data-saldo="${c.dias_vacaciones_disponibles != null ? c.dias_vacaciones_disponibles : 15}">
                                 <i class="ph-bold ph-umbrella"></i> Editar Saldo de Vacaciones
                             </button>
@@ -4676,6 +4679,12 @@
                     editarDiasVacaciones(btn.dataset.cedula, btn.dataset.nombre, btn.dataset.saldo);
                 });
             });
+            cont.querySelectorAll('.btn-editar-sueldo').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editarSueldoColaborador(btn.dataset.cedula, btn.dataset.nombre, btn.dataset.contratista === '1', Number(btn.dataset.valor));
+                });
+            });
         }
         document.getElementById('filtro-colaborador-gestion').addEventListener('input', pintarListaColaboradoresAdmin);
 
@@ -4701,6 +4710,36 @@
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo actualizar el saldo de vacaciones.", "error");
+            }
+        }
+
+        // Editar el sueldo base (Planta) o la tarifa por hora (Contratista) de un colaborador que YA
+        // existe. Antes no existía forma de corregir esto desde la app una vez creado el colaborador
+        // — el campo de sueldo solo aparecía al darlo de alta por primera vez — así que un valor por
+        // defecto (ej. el salario mínimo del año en que se creó) podía quedarse desactualizado para
+        // siempre si nadie lo corregía a mano en Firestore.
+        async function editarSueldoColaborador(cedula, nombre, esContratista, valorActual) {
+            const etiqueta = esContratista ? 'tarifa por hora' : 'sueldo base mensual';
+            const nuevoValor = await UI.showPrompt(
+                `${esContratista ? 'Tarifa por hora' : 'Sueldo base'} — ${nombre}`,
+                `Valor actual: ${UI.formatCOP(valorActual)}${esContratista ? '/h' : ''}. Ingresa el nuevo ${etiqueta}.`,
+                esContratista ? 'Ej: 12000' : 'Ej: 1750905',
+                { type: 'number', valorInicial: valorActual || '' }
+            );
+            if (!nuevoValor) return;
+            const num = Number(nuevoValor.replace(',', '.'));
+            if (isNaN(num) || num <= 0) {
+                return UI.showAlert("Valor inválido", `Ingresa un ${etiqueta} válido, mayor que cero.`, "error");
+            }
+            try {
+                const campo = esContratista ? 'tarifa_hora' : 'sueldo_base';
+                await updateDoc(doc(db, 'empleados', cedula), { [campo]: num });
+                registrarAuditoria(`Editar ${etiqueta}`, `${nombre} (CC ${cedula}) · Anterior: ${UI.formatCOP(valorActual)} → Nuevo: ${UI.formatCOP(num)}`);
+                await renderGestionColaboradores();
+                UI.showAlert("Guardado", `El ${etiqueta} de ${nombre} quedó en ${UI.formatCOP(num)}${esContratista ? '/h' : ''}.`, "success");
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", `No se pudo actualizar el ${etiqueta}.`, "error");
             }
         }
 
