@@ -22,9 +22,11 @@
          celulares con señal muy debil (comun en obra) la pagina se viera "en crudo", sin ningun
          estilo aplicado -- el script del CDN nunca llegaba a ejecutarse a tiempo. Al venir incluido
          en el mismo archivo index.html, el estilo siempre esta disponible apenas carga la pagina, sin
-         depender de una segunda conexion a otro servidor. Se regenera con:
-         npx tailwindcss -i input.css -o output.css --content index.html --minify -->
-    <style>*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.visible{visibility:visible}.invisible{visibility:hidden}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0}.bottom-0{bottom:0}.left-0{left:0}.left-3{left:.75rem}.top-0{top:0}.top-1\/2{top:50%}.z-40{z-index:40}.z-50{z-index:50}.col-span-1{grid-column:span 1/span 1}.col-span-2{grid-column:span 2/span 2}.mx-1{margin-left:.25rem;margin-right:.25rem}.mx-auto{margin-left:auto;margin-right:auto}.-mt-1{margin-top:-.25rem}.-mt-6{margin-top:-1.5rem}.mb-1{margin-bottom:.25rem}.mb-1\.5{margin-bottom:.375rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.ml-1{margin-left:.25rem}.ml-2{margin-left:.5rem}.mr-1{margin-right:.25rem}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-1\.5{margin-top:.375rem}.mt-2{margin-top:.5rem}.mt-2\.5{margin-top:.625rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.block{display:block}.inline-block{display:inline-block}.inline{display:inline}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.hidden{display:none}.aspect-square{aspect-ratio:1/1}.h-1{height:.25rem}.h-10{height:2.5rem}.h-12{height:3rem}.h-14{height:3.5rem}.h-16{height:4rem}.h-2{height:.5rem}.h-4{height:1rem}.h-6{height:1.5rem}.h-7{height:1.75rem}.h-9{height:2.25rem}.h-full{height:100%}.max-h-80{max-height:20rem}.max-h-96{max-height:24rem}.max-h-\[90vh\]{max-height:90vh}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-14{width:3.5rem}.w-16{width:4rem}.w-2{width:.5rem}.w-20{width:5rem}.w-4{width:1rem}.w-6{width:1.5rem}.w-7{width:1.75rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-fit{width:-moz-fit-content;width:fit-content}.w-full{width:100%}.min-w-0{min-width:0}.min-w-\[140px\]{min-width:140px}.min-w-\[160px\]{min-width:160px}.min-w-\[200px\]{min-width:200px}.min-w-\[900px\]{min-width:900px}.max-w-2xl{max-width:42rem}.max-w-5xl{max-width:64rem}.max-w-lg{max-width:32rem}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.flex-shrink-0{flex-shrink:0}.border-collapse{border-collapse:collapse}.-translate-y-1\/2{--tw-translate-y:-50%}.-translate-y-1\/2,.scale-95{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.scale-95{--tw-scale-x:.95;--tw-scale-y:.95}.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes bounce{0%,to{transform:translateY(-25%);animation-timing-function:cubic-bezier(.8,0,1,1)}50%{transform:none;animation-timing-function:cubic-bezier(0,0,.2,1)}}.animate-bounce{animation:bounce 1s infinite}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}@keyframes spin{to{transform:rotate(1turn)}}.animate-spin{animation:spin 1s linear infinite}.cursor-pointer{cursor:pointer}.resize-none{resize:none}.resize{resize:both}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.justify-around{justify-content:space-around}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-2\.5{gap:.625rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.space-y-1\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.375rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.375rem*var(--tw-space-y-reverse))}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem*var(--tw-space-y-reverse))}.space-y-4>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem*var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem*var(--tw-space-y-reverse))}.divide-y>:not([hidden])~:not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px*(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px*var(--tw-divide-y-reverse))}.divide-slate-100>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(241 245 249/var(--tw-divide-opacity,1))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rounded{border-radius:.25rem}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-amber-100{--tw-border-opacity:1;border-color:rgb(254 243 199/var(--tw-border-opacity,1))}.border-amber-200{--tw-border-opacity:1;border-color:rgb(253 230 138/var(--tw-border-opacity,1))}.border-amber-300{--tw-border-opacity:1;border-color:rgb(252 211 77/var(--tw-border-opacity,1))}.border-amber-800{--tw-border-opacity:1;border-color:rgb(146 64 14/var(--tw-border-opacity,1))}.border-blue-100{--tw-border-opacity:1;border-color:rgb(219 234 254/var(--tw-border-opacity,1))}.border-blue-200{--tw-border-opacity:1;border-color:rgb(191 219 254/var(--tw-border-opacity,1))}.border-emerald-100{--tw-border-opacity:1;border-color:rgb(209 250 229/var(--tw-border-opacity,1))}.border-emerald-200{--tw-border-opacity:1;border-color:rgb(167 243 208/var(--tw-border-opacity,1))}.border-emerald-800{--tw-border-opacity:1;border-color:rgb(6 95 70/var(--tw-border-opacity,1))}.border-indigo-100{--tw-border-opacity:1;border-color:rgb(224 231 255/var(--tw-border-opacity,1))}.border-indigo-200{--tw-border-opacity:1;border-color:rgb(199 210 254/var(--tw-border-opacity,1))}.border-rose-100{--tw-border-opacity:1;border-color:rgb(255 228 230/var(--tw-border-opacity,1))}.border-rose-200{--tw-border-opacity:1;border-color:rgb(254 205 211/var(--tw-border-opacity,1))}.border-rose-800{--tw-border-opacity:1;border-color:rgb(159 18 57/var(--tw-border-opacity,1))}.border-slate-100{--tw-border-opacity:1;border-color:rgb(241 245 249/var(--tw-border-opacity,1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240/var(--tw-border-opacity,1))}.border-slate-300{--tw-border-opacity:1;border-color:rgb(203 213 225/var(--tw-border-opacity,1))}.border-violet-100{--tw-border-opacity:1;border-color:rgb(237 233 254/var(--tw-border-opacity,1))}.border-violet-200{--tw-border-opacity:1;border-color:rgb(221 214 254/var(--tw-border-opacity,1))}.border-violet-300{--tw-border-opacity:1;border-color:rgb(196 181 253/var(--tw-border-opacity,1))}.bg-amber-100{--tw-bg-opacity:1;background-color:rgb(254 243 199/var(--tw-bg-opacity,1))}.bg-amber-50{--tw-bg-opacity:1;background-color:rgb(255 251 235/var(--tw-bg-opacity,1))}.bg-amber-50\/50{background-color:rgba(255,251,235,.5)}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.bg-amber-600{--tw-bg-opacity:1;background-color:rgb(217 119 6/var(--tw-bg-opacity,1))}.bg-amber-900\/50{background-color:rgba(120,53,15,.5)}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.bg-blue-50\/50{background-color:rgba(239,246,255,.5)}.bg-blue-500{--tw-bg-opacity:1;background-color:rgb(59 130 246/var(--tw-bg-opacity,1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.bg-emerald-100{--tw-bg-opacity:1;background-color:rgb(209 250 229/var(--tw-bg-opacity,1))}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgb(236 253 245/var(--tw-bg-opacity,1))}.bg-emerald-50\/50{background-color:rgba(236,253,245,.5)}.bg-emerald-50\/60{background-color:rgba(236,253,245,.6)}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129/var(--tw-bg-opacity,1))}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.bg-emerald-900\/50{background-color:rgba(6,78,59,.5)}.bg-indigo-50{--tw-bg-opacity:1;background-color:rgb(238 242 255/var(--tw-bg-opacity,1))}.bg-indigo-50\/60{background-color:rgba(238,242,255,.6)}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229/var(--tw-bg-opacity,1))}.bg-rose-100{--tw-bg-opacity:1;background-color:rgb(255 228 230/var(--tw-bg-opacity,1))}.bg-rose-50{--tw-bg-opacity:1;background-color:rgb(255 241 242/var(--tw-bg-opacity,1))}.bg-rose-500{--tw-bg-opacity:1;background-color:rgb(244 63 94/var(--tw-bg-opacity,1))}.bg-rose-600{--tw-bg-opacity:1;background-color:rgb(225 29 72/var(--tw-bg-opacity,1))}.bg-rose-900\/50{background-color:rgba(136,19,55,.5)}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.bg-slate-200{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.bg-slate-900\/60{background-color:rgba(15,23,42,.6)}.bg-slate-900\/80{background-color:rgba(15,23,42,.8)}.bg-transparent{background-color:transparent}.bg-violet-50{--tw-bg-opacity:1;background-color:rgb(245 243 255/var(--tw-bg-opacity,1))}.bg-violet-50\/50{background-color:rgba(245,243,255,.5)}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.bg-gradient-to-r{background-image:linear-gradient(to right,var(--tw-gradient-stops))}.from-blue-500{--tw-gradient-from:#3b82f6 var(--tw-gradient-from-position);--tw-gradient-to:rgba(59,130,246,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.to-indigo-600{--tw-gradient-to:#4f46e5 var(--tw-gradient-to-position)}.object-contain{-o-object-fit:contain;object-fit:contain}.object-cover{-o-object-fit:cover;object-fit:cover}.p-1{padding:.25rem}.p-2{padding:.5rem}.p-2\.5{padding:.625rem}.p-3{padding:.75rem}.p-3\.5{padding:.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-1\.5{padding-left:.375rem;padding-right:.375rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-2\.5{padding-left:.625rem;padding-right:.625rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-3\.5{padding-left:.875rem;padding-right:.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.py-10{padding-top:2.5rem;padding-bottom:2.5rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-3\.5{padding-top:.875rem;padding-bottom:.875rem}.py-4{padding-top:1rem;padding-bottom:1rem}.pb-24{padding-bottom:6rem}.pb-3{padding-bottom:.75rem}.pl-7{padding-left:1.75rem}.pr-3{padding-right:.75rem}.pr-4{padding-right:1rem}.pt-3{padding-top:.75rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-5xl{font-size:3rem;line-height:1}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-\[9px\]{font-size:9px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.leading-tight{line-height:1.25}.tracking-\[0\.15em\]{letter-spacing:.15em}.tracking-wide{letter-spacing:.025em}.tracking-wider{letter-spacing:.05em}.tracking-widest{letter-spacing:.1em}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36/var(--tw-text-opacity,1))}.text-amber-500{--tw-text-opacity:1;color:rgb(245 158 11/var(--tw-text-opacity,1))}.text-amber-600{--tw-text-opacity:1;color:rgb(217 119 6/var(--tw-text-opacity,1))}.text-amber-700{--tw-text-opacity:1;color:rgb(180 83 9/var(--tw-text-opacity,1))}.text-amber-800{--tw-text-opacity:1;color:rgb(146 64 14/var(--tw-text-opacity,1))}.text-amber-900{--tw-text-opacity:1;color:rgb(120 53 15/var(--tw-text-opacity,1))}.text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.text-blue-900{--tw-text-opacity:1;color:rgb(30 58 138/var(--tw-text-opacity,1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153/var(--tw-text-opacity,1))}.text-emerald-500{--tw-text-opacity:1;color:rgb(16 185 129/var(--tw-text-opacity,1))}.text-emerald-600{--tw-text-opacity:1;color:rgb(5 150 105/var(--tw-text-opacity,1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87/var(--tw-text-opacity,1))}.text-emerald-800{--tw-text-opacity:1;color:rgb(6 95 70/var(--tw-text-opacity,1))}.text-emerald-800\/80{color:rgba(6,95,70,.8)}.text-emerald-900{--tw-text-opacity:1;color:rgb(6 78 59/var(--tw-text-opacity,1))}.text-indigo-500{--tw-text-opacity:1;color:rgb(99 102 241/var(--tw-text-opacity,1))}.text-indigo-600{--tw-text-opacity:1;color:rgb(79 70 229/var(--tw-text-opacity,1))}.text-indigo-700{--tw-text-opacity:1;color:rgb(67 56 202/var(--tw-text-opacity,1))}.text-indigo-800{--tw-text-opacity:1;color:rgb(55 48 163/var(--tw-text-opacity,1))}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133/var(--tw-text-opacity,1))}.text-rose-500{--tw-text-opacity:1;color:rgb(244 63 94/var(--tw-text-opacity,1))}.text-rose-600{--tw-text-opacity:1;color:rgb(225 29 72/var(--tw-text-opacity,1))}.text-rose-700{--tw-text-opacity:1;color:rgb(190 18 60/var(--tw-text-opacity,1))}.text-rose-800{--tw-text-opacity:1;color:rgb(159 18 57/var(--tw-text-opacity,1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240/var(--tw-text-opacity,1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225/var(--tw-text-opacity,1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85/var(--tw-text-opacity,1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59/var(--tw-text-opacity,1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42/var(--tw-text-opacity,1))}.text-violet-600{--tw-text-opacity:1;color:rgb(124 58 237/var(--tw-text-opacity,1))}.text-violet-700{--tw-text-opacity:1;color:rgb(109 40 217/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.underline{text-decoration-line:underline}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.accent-amber-600{accent-color:#d97706}.opacity-0{opacity:0}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color)}.shadow-2xl,.shadow-\[0_-10px_20px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_-10px_20px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{--tw-shadow:0 -10px 20px rgba(0,0,0,.03);--tw-shadow-colored:0 -10px 20px var(--tw-shadow-color)}.shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\]{--tw-shadow:0 0 8px rgba(16,185,129,.8);--tw-shadow-colored:0 0 8px var(--tw-shadow-color)}.shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\],.shadow-inner{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgba(0,0,0,.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color)}.shadow-md{--tw-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color)}.shadow-md,.shadow-sm{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color)}.shadow-blue-500\/20{--tw-shadow-color:rgba(59,130,246,.2);--tw-shadow:var(--tw-shadow-colored)}.outline-none{outline:2px solid transparent;outline-offset:2px}.blur{--tw-blur:blur(8px)}.blur,.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-shadow{transition-property:box-shadow;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.duration-200{transition-duration:.2s}.\[transform\:scaleX\(-1\)\]{transform:scaleX(-1)}.hover\:bg-amber-500:hover{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.hover\:bg-amber-600:hover{--tw-bg-opacity:1;background-color:rgb(217 119 6/var(--tw-bg-opacity,1))}.hover\:bg-amber-700:hover{--tw-bg-opacity:1;background-color:rgb(180 83 9/var(--tw-bg-opacity,1))}.hover\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity,1))}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.hover\:bg-blue-600:hover{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity,1))}.hover\:bg-emerald-100:hover{--tw-bg-opacity:1;background-color:rgb(209 250 229/var(--tw-bg-opacity,1))}.hover\:bg-emerald-600:hover{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.hover\:bg-emerald-700:hover{--tw-bg-opacity:1;background-color:rgb(4 120 87/var(--tw-bg-opacity,1))}.hover\:bg-indigo-100:hover{--tw-bg-opacity:1;background-color:rgb(224 231 255/var(--tw-bg-opacity,1))}.hover\:bg-indigo-700:hover{--tw-bg-opacity:1;background-color:rgb(67 56 202/var(--tw-bg-opacity,1))}.hover\:bg-rose-100:hover{--tw-bg-opacity:1;background-color:rgb(255 228 230/var(--tw-bg-opacity,1))}.hover\:bg-rose-500:hover{--tw-bg-opacity:1;background-color:rgb(244 63 94/var(--tw-bg-opacity,1))}.hover\:bg-rose-600:hover{--tw-bg-opacity:1;background-color:rgb(225 29 72/var(--tw-bg-opacity,1))}.hover\:bg-rose-700:hover{--tw-bg-opacity:1;background-color:rgb(190 18 60/var(--tw-bg-opacity,1))}.hover\:bg-slate-100:hover{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.hover\:bg-slate-200:hover{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.hover\:bg-slate-50:hover{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.hover\:bg-slate-900:hover{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.hover\:text-blue-600:hover{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.hover\:text-blue-700:hover{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.hover\:text-rose-600:hover{--tw-text-opacity:1;color:rgb(225 29 72/var(--tw-text-opacity,1))}.hover\:text-rose-700:hover{--tw-text-opacity:1;color:rgb(190 18 60/var(--tw-text-opacity,1))}.hover\:text-slate-600:hover{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.focus\:border-blue-500:focus{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.focus\:ring-amber-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(245 158 11/var(--tw-ring-opacity,1))}.focus\:ring-blue-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(59 130 246/var(--tw-ring-opacity,1))}.focus\:ring-emerald-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(16 185 129/var(--tw-ring-opacity,1))}.focus\:ring-rose-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(244 63 94/var(--tw-ring-opacity,1))}.focus\:ring-slate-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(100 116 139/var(--tw-ring-opacity,1))}.focus\:ring-violet-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(139 92 246/var(--tw-ring-opacity,1))}.disabled\:cursor-not-allowed:disabled{cursor:not-allowed}.disabled\:bg-slate-200:disabled{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.disabled\:text-slate-400:disabled{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}@media (min-width:768px){.md\:col-span-1{grid-column:span 1/span 1}.md\:col-span-2{grid-column:span 2/span 2}.md\:mt-10{margin-top:2.5rem}.md\:flex{display:flex}.md\:hidden{display:none}.md\:w-auto{width:auto}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.md\:p-5{padding:1.25rem}.md\:p-6{padding:1.5rem}.md\:p-8{padding:2rem}.md\:pb-8{padding-bottom:2rem}.md\:text-2xl{font-size:1.5rem;line-height:2rem}.md\:text-base{font-size:1rem;line-height:1.5rem}.md\:text-xl{font-size:1.25rem;line-height:1.75rem}}</style>
+         depender de una segunda conexion a otro servidor.
+         IMPORTANTE: si agregas o cambias clases de Tailwind en el HTML/JS (p. ej. "bg-teal-50"), hay que
+         regenerar este bloque con:   node scripts/regenerar-tailwind.mjs
+         (una prueba en GitHub Actions avisa si se olvida: node scripts/regenerar-tailwind.mjs --check) -->
+    <style id="tailwind-compiled">*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.visible{visibility:visible}.invisible{visibility:hidden}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0}.bottom-0{bottom:0}.left-0{left:0}.left-3{left:.75rem}.top-0{top:0}.top-1\/2{top:50%}.z-40{z-index:40}.z-50{z-index:50}.col-span-1{grid-column:span 1/span 1}.col-span-2{grid-column:span 2/span 2}.mx-1{margin-left:.25rem;margin-right:.25rem}.mx-auto{margin-left:auto;margin-right:auto}.-mt-1{margin-top:-.25rem}.-mt-6{margin-top:-1.5rem}.mb-1{margin-bottom:.25rem}.mb-1\.5{margin-bottom:.375rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.ml-1{margin-left:.25rem}.ml-2{margin-left:.5rem}.mr-1{margin-right:.25rem}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-1\.5{margin-top:.375rem}.mt-2{margin-top:.5rem}.mt-2\.5{margin-top:.625rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.block{display:block}.inline-block{display:inline-block}.inline{display:inline}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.hidden{display:none}.aspect-square{aspect-ratio:1/1}.h-1{height:.25rem}.h-10{height:2.5rem}.h-12{height:3rem}.h-14{height:3.5rem}.h-16{height:4rem}.h-2{height:.5rem}.h-4{height:1rem}.h-6{height:1.5rem}.h-7{height:1.75rem}.h-9{height:2.25rem}.h-full{height:100%}.max-h-80{max-height:20rem}.max-h-96{max-height:24rem}.max-h-\[90vh\]{max-height:90vh}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-14{width:3.5rem}.w-16{width:4rem}.w-2{width:.5rem}.w-20{width:5rem}.w-4{width:1rem}.w-6{width:1.5rem}.w-7{width:1.75rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-fit{width:-moz-fit-content;width:fit-content}.w-full{width:100%}.min-w-0{min-width:0}.min-w-\[140px\]{min-width:140px}.min-w-\[160px\]{min-width:160px}.min-w-\[200px\]{min-width:200px}.min-w-\[900px\]{min-width:900px}.max-w-2xl{max-width:42rem}.max-w-5xl{max-width:64rem}.max-w-lg{max-width:32rem}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.flex-shrink-0{flex-shrink:0}.border-collapse{border-collapse:collapse}.-translate-y-1\/2{--tw-translate-y:-50%}.-translate-y-1\/2,.scale-95{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.scale-95{--tw-scale-x:.95;--tw-scale-y:.95}.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes bounce{0%,to{transform:translateY(-25%);animation-timing-function:cubic-bezier(.8,0,1,1)}50%{transform:none;animation-timing-function:cubic-bezier(0,0,.2,1)}}.animate-bounce{animation:bounce 1s infinite}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}@keyframes spin{to{transform:rotate(1turn)}}.animate-spin{animation:spin 1s linear infinite}.cursor-pointer{cursor:pointer}.resize-none{resize:none}.resize{resize:both}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.justify-around{justify-content:space-around}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-2\.5{gap:.625rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.space-y-1\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.375rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.375rem*var(--tw-space-y-reverse))}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem*var(--tw-space-y-reverse))}.space-y-4>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem*var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem*var(--tw-space-y-reverse))}.divide-y>:not([hidden])~:not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px*(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px*var(--tw-divide-y-reverse))}.divide-slate-100>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(241 245 249/var(--tw-divide-opacity,1))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rounded{border-radius:.25rem}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-amber-100{--tw-border-opacity:1;border-color:rgb(254 243 199/var(--tw-border-opacity,1))}.border-amber-200{--tw-border-opacity:1;border-color:rgb(253 230 138/var(--tw-border-opacity,1))}.border-amber-300{--tw-border-opacity:1;border-color:rgb(252 211 77/var(--tw-border-opacity,1))}.border-amber-800{--tw-border-opacity:1;border-color:rgb(146 64 14/var(--tw-border-opacity,1))}.border-blue-100{--tw-border-opacity:1;border-color:rgb(219 234 254/var(--tw-border-opacity,1))}.border-blue-200{--tw-border-opacity:1;border-color:rgb(191 219 254/var(--tw-border-opacity,1))}.border-emerald-100{--tw-border-opacity:1;border-color:rgb(209 250 229/var(--tw-border-opacity,1))}.border-emerald-200{--tw-border-opacity:1;border-color:rgb(167 243 208/var(--tw-border-opacity,1))}.border-emerald-800{--tw-border-opacity:1;border-color:rgb(6 95 70/var(--tw-border-opacity,1))}.border-indigo-100{--tw-border-opacity:1;border-color:rgb(224 231 255/var(--tw-border-opacity,1))}.border-indigo-200{--tw-border-opacity:1;border-color:rgb(199 210 254/var(--tw-border-opacity,1))}.border-rose-100{--tw-border-opacity:1;border-color:rgb(255 228 230/var(--tw-border-opacity,1))}.border-rose-200{--tw-border-opacity:1;border-color:rgb(254 205 211/var(--tw-border-opacity,1))}.border-rose-800{--tw-border-opacity:1;border-color:rgb(159 18 57/var(--tw-border-opacity,1))}.border-slate-100{--tw-border-opacity:1;border-color:rgb(241 245 249/var(--tw-border-opacity,1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240/var(--tw-border-opacity,1))}.border-slate-300{--tw-border-opacity:1;border-color:rgb(203 213 225/var(--tw-border-opacity,1))}.border-violet-100{--tw-border-opacity:1;border-color:rgb(237 233 254/var(--tw-border-opacity,1))}.border-violet-200{--tw-border-opacity:1;border-color:rgb(221 214 254/var(--tw-border-opacity,1))}.border-violet-300{--tw-border-opacity:1;border-color:rgb(196 181 253/var(--tw-border-opacity,1))}.bg-amber-100{--tw-bg-opacity:1;background-color:rgb(254 243 199/var(--tw-bg-opacity,1))}.bg-amber-50{--tw-bg-opacity:1;background-color:rgb(255 251 235/var(--tw-bg-opacity,1))}.bg-amber-50\/50{background-color:rgba(255,251,235,.5)}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.bg-amber-600{--tw-bg-opacity:1;background-color:rgb(217 119 6/var(--tw-bg-opacity,1))}.bg-amber-900\/50{background-color:rgba(120,53,15,.5)}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.bg-blue-50\/50{background-color:rgba(239,246,255,.5)}.bg-blue-500{--tw-bg-opacity:1;background-color:rgb(59 130 246/var(--tw-bg-opacity,1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.bg-emerald-100{--tw-bg-opacity:1;background-color:rgb(209 250 229/var(--tw-bg-opacity,1))}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgb(236 253 245/var(--tw-bg-opacity,1))}.bg-emerald-50\/50{background-color:rgba(236,253,245,.5)}.bg-emerald-50\/60{background-color:rgba(236,253,245,.6)}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129/var(--tw-bg-opacity,1))}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.bg-emerald-900\/50{background-color:rgba(6,78,59,.5)}.bg-indigo-50{--tw-bg-opacity:1;background-color:rgb(238 242 255/var(--tw-bg-opacity,1))}.bg-indigo-50\/60{background-color:rgba(238,242,255,.6)}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229/var(--tw-bg-opacity,1))}.bg-rose-100{--tw-bg-opacity:1;background-color:rgb(255 228 230/var(--tw-bg-opacity,1))}.bg-rose-50{--tw-bg-opacity:1;background-color:rgb(255 241 242/var(--tw-bg-opacity,1))}.bg-rose-500{--tw-bg-opacity:1;background-color:rgb(244 63 94/var(--tw-bg-opacity,1))}.bg-rose-600{--tw-bg-opacity:1;background-color:rgb(225 29 72/var(--tw-bg-opacity,1))}.bg-rose-900\/50{background-color:rgba(136,19,55,.5)}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.bg-slate-200{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.bg-slate-900\/60{background-color:rgba(15,23,42,.6)}.bg-slate-900\/80{background-color:rgba(15,23,42,.8)}.bg-teal-50{--tw-bg-opacity:1;background-color:rgb(240 253 250/var(--tw-bg-opacity,1))}.bg-transparent{background-color:transparent}.bg-violet-50{--tw-bg-opacity:1;background-color:rgb(245 243 255/var(--tw-bg-opacity,1))}.bg-violet-50\/50{background-color:rgba(245,243,255,.5)}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.bg-gradient-to-r{background-image:linear-gradient(to right,var(--tw-gradient-stops))}.from-blue-500{--tw-gradient-from:#3b82f6 var(--tw-gradient-from-position);--tw-gradient-to:rgba(59,130,246,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.to-indigo-600{--tw-gradient-to:#4f46e5 var(--tw-gradient-to-position)}.object-contain{-o-object-fit:contain;object-fit:contain}.object-cover{-o-object-fit:cover;object-fit:cover}.p-1{padding:.25rem}.p-2{padding:.5rem}.p-2\.5{padding:.625rem}.p-3{padding:.75rem}.p-3\.5{padding:.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-1\.5{padding-left:.375rem;padding-right:.375rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-2\.5{padding-left:.625rem;padding-right:.625rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-3\.5{padding-left:.875rem;padding-right:.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.py-10{padding-top:2.5rem;padding-bottom:2.5rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-3\.5{padding-top:.875rem;padding-bottom:.875rem}.py-4{padding-top:1rem;padding-bottom:1rem}.pb-24{padding-bottom:6rem}.pb-3{padding-bottom:.75rem}.pl-7{padding-left:1.75rem}.pr-3{padding-right:.75rem}.pr-4{padding-right:1rem}.pt-3{padding-top:.75rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-5xl{font-size:3rem;line-height:1}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-\[9px\]{font-size:9px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.normal-case{text-transform:none}.italic{font-style:italic}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.leading-tight{line-height:1.25}.tracking-\[0\.15em\]{letter-spacing:.15em}.tracking-wide{letter-spacing:.025em}.tracking-wider{letter-spacing:.05em}.tracking-widest{letter-spacing:.1em}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36/var(--tw-text-opacity,1))}.text-amber-500{--tw-text-opacity:1;color:rgb(245 158 11/var(--tw-text-opacity,1))}.text-amber-600{--tw-text-opacity:1;color:rgb(217 119 6/var(--tw-text-opacity,1))}.text-amber-700{--tw-text-opacity:1;color:rgb(180 83 9/var(--tw-text-opacity,1))}.text-amber-800{--tw-text-opacity:1;color:rgb(146 64 14/var(--tw-text-opacity,1))}.text-amber-900{--tw-text-opacity:1;color:rgb(120 53 15/var(--tw-text-opacity,1))}.text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.text-blue-900{--tw-text-opacity:1;color:rgb(30 58 138/var(--tw-text-opacity,1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153/var(--tw-text-opacity,1))}.text-emerald-500{--tw-text-opacity:1;color:rgb(16 185 129/var(--tw-text-opacity,1))}.text-emerald-600{--tw-text-opacity:1;color:rgb(5 150 105/var(--tw-text-opacity,1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87/var(--tw-text-opacity,1))}.text-emerald-800{--tw-text-opacity:1;color:rgb(6 95 70/var(--tw-text-opacity,1))}.text-emerald-800\/80{color:rgba(6,95,70,.8)}.text-emerald-900{--tw-text-opacity:1;color:rgb(6 78 59/var(--tw-text-opacity,1))}.text-indigo-500{--tw-text-opacity:1;color:rgb(99 102 241/var(--tw-text-opacity,1))}.text-indigo-600{--tw-text-opacity:1;color:rgb(79 70 229/var(--tw-text-opacity,1))}.text-indigo-700{--tw-text-opacity:1;color:rgb(67 56 202/var(--tw-text-opacity,1))}.text-indigo-800{--tw-text-opacity:1;color:rgb(55 48 163/var(--tw-text-opacity,1))}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133/var(--tw-text-opacity,1))}.text-rose-500{--tw-text-opacity:1;color:rgb(244 63 94/var(--tw-text-opacity,1))}.text-rose-600{--tw-text-opacity:1;color:rgb(225 29 72/var(--tw-text-opacity,1))}.text-rose-700{--tw-text-opacity:1;color:rgb(190 18 60/var(--tw-text-opacity,1))}.text-rose-800{--tw-text-opacity:1;color:rgb(159 18 57/var(--tw-text-opacity,1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240/var(--tw-text-opacity,1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225/var(--tw-text-opacity,1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85/var(--tw-text-opacity,1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59/var(--tw-text-opacity,1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42/var(--tw-text-opacity,1))}.text-violet-600{--tw-text-opacity:1;color:rgb(124 58 237/var(--tw-text-opacity,1))}.text-violet-700{--tw-text-opacity:1;color:rgb(109 40 217/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.underline{text-decoration-line:underline}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.accent-amber-600{accent-color:#d97706}.opacity-0{opacity:0}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color)}.shadow-2xl,.shadow-\[0_-10px_20px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_-10px_20px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{--tw-shadow:0 -10px 20px rgba(0,0,0,.03);--tw-shadow-colored:0 -10px 20px var(--tw-shadow-color)}.shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\]{--tw-shadow:0 0 8px rgba(16,185,129,.8);--tw-shadow-colored:0 0 8px var(--tw-shadow-color)}.shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\],.shadow-inner{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgba(0,0,0,.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color)}.shadow-md{--tw-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color)}.shadow-md,.shadow-sm{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color)}.shadow-blue-500\/20{--tw-shadow-color:rgba(59,130,246,.2);--tw-shadow:var(--tw-shadow-colored)}.outline-none{outline:2px solid transparent;outline-offset:2px}.blur{--tw-blur:blur(8px)}.blur,.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-shadow{transition-property:box-shadow;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.duration-200{transition-duration:.2s}.\[transform\:scaleX\(-1\)\]{transform:scaleX(-1)}.hover\:bg-amber-500:hover{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.hover\:bg-amber-600:hover{--tw-bg-opacity:1;background-color:rgb(217 119 6/var(--tw-bg-opacity,1))}.hover\:bg-amber-700:hover{--tw-bg-opacity:1;background-color:rgb(180 83 9/var(--tw-bg-opacity,1))}.hover\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity,1))}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.hover\:bg-blue-600:hover{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity,1))}.hover\:bg-emerald-100:hover{--tw-bg-opacity:1;background-color:rgb(209 250 229/var(--tw-bg-opacity,1))}.hover\:bg-emerald-600:hover{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.hover\:bg-emerald-700:hover{--tw-bg-opacity:1;background-color:rgb(4 120 87/var(--tw-bg-opacity,1))}.hover\:bg-indigo-100:hover{--tw-bg-opacity:1;background-color:rgb(224 231 255/var(--tw-bg-opacity,1))}.hover\:bg-indigo-700:hover{--tw-bg-opacity:1;background-color:rgb(67 56 202/var(--tw-bg-opacity,1))}.hover\:bg-rose-100:hover{--tw-bg-opacity:1;background-color:rgb(255 228 230/var(--tw-bg-opacity,1))}.hover\:bg-rose-500:hover{--tw-bg-opacity:1;background-color:rgb(244 63 94/var(--tw-bg-opacity,1))}.hover\:bg-rose-600:hover{--tw-bg-opacity:1;background-color:rgb(225 29 72/var(--tw-bg-opacity,1))}.hover\:bg-rose-700:hover{--tw-bg-opacity:1;background-color:rgb(190 18 60/var(--tw-bg-opacity,1))}.hover\:bg-slate-100:hover{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.hover\:bg-slate-200:hover{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.hover\:bg-slate-50:hover{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.hover\:bg-slate-900:hover{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.hover\:text-blue-600:hover{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.hover\:text-blue-700:hover{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.hover\:text-rose-600:hover{--tw-text-opacity:1;color:rgb(225 29 72/var(--tw-text-opacity,1))}.hover\:text-rose-700:hover{--tw-text-opacity:1;color:rgb(190 18 60/var(--tw-text-opacity,1))}.hover\:text-slate-600:hover{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.focus\:border-blue-500:focus{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.focus\:ring-amber-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(245 158 11/var(--tw-ring-opacity,1))}.focus\:ring-blue-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(59 130 246/var(--tw-ring-opacity,1))}.focus\:ring-emerald-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(16 185 129/var(--tw-ring-opacity,1))}.focus\:ring-rose-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(244 63 94/var(--tw-ring-opacity,1))}.focus\:ring-slate-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(100 116 139/var(--tw-ring-opacity,1))}.focus\:ring-violet-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(139 92 246/var(--tw-ring-opacity,1))}.disabled\:cursor-not-allowed:disabled{cursor:not-allowed}.disabled\:bg-slate-200:disabled{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.disabled\:text-slate-400:disabled{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}@media (min-width:768px){.md\:col-span-1{grid-column:span 1/span 1}.md\:col-span-2{grid-column:span 2/span 2}.md\:mt-10{margin-top:2.5rem}.md\:flex{display:flex}.md\:hidden{display:none}.md\:w-auto{width:auto}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.md\:p-5{padding:1.25rem}.md\:p-6{padding:1.5rem}.md\:p-8{padding:2rem}.md\:pb-8{padding-bottom:2rem}.md\:text-2xl{font-size:1.5rem;line-height:2rem}.md\:text-base{font-size:1rem;line-height:1.5rem}.md\:text-xl{font-size:1.25rem;line-height:1.75rem}}</style>
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -886,6 +888,23 @@
                                 <input type="number" id="permiso-dias-vacaciones" min="0.5" step="0.5" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 5">
                                 <p id="permiso-saldo-vacaciones-info" class="text-[10px] text-slate-400 mt-1"></p>
                             </div>
+                            <!-- Datos opcionales que piden los formatos oficiales de permiso (GH-F-011 y GH-F-012) al
+                                 exportar a Excel. No son obligatorios: si se dejan vacíos, esas casillas del formato
+                                 quedan en blanco para llenarlas a mano. -->
+                            <div id="wrap-permiso-horario" class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de salida <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
+                                    <input type="time" id="permiso-hora-salida" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de regreso <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
+                                    <input type="time" id="permiso-hora-entrada" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                            </div>
+                            <div id="wrap-permiso-fecha-fin" class="hidden">
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Último día de ausencia <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
+                                <input type="date" id="permiso-fecha-fin" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
                             <div class="md:col-span-2">
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Motivo / Nota</label>
                                 <textarea id="permiso-nota" rows="2" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Describe brevemente el motivo del permiso"></textarea>
@@ -974,6 +993,32 @@
                             <i class="ph-fill ph-check-circle text-4xl text-emerald-500 mb-2"></i>
                             <p id="firmar-ya-firmado-msg" class="font-bold text-emerald-800">Ya registraste tu firma en esta solicitud.</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ============================ CONSTANCIA EN PDF (vía enlace del correo de aprobación) ============================ -->
+                <div id="permiso-view-constancia" class="hidden flex-col gap-4 mb-8">
+                    <div id="constancia-loading" class="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm">Cargando constancia...</div>
+                    <div id="constancia-error" class="hidden bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center text-rose-700 font-semibold text-sm"></div>
+                    <div id="constancia-contenido" class="hidden flex-col gap-4">
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <h3 class="text-lg font-bold text-slate-800">Constancia de Permiso</h3>
+                                <span id="constancia-estado" class="text-[10px] font-bold uppercase px-2 py-1 rounded-full flex-shrink-0"></span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">Trabajador</span><span id="constancia-trabajador" class="font-semibold text-slate-700"></span></div>
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">Tipo</span><span id="constancia-tipo" class="font-semibold text-slate-700"></span></div>
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]">Fecha</span><span id="constancia-fecha" class="font-semibold text-slate-700"></span></div>
+                                <div><span class="text-slate-400 font-bold uppercase block text-[9px]" id="constancia-duracion-label">Horas</span><span id="constancia-duracion" class="font-semibold text-slate-700"></span></div>
+                            </div>
+                            <p id="constancia-nota-wrap" class="hidden text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100"><span class="font-bold">Motivo:</span> <span id="constancia-nota"></span></p>
+                            <div id="constancia-firmas" class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100"></div>
+                        </div>
+                        <button id="btn-constancia-descargar" class="btn-touch w-full bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-file-pdf text-xl"></i> Descargar PDF
+                        </button>
+                        <p id="constancia-aviso" class="hidden text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 leading-relaxed"></p>
                     </div>
                 </div>
 
@@ -6831,7 +6876,9 @@
         function toggleCampoVacaciones() {
             const esVacaciones = document.getElementById('permiso-tipo').value === 'Vacaciones';
             document.getElementById('wrap-permiso-horas').classList.toggle('hidden', esVacaciones);
+            document.getElementById('wrap-permiso-horario').classList.toggle('hidden', esVacaciones);
             document.getElementById('wrap-permiso-dias-vacaciones').classList.toggle('hidden', !esVacaciones);
+            document.getElementById('wrap-permiso-fecha-fin').classList.toggle('hidden', !esVacaciones);
             actualizarInfoSaldoVacaciones();
         }
 
@@ -6892,20 +6939,31 @@
 
         // Envía la notificación de "permiso aprobado" a RRHH y al coordinador de proyectos (vía EmailJS).
         // Si no hay plantilla configurada, o no hay correos guardados, o falla el envío, no interrumpe el guardado.
-        async function enviarNotificacionPermiso(data) {
-            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
+        // Aviso a RRHH y al Coordinador cuando un permiso queda aprobado (4 firmas). El plan gratis de EmailJS no
+        // permite adjuntar archivos, así que el correo trae un enlace que abre la constancia y descarga el PDF
+        // (con las 4 firmas) al instante, sin iniciar sesión — igual que los enlaces de firma. Devuelve cuántos
+        // correos se enviaron bien.
+        async function enviarNotificacionPermiso(data, permisoId) {
+            if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return 0;
             const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
+            const detalle = data.tipo === 'Vacaciones'
+                ? `Días de vacaciones: ${data.dias_vacaciones || '-'}${data.fecha_fin ? ` (hasta el ${fechaDMAPermiso(data.fecha_fin)})` : ''}`
+                : `Horas: ${data.horas || '-'}${data.hora_salida || data.hora_entrada ? ` (de ${data.hora_salida || '-'} a ${data.hora_entrada || '-'})` : ''}`;
+            const enlacePdf = permisoId ? `\n\nDescargar la constancia en PDF (con las 4 firmas):\n${buildEnlaceConstancia(permisoId)}` : '';
+            let enviados = 0;
             for (const destino of destinos) {
                 try {
                     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
                         to_email: destino,
                         asunto: `Permiso aprobado — ${data.trabajador}`,
-                        cuerpo: `El permiso de ${data.trabajador} quedó aprobado con las 4 firmas.\n\nTipo: ${data.tipo}\nFecha: ${data.fecha}\nHoras: ${data.horas || '-'}\nNota: ${data.nota || '-'}`
+                        cuerpo: `El permiso de ${data.trabajador} quedó aprobado con las 4 firmas.\n\nTipo: ${data.tipo}\nFecha: ${fechaDMAPermiso(data.fecha) || data.fecha}\n${detalle}\nNota: ${data.nota || '-'}${enlacePdf}`
                     });
+                    enviados++;
                 } catch (e) {
                     console.error(`No se pudo enviar la notificación de permiso a ${destino}:`, e);
                 }
             }
+            return enviados;
         }
 
         async function crearSolicitudPermiso() {
@@ -6930,6 +6988,10 @@
                 fecha: document.getElementById('permiso-fecha').value,
                 horas: esVacaciones ? '' : document.getElementById('permiso-horas').value.trim(),
                 dias_vacaciones: esVacaciones ? Number(document.getElementById('permiso-dias-vacaciones').value) : null,
+                // Opcionales: solo sirven para llenar los formatos oficiales al exportar a Excel.
+                hora_salida: esVacaciones ? null : (document.getElementById('permiso-hora-salida').value || null),
+                hora_entrada: esVacaciones ? null : (document.getElementById('permiso-hora-entrada').value || null),
+                fecha_fin: esVacaciones ? (document.getElementById('permiso-fecha-fin').value || null) : null,
                 nota: document.getElementById('permiso-nota').value.trim(),
                 es_emergencia: document.getElementById('permiso-es-emergencia').checked,
                 firmantes,
@@ -6949,6 +7011,9 @@
             document.getElementById('permiso-fecha').value = getTodayStr();
             document.getElementById('permiso-horas').value = '';
             document.getElementById('permiso-dias-vacaciones').value = '';
+            document.getElementById('permiso-hora-salida').value = '';
+            document.getElementById('permiso-hora-entrada').value = '';
+            document.getElementById('permiso-fecha-fin').value = '';
             document.getElementById('permiso-nota').value = '';
             document.getElementById('permiso-es-emergencia').checked = false;
             toggleCampoVacaciones();
@@ -7135,7 +7200,7 @@
         }
 
         function ocultarTodasLasVistasPermisos() {
-            ['permiso-view-nuevo', 'permiso-view-enlaces', 'permiso-view-historial', 'permiso-view-firmar'].forEach(id => {
+            ['permiso-view-nuevo', 'permiso-view-enlaces', 'permiso-view-historial', 'permiso-view-firmar', 'permiso-view-constancia'].forEach(id => {
                 const el = document.getElementById(id);
                 el.classList.add('hidden'); el.classList.remove('flex');
             });
@@ -7155,6 +7220,752 @@
         });
 
         // ------------------------------- Historial -------------------------------
+        // ===================================== Permisos: Excel con los formatos oficiales =====================================
+        // Reemplaza el CSV con ";" (que Excel abría todo desordenado en una sola columna). Ahora se genera un
+        // .xlsx real, partiendo de los 2 formatos oficiales de la empresa (carpeta formatos/):
+        //   - GH-F-011 "Registro de permiso diario"       -> permisos por horas (todos los tipos menos Vacaciones)
+        //   - GH-F-012 "Permiso de un día o más"          -> Vacaciones (una hoja por solicitud)
+        // más una hoja "Resumen" con TODOS los permisos (incluye pendientes/vencidos) en una tabla limpia.
+        // Solo los permisos APROBADOS se vuelcan a los formatos oficiales, con las firmas capturadas en pantalla.
+
+        const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        const PERMISO_DIARIO_FILAS_POR_HOJA = 11;
+
+        // "2026-10-16" o un ISO completo ("2026-10-15T20:31:00.000Z") -> partes de fecha en hora de Bogotá.
+        function partesFechaPermiso(valor) {
+            if (!valor) return null;
+            const s = String(valor);
+            let ymd = /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+            if (!ymd) {
+                const d = new Date(s);
+                if (isNaN(d.getTime())) return null;
+                ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+            }
+            const [y, m, d] = ymd.split('-').map(Number);
+            return { y, m, d, iso: ymd, dd: String(d).padStart(2, '0'), mm: String(m).padStart(2, '0'), mes: MESES_ES[m - 1] };
+        }
+
+        function fechaDMAPermiso(valor) {
+            const p = partesFechaPermiso(valor);
+            return p ? `${p.dd}/${p.mm}/${p.y}` : '';
+        }
+
+        // "2026-10-15T20:31:00.000Z" -> "15/10/2026 3:31 p. m." (hora de Bogotá)
+        function fechaHoraPermiso(isoDatetime) {
+            if (!isoDatetime) return '';
+            const d = new Date(isoDatetime);
+            if (isNaN(d.getTime())) return '';
+            const fecha = fechaDMAPermiso(isoDatetime);
+            const hora = new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', hour: 'numeric', minute: '2-digit', hour12: true }).format(d).replace(/[\u202f\u00a0]/g, ' ');
+            return `${fecha} ${hora}`;
+        }
+
+        function esPermisoVariosDias(p) {
+            return p.tipo === 'Vacaciones';
+        }
+
+        function motivoPermiso(p) {
+            const tipo = p.tipo || '';
+            const nota = (p.nota || '').trim();
+            if (!nota) return tipo;
+            return tipo ? `${tipo} — ${nota}` : nota;
+        }
+
+        function estadoPermisoLegible(p, vencido) {
+            if (p.estado === 'aprobado') return 'Aprobado';
+            return vencido ? 'Vencido' : 'Pendiente';
+        }
+
+        function dividirEnBloques(lista, tamano) {
+            const bloques = [];
+            for (let i = 0; i < lista.length; i += tamano) bloques.push(lista.slice(i, i + tamano));
+            return bloques;
+        }
+
+        // Agrupa los permisos APROBADOS por horas (formato diario) en hojas: una por (mes, obra), partida de a 11
+        // filas (lo que cabe en el formato oficial). obraPorPermiso: Map(id permiso -> nombre de obra o '').
+        function armarHojasPermisoDiario(permisosAprobados, obraPorPermiso) {
+            const grupos = new Map();
+            permisosAprobados.filter(p => !esPermisoVariosDias(p)).forEach(p => {
+                const f = partesFechaPermiso(p.fecha);
+                if (!f) return;
+                const obra = ((obraPorPermiso && obraPorPermiso.get(p.id)) || '').trim().toUpperCase();
+                const clave = `${f.y}-${f.mm}|${obra}`;
+                if (!grupos.has(clave)) grupos.set(clave, { y: f.y, m: f.m, mes: f.mes, obra, permisos: [] });
+                grupos.get(clave).permisos.push(p);
+            });
+            const hojas = [];
+            [...grupos.values()]
+                .sort((a, b) => (a.y - b.y) || (a.m - b.m) || a.obra.localeCompare(b.obra))
+                .forEach(g => {
+                    g.permisos.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '') || (a.trabajador || '').localeCompare(b.trabajador || ''));
+                    const bloques = dividirEnBloques(g.permisos, PERMISO_DIARIO_FILAS_POR_HOJA);
+                    bloques.forEach((filas, i) => hojas.push({ y: g.y, m: g.m, mes: g.mes, obra: g.obra, pagina: i + 1, paginas: bloques.length, permisos: filas }));
+                });
+            return hojas;
+        }
+
+        // Nombre de hoja válido en Excel: máx. 31 caracteres, sin  [ ] : * ? / \  y sin repetirse.
+        function nombreHojaUnico(base, usados) {
+            const limpio = String(base).replace(/[\[\]:*?\/\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Hoja';
+            let nombre = limpio, n = 2;
+            while (usados.has(nombre.toLowerCase())) {
+                const sufijo = ` (${n++})`;
+                nombre = limpio.slice(0, 31 - sufijo.length) + sufijo;
+            }
+            usados.add(nombre.toLowerCase());
+            return nombre;
+        }
+
+        // Ancho y alto en píxeles de un PNG a partir de su data URL (lee la cabecera IHDR, sin necesitar <canvas>).
+        function dimensionesPngDataUrl(dataUrl) {
+            try {
+                const b64 = String(dataUrl).split(',')[1] || '';
+                const cabecera = atob(b64.slice(0, 48));
+                const leer = (o) => (cabecera.charCodeAt(o) << 24) | (cabecera.charCodeAt(o + 1) << 16) | (cabecera.charCodeAt(o + 2) << 8) | cabecera.charCodeAt(o + 3);
+                const w = leer(16), h = leer(20);
+                return (w > 0 && h > 0) ? { w, h } : null;
+            } catch (e) { return null; }
+        }
+
+        function copiarEstiloCelda(origen, destino) {
+            destino.style = JSON.parse(JSON.stringify(origen.style || {}));
+        }
+
+        // Copia una hoja de plantilla (valores, estilos, combinadas, anchos/altos, logo, configuración de impresión).
+        function clonarHojaPlantilla(wbSalida, wbPlantilla, wsPlantilla, nombre) {
+            const ws = wbSalida.addWorksheet(nombre, { views: JSON.parse(JSON.stringify(wsPlantilla.views || [])) });
+            const maxCol = Math.max(wsPlantilla.columnCount, 1);
+            for (let c = 1; c <= maxCol; c++) {
+                const w = wsPlantilla.getColumn(c).width;
+                if (w) ws.getColumn(c).width = w;
+            }
+            ws.properties.defaultColWidth = wsPlantilla.properties.defaultColWidth;
+            ws.properties.defaultRowHeight = wsPlantilla.properties.defaultRowHeight;
+            wsPlantilla.eachRow({ includeEmpty: true }, (fila, r) => {
+                const nueva = ws.getRow(r);
+                if (fila.height) nueva.height = fila.height;
+                fila.eachCell({ includeEmpty: true }, (celda, c) => {
+                    const destino = ws.getCell(r, c);
+                    const esEsclava = celda.master && celda.master.address !== celda.address;
+                    if (!esEsclava && celda.value != null) destino.value = JSON.parse(JSON.stringify(celda.value));
+                    copiarEstiloCelda(celda, destino);
+                });
+            });
+            Object.values(wsPlantilla._merges || {}).forEach(m => ws.mergeCellsWithoutStyle(m.range || m.model));
+            ws.pageSetup = JSON.parse(JSON.stringify(wsPlantilla.pageSetup || {}));
+            ws.pageSetup.printArea = wsPlantilla.pageSetup && wsPlantilla.pageSetup.printArea ? wsPlantilla.pageSetup.printArea : undefined;
+            wsPlantilla.getImages().forEach(img => {
+                const media = wbPlantilla.getImage(img.imageId);
+                const id = wbSalida.addImage({ buffer: media.buffer, extension: media.extension || 'png' });
+                ws.addImage(id, { tl: img.range.tl, ext: img.range.ext, br: img.range.br, editAs: img.range.editAs });
+            });
+            return ws;
+        }
+
+        // Pone una firma (data URL PNG) dentro de un rectángulo de la hoja, centrada y sin deformarla.
+        // colIni/filaIni son índices base 0; ancho/alto del rectángulo en píxeles.
+        function ponerFirmaEnHoja(wbSalida, ws, dataUrl, colIni, filaIni, anchoPx, altoPx, margenPx = 4) {
+            if (!dataUrl || !/^data:image\/png;base64,/.test(dataUrl)) return false;
+            const dim = dimensionesPngDataUrl(dataUrl) || { w: 300, h: 100 };
+            const escala = Math.min((anchoPx - 2 * margenPx) / dim.w, (altoPx - 2 * margenPx) / dim.h);
+            const w = Math.max(10, Math.round(dim.w * escala)), h = Math.max(6, Math.round(dim.h * escala));
+            const id = wbSalida.addImage({ base64: dataUrl.split(',')[1], extension: 'png' });
+            ws.addImage(id, {
+                tl: { col: colIni + (anchoPx - w) / 2 / anchoPx, row: filaIni + (altoPx - h) / 2 / altoPx },
+                ext: { width: w, height: h }
+            });
+            return true;
+        }
+
+        const px_ancho = (chars) => Math.round(chars * 7 + 5);       // ancho de columna Excel (caracteres) -> píxeles
+        const px_alto = (pt) => Math.round(pt * 96 / 72);           // alto de fila (puntos) -> píxeles
+
+        function textoRico(partes, fuenteBase) {
+            return { richText: partes.map(p => ({ text: p.texto, font: Object.assign({}, fuenteBase, p.fuente || {}) })) };
+        }
+
+        // ---------------------------------------- Hoja: formato diario (GH-F-011) ----------------------------------------
+        // El formato oficial trae 2 columnas de firma (Solicitante y Jefe Inmediato). La app exige 4 aprobaciones,
+        // así que se agregan 2 columnas más a la derecha (Supervisor y Encargado de RRHH) para que las 4 firmas
+        // queden a la vista en el mismo formato; el resto del formato no se toca.
+        function llenarHojaPermisoDiario(wbSalida, wbPlantilla, wsPlantilla, nombreHoja, hoja, perfiles) {
+            const ws = clonarHojaPlantilla(wbSalida, wbPlantilla, wsPlantilla, nombreHoja);
+
+            // Ampliar de 9 a 11 columnas: el título crece, la caja de código/versión pasa a la última columna.
+            for (let r = 1; r <= 4; r++) {
+                const i = ws.getCell(r, 9), h = ws.getCell(r, 8), j = ws.getCell(r, 10), k = ws.getCell(r, 11);
+                k.value = i.value; copiarEstiloCelda(i, k);
+                i.value = null; copiarEstiloCelda(h, i); copiarEstiloCelda(h, j);
+            }
+            ws.unMergeCells('B1:H4');
+            ws.mergeCellsWithoutStyle('B1:J4');
+            ws.unMergeCells('A5:I5');
+            ws.mergeCellsWithoutStyle('A5:K5');
+            ws.unMergeCells('A21:I21');
+            ws.mergeCellsWithoutStyle('A21:K21');
+            ws.getColumn(10).width = wsPlantilla.getColumn(9).width;
+            ws.getColumn(11).width = wsPlantilla.getColumn(9).width;
+            ['J', 'K'].forEach((col, idx) => {
+                copiarEstiloCelda(ws.getCell('I9'), ws.getCell(`${col}9`));
+                ws.getCell(`${col}9`).value = idx === 0 ? 'FIRMA DEL SUPERVISOR' : 'FIRMA DEL ENCARGADO DE RRHH';
+                for (let r = 10; r <= 20; r++) copiarEstiloCelda(ws.getCell(`I${r}`), ws.getCell(`${col}${r}`));
+            });
+
+            ws.getCell('K1').value = `Página ${hoja.pagina} de ${hoja.paginas}`;
+
+            const f7 = ws.getCell('A7').font;
+            ws.getCell('A7').value = textoRico([{ texto: 'OBRA: ' }, { texto: hoja.obra || '____________________', fuente: { underline: !!hoja.obra } }], f7);
+            ws.getCell('D7').value = textoRico([{ texto: 'MES: ' }, { texto: hoja.mes.toUpperCase(), fuente: { underline: true } }], f7);
+            ws.getCell('F7').value = textoRico([{ texto: 'AÑO: ' }, { texto: String(hoja.y), fuente: { underline: true } }], f7);
+
+            const anchoCol = (c) => px_ancho(ws.getColumn(c).width || 9);
+            hoja.permisos.forEach((p, i) => {
+                const r = 10 + i;
+                const perfil = (perfiles && perfiles.get(p.trabajador_cedula)) || {};
+                const alto = px_alto(ws.getRow(r).height || 51.75);
+                const poner = (col, valor, opciones) => {
+                    const c = ws.getCell(`${col}${r}`);
+                    c.value = valor;
+                    c.alignment = Object.assign({ vertical: 'middle', horizontal: 'center', wrapText: true }, opciones || {});
+                    c.font = Object.assign({}, c.font, { size: (opciones && opciones.size) || 10 });
+                };
+                poner('A', fechaDMAPermiso(p.fecha));
+                poner('B', (p.trabajador || '').toUpperCase(), { horizontal: 'left' });
+                poner('C', (perfil.cargo || '').toUpperCase(), { size: 9 });
+                poner('D', motivoPermiso(p), { horizontal: 'left', size: 9 });
+                poner('E', p.hora_salida || '');
+                poner('F', p.hora_entrada || '');
+                const h = parseFloat(p.horas);
+                poner('G', isNaN(h) ? '' : h);
+                ['trabajador', 'jefe', 'supervisor', 'rrhh'].forEach((rol, idxRol) => {
+                    const col = 8 + idxRol; // H, I, J, K
+                    const f = p.firmantes && p.firmantes[rol];
+                    if (f && f.firma) {
+                        ponerFirmaEnHoja(wbSalida, ws, f.firma, col - 1, r - 1, anchoCol(col), alto);
+                    }
+                });
+            });
+            return ws;
+        }
+
+        // ---------------------------------------- Hoja: formato varios días (GH-F-012) ----------------------------------------
+        function llenarHojaPermisoVariosDias(wbSalida, wbPlantilla, wsPlantilla, nombreHoja, p, perfil, obra, pagina, paginas) {
+            const ws = clonarHojaPlantilla(wbSalida, wbPlantilla, wsPlantilla, nombreHoja);
+            ws.getCell('H1').value = `Página: ${pagina} de ${paginas} `;
+            const base = ws.getCell('A9').font;
+            const negrita = Object.assign({}, base, { bold: true });
+
+            const aprobadoEn = [p.firmantes && p.firmantes.trabajador, p.firmantes && p.firmantes.jefe, p.firmantes && p.firmantes.supervisor, p.firmantes && p.firmantes.rrhh]
+                .map(f => f && f.firmado_en).filter(Boolean).sort().pop();
+            ws.getCell('A8').value = textoRico([{ texto: p.estado === 'aprobado' ? `✔ PERMISO APROBADO${aprobadoEn ? ' — ' + fechaHoraPermiso(aprobadoEn) : ''}` : 'PERMISO PENDIENTE DE FIRMAS' }],
+                Object.assign({}, negrita, { color: { argb: p.estado === 'aprobado' ? 'FF0F7B3F' : 'FFB45309' } }));
+
+            const solicitud = partesFechaPermiso(p.creado_en) || partesFechaPermiso(p.fecha);
+            ws.getCell('A9').value = textoRico([{ texto: 'FECHA:            ' }, { texto: `  ${solicitud.dd}  /  ${solicitud.mm}  /  ${solicitud.y}`, fuente: { underline: true } }], negrita);
+
+            ws.getCell('C12').value = (p.trabajador || '').toUpperCase();
+            ws.getCell('B14').value = ((perfil && perfil.cargo) || '').toUpperCase();
+            ws.getCell('B16').value = (obra || '').toUpperCase();
+
+            // Motivo: un solo bloque con ajuste de texto en lugar de las 4 líneas de guiones bajos.
+            ['A19', 'A20', 'A21'].forEach(a => { ws.getCell(a).value = null; });
+            ws.mergeCellsWithoutStyle('A18:H21');
+            const motivo = ws.getCell('A18');
+            motivo.value = textoRico([{ texto: 'Motivo: ' }, { texto: motivoPermiso(p) || '—', fuente: { bold: false } }], negrita);
+            motivo.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+
+            const inicio = partesFechaPermiso(p.fecha);
+            const fin = partesFechaPermiso(p.fecha_fin);
+            const dias = p.dias_vacaciones != null ? p.dias_vacaciones : '';
+            const subr = (t) => ({ texto: t, fuente: { underline: true } });
+            const linea1 = [{ texto: 'Este permiso será tomado a partir del día ' }, subr(inicio ? ` ${inicio.dd} ` : '_______'), { texto: ' mes ' }, subr(inicio ? ` ${inicio.mes} ` : '___________'),
+                { texto: ' del año ' }, subr(inicio ? ` ${inicio.y} ` : '________'), { texto: ', hasta el día ' }, subr(fin ? ` ${fin.dd} ` : '_________')];
+            const linea2 = [{ texto: 'mes ' }, subr(fin ? ` ${fin.mes} ` : '__________'), { texto: ' del año ' }, subr(fin ? ` ${fin.y} ` : '______'), { texto: '.' }];
+            ws.getCell('A23').value = textoRico(linea1, negrita);
+            ws.getCell('A24').value = textoRico(linea2, negrita);
+            ws.getCell('A26').value = textoRico([{ texto: 'Numero de días de ausencia: ' }, subr(dias !== '' ? `  ${dias}  ` : '________')], negrita);
+
+            // Firmas: 4 recuadros del formato (Solicitante, Jefe Inmediato, Director de proyectos, Líder Dpto. GH y SSTA)
+            // = Trabajador, Jefe Inmediato, Supervisor y Encargado de RRHH de la app, en ese orden.
+            const colPx = (c) => px_ancho(ws.getColumn(c).width || wsPlantilla.properties.defaultColWidth || 11.43);
+            const rowPx = (r) => px_alto(ws.getRow(r).height || 15);
+            const rol = (clave) => (p.firmantes && p.firmantes[clave]) || {};
+            const ranuras = [
+                { clave: 'trabajador', etiqueta: 'Solicitante', colIni: 0, anchoCols: [1, 2, 3, 4], filaFirma: 27, filaNombre: 31 },
+                { clave: 'jefe', etiqueta: 'Jefe Inmediato', colIni: 5, anchoCols: [6, 7, 8], filaFirma: 27, filaNombre: 31 },
+                { clave: 'supervisor', etiqueta: 'Supervisor', colIni: 0, anchoCols: [1, 2, 3, 4], filaFirma: 33, filaNombre: 37 },
+                { clave: 'rrhh', etiqueta: 'Encargado de RRHH', colIni: 5, anchoCols: [6, 7, 8], filaFirma: 33, filaNombre: 37 }
+            ];
+            ranuras.forEach(rz => {
+                const f = rol(rz.clave);
+                const ancho = rz.anchoCols.reduce((s, c) => s + colPx(c), 0);
+                const filas = rz.filaFirma === 27 ? [27, 28] : [33, 34];
+                const alto = filas.reduce((s, r) => s + rowPx(r), 0);
+                if (f.firma) ponerFirmaEnHoja(wbSalida, ws, f.firma, rz.colIni, rz.filaFirma - 1, ancho, alto, 3);
+                ws.mergeCellsWithoutStyle(rz.filaNombre, rz.colIni + 1, rz.filaNombre, rz.colIni === 0 ? 4 : 8);
+                const celdaNombre = ws.getCell(rz.filaNombre, rz.colIni + 1);
+                const nombreFirmante = (f.nombre || '').toUpperCase();
+                celdaNombre.value = f.firmado ? `${nombreFirmante} (${rz.etiqueta}) · ${fechaHoraPermiso(f.firmado_en)}` : `${nombreFirmante || '—'} (${rz.etiqueta}) · SIN FIRMAR`;
+                celdaNombre.font = { name: 'Calibri', size: 8, color: { argb: 'FF002060' }, italic: true };
+                celdaNombre.alignment = { vertical: 'middle', horizontal: 'left', shrinkToFit: true };
+            });
+            return ws;
+        }
+
+        // ---------------------------------------- Hoja: Resumen (todos los permisos) ----------------------------------------
+        function llenarHojaResumenPermisos(wbSalida, permisos, perfiles, obraPorPermiso, esVencido, tituloMes) {
+            const ws = wbSalida.addWorksheet('Resumen', { views: [{ state: 'frozen', ySplit: 3 }] });
+            const columnas = [
+                ['Trabajador', 30], ['Cédula', 13], ['Cargo', 26], ['Obra', 14], ['Tipo de permiso', 34], ['Fecha del permiso', 13],
+                ['Horas', 8], ['Días de vacaciones', 11], ['Hora salida', 10], ['Hora entrada', 10], ['Estado', 12], ['Motivo / nota', 40],
+                ['Creado por', 22], ['Fecha de solicitud', 17], ['Trabajador firmó', 17], ['Jefe inmediato firmó', 17], ['Supervisor firmó', 17], ['Encargado RRHH firmó', 17]
+            ];
+            ws.columns = columnas.map(([, ancho]) => ({ width: ancho }));
+            ws.mergeCells(1, 1, 1, columnas.length);
+            const titulo = ws.getCell(1, 1);
+            titulo.value = `Solicitudes de permiso — INDIMON S.A.S.${tituloMes ? ' — ' + tituloMes : ''}`;
+            titulo.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF1E293B' } };
+            ws.getRow(1).height = 24;
+            ws.getCell(2, 1).value = `Generado el ${fechaHoraPermiso(new Date().toISOString())} · ${permisos.length} solicitud(es)`;
+            ws.getCell(2, 1).font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF64748B' } };
+            const encabezado = ws.getRow(3);
+            columnas.forEach(([nombre], i) => {
+                const c = encabezado.getCell(i + 1);
+                c.value = nombre;
+                c.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+                c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+                c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            });
+            encabezado.height = 32;
+            const COLORES_ESTADO = { Aprobado: 'FFD1FAE5', Pendiente: 'FFFEF3C7', Vencido: 'FFFFE4E6' };
+            permisos.forEach((p, i) => {
+                const perfil = (perfiles && perfiles.get(p.trabajador_cedula)) || {};
+                const estado = estadoPermisoLegible(p, esVencido(p));
+                const firmaTxt = (rol) => {
+                    const f = p.firmantes && p.firmantes[rol];
+                    if (f && f.firmado) return fechaHoraPermiso(f.firmado_en) || 'Firmado';
+                    return 'Pendiente';
+                };
+                const h = parseFloat(p.horas);
+                const valores = [
+                    p.trabajador || '', p.trabajador_cedula || '', perfil.cargo || '', (obraPorPermiso && obraPorPermiso.get(p.id)) || '',
+                    p.tipo || '', fechaDMAPermiso(p.fecha), isNaN(h) ? '' : h, p.dias_vacaciones != null ? p.dias_vacaciones : '',
+                    p.hora_salida || '', p.hora_entrada || '', estado, p.nota || '', p.creado_por || '', fechaHoraPermiso(p.creado_en),
+                    firmaTxt('trabajador'), firmaTxt('jefe'), firmaTxt('supervisor'), firmaTxt('rrhh')
+                ];
+                const fila = ws.getRow(4 + i);
+                valores.forEach((v, j) => {
+                    const c = fila.getCell(j + 1);
+                    c.value = v;
+                    c.font = { name: 'Calibri', size: 10 };
+                    c.alignment = { vertical: 'middle', horizontal: (j === 6 || j === 7 || j === 5 || j === 1 || j >= 8 && j <= 10) ? 'center' : 'left', wrapText: true };
+                    c.border = { top: { style: 'hair' }, left: { style: 'hair' }, bottom: { style: 'hair' }, right: { style: 'hair' } };
+                    if (j >= 14 && v === 'Pendiente') c.font = { name: 'Calibri', size: 10, color: { argb: 'FFB45309' } };
+                });
+                const celdaEstado = fila.getCell(11);
+                celdaEstado.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORES_ESTADO[estado] || 'FFFFFFFF' } };
+                celdaEstado.font = { name: 'Calibri', size: 10, bold: true };
+                fila.height = 20;
+            });
+            ws.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3 + Math.max(permisos.length, 1), column: columnas.length } };
+            ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+            return ws;
+        }
+
+        // ---------------------------------------- Libro completo ----------------------------------------
+        // datos = { permisos, perfiles: Map(cedula -> perfil), obraPorPermiso: Map(id -> obra), esVencido(p), tituloMes }
+        async function generarLibroPermisosExcel(ExcelJS, plantillas, datos) {
+            const wbSalida = new ExcelJS.Workbook();
+            wbSalida.creator = 'Tarjeta de Tiempo INDIMON';
+            wbSalida.created = new Date();
+            const usados = new Set();
+
+            llenarHojaResumenPermisos(wbSalida, datos.permisos, datos.perfiles, datos.obraPorPermiso, datos.esVencido, datos.tituloMes);
+            usados.add('resumen');
+
+            const aprobados = datos.permisos.filter(p => p.estado === 'aprobado');
+
+            const hojasDiario = armarHojasPermisoDiario(aprobados, datos.obraPorPermiso);
+            if (hojasDiario.length) {
+                const wbD = new ExcelJS.Workbook();
+                await wbD.xlsx.load(plantillas.diario);
+                const wsD = wbD.worksheets[0];
+                hojasDiario.forEach(h => {
+                    const base = `Diario ${String(h.m).padStart(2, '0')}-${h.y}${h.obra ? ' ' + h.obra : ''}${h.paginas > 1 ? ` p${h.pagina}` : ''}`;
+                    llenarHojaPermisoDiario(wbSalida, wbD, wsD, nombreHojaUnico(base, usados), h, datos.perfiles);
+                });
+            }
+
+            const variosDias = aprobados.filter(esPermisoVariosDias).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '') || (a.trabajador || '').localeCompare(b.trabajador || ''));
+            if (variosDias.length) {
+                const wbM = new ExcelJS.Workbook();
+                await wbM.xlsx.load(plantillas.multi);
+                const wsM = wbM.worksheets[0];
+                variosDias.forEach((p, i) => {
+                    const f = partesFechaPermiso(p.fecha);
+                    const base = `Varios días ${f ? f.dd + '-' + f.mm : ''} ${(p.trabajador || '').split(' ').slice(0, 2).join(' ')}`;
+                    llenarHojaPermisoVariosDias(wbSalida, wbM, wsM, nombreHojaUnico(base, usados), p,
+                        (datos.perfiles && datos.perfiles.get(p.trabajador_cedula)) || {}, (datos.obraPorPermiso && datos.obraPorPermiso.get(p.id)) || '', i + 1, variosDias.length);
+                });
+            }
+            return wbSalida;
+        }
+
+        // ===================================== Permisos: constancia en PDF (permiso aprobado + 4 firmas) =====================================
+        // Reproduce en un PDF ordenado lo que se ve en la tarjeta del Historial: datos de la solicitud y las
+        // 4 firmas con quién firmó y cuándo. Se genera 100% en el navegador (jsPDF), sin servidor.
+
+        function nombreArchivoPdfPermiso(p) {
+            const limpio = String(p.trabajador || 'permiso').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'permiso';
+            return `Permiso_${limpio}_${p.fecha || 'sin-fecha'}.pdf`;
+        }
+
+        // Fecha/hora en que quedó aprobado: la de la última firma registrada.
+        function fechaAprobacionPermiso(p) {
+            const fechas = SIGNANTES.map(s => p.firmantes && p.firmantes[s.key] && p.firmantes[s.key].firmado_en).filter(Boolean).sort();
+            return fechas.length ? fechas[fechas.length - 1] : null;
+        }
+
+        // Devuelve el documento jsPDF (sin descargarlo). logoDataUrl y perfil son opcionales.
+        function construirPdfPermiso(jsPDFClase, p, perfil, logoDataUrl) {
+            const doc = new jsPDFClase({ unit: 'mm', format: 'a4', compress: true }); // sin comprimir pesaba ~1.5 MB por las firmas
+            const W = 210, M = 15, ANCHO = W - 2 * M;
+            const AZUL = [30, 58, 138], GRIS = [100, 116, 139], OSCURO = [30, 41, 59], VERDE = [15, 123, 63], LINEA = [203, 213, 225];
+            const aprobado = p.estado === 'aprobado';
+
+            // --- Encabezado ---
+            let logoOk = false;
+            if (logoDataUrl) {
+                try { doc.addImage(logoDataUrl, 'PNG', M, 12, 52, 14.8); logoOk = true; } catch (e) { logoOk = false; }
+            }
+            if (!logoOk) { doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...AZUL); doc.text('INDIMON S.A.S.', M, 20); }
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...AZUL);
+            doc.text('CONSTANCIA DE PERMISO', W - M, 17, { align: 'right' });
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GRIS);
+            doc.text(aprobado ? 'Solicitud aprobada con las 4 firmas' : 'Solicitud pendiente de firmas', W - M, 23, { align: 'right' });
+            doc.setDrawColor(...AZUL); doc.setLineWidth(0.7); doc.line(M, 30, W - M, 30);
+
+            // --- Estado ---
+            let y = 38;
+            const color = aprobado ? VERDE : [180, 83, 9];
+            doc.setFillColor(...(aprobado ? [209, 250, 229] : [254, 243, 199]));
+            doc.roundedRect(M, y - 5.5, 34, 8, 2, 2, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...color);
+            doc.text(aprobado ? 'APROBADO' : 'PENDIENTE', M + 17, y - 0.2, { align: 'center' });
+            const aprobEn = aprobado ? fechaAprobacionPermiso(p) : null;
+            if (aprobEn) {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...GRIS);
+                doc.text(`Aprobado el ${fechaHoraPermiso(aprobEn)}`, M + 38, y - 0.2);
+            }
+            if (p.es_emergencia) {
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(190, 18, 60);
+                doc.text('CALAMIDAD / EMERGENCIA', W - M, y - 0.2, { align: 'right' });
+            }
+
+            // --- Datos de la solicitud (cuadrícula de 2 columnas) ---
+            y += 8;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...AZUL);
+            doc.text('DATOS DE LA SOLICITUD', M, y);
+            doc.setDrawColor(...LINEA); doc.setLineWidth(0.3); doc.line(M, y + 1.8, W - M, y + 1.8);
+            y += 7;
+
+            const esVac = p.tipo === 'Vacaciones';
+            const campos = [
+                ['Trabajador', (p.trabajador || '—').toUpperCase()],
+                ['Cédula', p.trabajador_cedula || '—'],
+                ['Cargo', ((perfil && perfil.cargo) || '—').toUpperCase()],
+                ['Tipo de permiso', p.tipo || '—'],
+                ['Fecha del permiso', fechaDMAPermiso(p.fecha) || '—'],
+                esVac ? ['Días de vacaciones', p.dias_vacaciones != null ? String(p.dias_vacaciones) : '—'] : ['Horas solicitadas', p.horas ? `${p.horas} h` : '—']
+            ];
+            if (esVac && p.fecha_fin) campos.push(['Hasta el', fechaDMAPermiso(p.fecha_fin)]);
+            if (!esVac && (p.hora_salida || p.hora_entrada)) campos.push(['Hora de salida / regreso', `${p.hora_salida || '—'}  a  ${p.hora_entrada || '—'}`]);
+            campos.push(['Solicitud creada por', p.creado_por || '—']);
+            campos.push(['Fecha de la solicitud', fechaHoraPermiso(p.creado_en) || '—']);
+
+            const COL_W = ANCHO / 2;
+            for (let i = 0; i < campos.length; i += 2) {
+                [0, 1].forEach(j => {
+                    const c = campos[i + j];
+                    if (!c) return;
+                    const x = M + j * COL_W;
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GRIS);
+                    doc.text(c[0].toUpperCase(), x, y);
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...OSCURO);
+                    const lineas = doc.splitTextToSize(String(c[1]), COL_W - 6);
+                    doc.text(lineas.slice(0, 2), x, y + 5);
+                });
+                y += 13;
+            }
+
+            // --- Motivo ---
+            if (p.nota && p.nota.trim()) {
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GRIS);
+                doc.text('MOTIVO / NOTA', M, y);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(...OSCURO);
+                const lineas = doc.splitTextToSize(p.nota.trim(), ANCHO - 4);
+                const alto = Math.min(lineas.length, 5) * 5 + 4;
+                doc.setFillColor(248, 250, 252); doc.setDrawColor(...LINEA); doc.setLineWidth(0.2);
+                doc.roundedRect(M, y + 2, ANCHO, alto, 1.5, 1.5, 'FD');
+                doc.text(lineas.slice(0, 5), M + 2.5, y + 7.5);
+                y += alto + 10;
+            }
+
+            // --- Firmas ---
+            y += 2;
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...AZUL);
+            doc.text('FIRMAS DE APROBACIÓN', M, y);
+            doc.setDrawColor(...LINEA); doc.setLineWidth(0.3); doc.line(M, y + 1.8, W - M, y + 1.8);
+            y += 6;
+            const CAJA_W = (ANCHO - 6) / 2, CAJA_H = 52;
+            SIGNANTES.forEach((s, idx) => {
+                const f = (p.firmantes && p.firmantes[s.key]) || {};
+                const x = M + (idx % 2) * (CAJA_W + 6);
+                const yy = y + Math.floor(idx / 2) * (CAJA_H + 6);
+                doc.setDrawColor(...LINEA); doc.setLineWidth(0.3); doc.setFillColor(255, 255, 255);
+                doc.roundedRect(x, yy, CAJA_W, CAJA_H, 2, 2, 'D');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...GRIS);
+                doc.text(s.label.toUpperCase(), x + 3, yy + 5.5);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...OSCURO);
+                const nombre = doc.splitTextToSize((f.nombre || '—').toUpperCase(), CAJA_W - 6);
+                doc.text(nombre.slice(0, 2), x + 3, yy + 10.5);
+                // Recuadro de la firma
+                const sx = x + 3, sy = yy + 15, sw = CAJA_W - 6, sh = 24;
+                doc.setFillColor(252, 252, 253); doc.setDrawColor(226, 232, 240);
+                doc.roundedRect(sx, sy, sw, sh, 1.5, 1.5, 'FD');
+                const firma = f.firma;
+                if (f.firmado && firma) {
+                    try {
+                        const dim = dimensionesPngDataUrl(firma) || { w: 300, h: 100 };
+                        const esc = Math.min((sw - 4) / dim.w, (sh - 3) / dim.h);
+                        const w = dim.w * esc, h = dim.h * esc;
+                        doc.addImage(firma, 'PNG', sx + (sw - w) / 2, sy + (sh - h) / 2, w, h);
+                    } catch (e) { /* firma ilegible: se deja el recuadro vacío */ }
+                } else {
+                    doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(...GRIS);
+                    doc.text('Sin firmar', sx + sw / 2, sy + sh / 2 + 1, { align: 'center' });
+                }
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...(f.firmado ? VERDE : GRIS));
+                doc.text(f.firmado ? `Firmado el ${fechaHoraPermiso(f.firmado_en)}` : 'Pendiente de firma', x + 3, yy + CAJA_H - 4.5);
+            });
+            y += 2 * (CAJA_H + 6);
+
+            // --- Pie ---
+            doc.setDrawColor(...LINEA); doc.setLineWidth(0.3); doc.line(M, 283, W - M, 283);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GRIS);
+            doc.text(`Documento generado por la Tarjeta de Tiempo INDIMON el ${fechaHoraPermiso(new Date().toISOString())}`, M, 288);
+            doc.text(`ID de la solicitud: ${p.id || '—'}`, W - M, 288, { align: 'right' });
+            return doc;
+        }
+
+        // ---------------------------------------- Utilidades de navegador (se usan solo al hacer clic) ----------------------------------------
+        const URL_EXCELJS = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+        const RUTA_FORMATO_DIARIO = './formatos/GH-F-011_PERMISO_DIARIO.xlsx';
+        const RUTA_FORMATO_VARIOS_DIAS = './formatos/GH-F-012_PERMISO_UN_DIA_O_MAS.xlsx';
+        const RUTA_LOGO_FORMATO = './formatos/logo-indimon-formato.png';
+
+        // ExcelJS pesa ~900 KB y solo hace falta al exportar: se baja en ese momento (no en cada apertura de la app).
+        function cargarExcelJS() {
+            if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = URL_EXCELJS;
+                s.async = true;
+                s.onload = () => (window.ExcelJS ? resolve(window.ExcelJS) : reject(new Error('ExcelJS no quedó disponible')));
+                s.onerror = () => reject(new Error('No se pudo descargar ExcelJS (revisa la conexión)'));
+                document.head.appendChild(s);
+            });
+        }
+
+        async function leerArchivoComoBuffer(ruta) {
+            const r = await fetch(ruta, { cache: 'no-cache' });
+            if (!r.ok) throw new Error(`No se pudo leer ${ruta} (HTTP ${r.status})`);
+            return r.arrayBuffer();
+        }
+
+        async function leerArchivoComoDataUrl(ruta) {
+            const r = await fetch(ruta);
+            if (!r.ok) throw new Error(`No se pudo leer ${ruta} (HTTP ${r.status})`);
+            const blob = await r.blob();
+            return new Promise((resolve, reject) => {
+                const lector = new FileReader();
+                lector.onload = () => resolve(lector.result);
+                lector.onerror = () => reject(lector.error);
+                lector.readAsDataURL(blob);
+            });
+        }
+
+        function descargarBlobComoArchivo(blob, nombre) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = nombre;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
+        // La firma se dibuja en un lienzo grande y casi siempre ocupa solo una parte: se recorta el espacio
+        // transparente sobrante para que se vea más grande y legible en el Excel/PDF. Además, al volver a
+        // dibujarla en un lienzo, solo pasa una imagen PNG real: "firma" es un campo que cualquiera puede escribir
+        // sin iniciar sesión (ver firestore.rules), así que un valor corrupto o malicioso no debe llegar tal cual a
+        // un archivo que se descarga. Si no se puede decodificar, devuelve null (queda como "sin imagen").
+        function recortarMargenesFirma(dataUrl) {
+            return new Promise((resolve) => {
+                if (typeof dataUrl !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl) || dataUrl.length > 1500000) return resolve(null);
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const ancho = img.naturalWidth, alto = img.naturalHeight;
+                        if (!ancho || !alto || ancho * alto > 16000000) return resolve(null);
+                        const lienzo = document.createElement('canvas');
+                        lienzo.width = ancho; lienzo.height = alto;
+                        const ctx = lienzo.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        const { data } = ctx.getImageData(0, 0, ancho, alto);
+                        let minX = ancho, minY = alto, maxX = -1, maxY = -1;
+                        for (let y = 0; y < alto; y++) {
+                            for (let x = 0; x < ancho; x++) {
+                                if (data[(y * ancho + x) * 4 + 3] > 20) {
+                                    if (x < minX) minX = x; if (x > maxX) maxX = x;
+                                    if (y < minY) minY = y; if (y > maxY) maxY = y;
+                                }
+                            }
+                        }
+                        if (maxX < 0) return resolve(null); // lienzo en blanco
+                        const margen = 6;
+                        minX = Math.max(0, minX - margen); minY = Math.max(0, minY - margen);
+                        maxX = Math.min(ancho - 1, maxX + margen); maxY = Math.min(alto - 1, maxY + margen);
+                        const w = Math.max(maxX - minX + 1, 40), h = Math.max(maxY - minY + 1, 16);
+                        const salida = document.createElement('canvas');
+                        salida.width = w; salida.height = h;
+                        salida.getContext('2d').drawImage(lienzo, minX, minY, w, h, 0, 0, w, h);
+                        resolve(salida.toDataURL('image/png'));
+                    } catch (e) { resolve(null); }
+                };
+                img.onerror = () => resolve(null);
+                img.src = dataUrl;
+            });
+        }
+
+        // Copia del permiso con las 4 firmas ya limpias/recortadas (no modifica el original que está en memoria).
+        async function permisoConFirmasListas(p) {
+            const copia = Object.assign({}, p, { firmantes: {} });
+            for (const s of SIGNANTES) {
+                const f = (p.firmantes && p.firmantes[s.key]) || {};
+                copia.firmantes[s.key] = Object.assign({}, f, { firma: f.firma ? await recortarMargenesFirma(f.firma) : null });
+            }
+            return copia;
+        }
+
+        async function obtenerPerfilesEmpleados() {
+            const snap = await getDocs(collection(db, 'empleados'));
+            const mapa = new Map();
+            snap.forEach(d => mapa.set(d.id, d.data()));
+            return mapa;
+        }
+
+        // El permiso no guarda la obra: se toma de la tarjeta de tiempo de ese día (o, si ese día no hay turno,
+        // de la más reciente anterior de esa persona que tenga obra).
+        async function obtenerObraPorPermiso(permisos) {
+            const mapa = new Map();
+            const recientesPorCedula = new Map();
+            const cargarRecientes = (cedula) => {
+                if (!recientesPorCedula.has(cedula)) {
+                    recientesPorCedula.set(cedula, getDocs(query(collection(db, 'empleados', cedula, 'registros'), orderBy('fecha', 'desc'), fsLimit(20)))
+                        .then(s => s.docs.map(d => d.data())).catch(() => []));
+                }
+                return recientesPorCedula.get(cedula);
+            };
+            await Promise.all(permisos.map(async (p) => {
+                let obra = '';
+                if (p.trabajador_cedula && p.fecha) {
+                    try {
+                        const dia = await getDoc(doc(db, 'empleados', p.trabajador_cedula, 'registros', p.fecha));
+                        obra = dia.exists() ? (dia.data().obra || '') : '';
+                        if (!obra) {
+                            const recientes = await cargarRecientes(p.trabajador_cedula);
+                            const cercano = recientes.find(r => r.obra && (r.fecha || '') <= p.fecha) || recientes.find(r => r.obra);
+                            obra = cercano ? cercano.obra : '';
+                        }
+                    } catch (e) { obra = ''; }
+                }
+                mapa.set(p.id, String(obra || '').trim());
+            }));
+            return mapa;
+        }
+
+        async function exportarPermisosExcel() {
+            if (permisosCache.length === 0) return UI.showAlert("Aviso", "No hay solicitudes de permiso para exportar.", "info");
+
+            const mesStr = await UI.showPrompt(
+                "Exportar permisos a Excel",
+                "Mes a exportar (AAAA-MM). Déjalo vacío para exportar todos los meses. Se exporta lo que ves en la lista (respeta el filtro de nombre).",
+                "AAAA-MM",
+                { type: 'month', valorInicial: getTodayStr().slice(0, 7) }
+            );
+            if (mesStr === null) return;
+            if (mesStr && !/^\d{4}-\d{2}$/.test(mesStr)) return UI.showAlert("Mes inválido", "Escribe el mes con el formato AAAA-MM (por ejemplo 2026-10).", "error");
+
+            const filtro = document.getElementById('permiso-filtro-nombre').value.trim().toUpperCase();
+            const lista = permisosCache
+                .filter(p => (!filtro || (p.trabajador || '').toUpperCase().includes(filtro)) && (!mesStr || (p.fecha || '').startsWith(mesStr)))
+                .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '') || (a.trabajador || '').localeCompare(b.trabajador || ''));
+            if (lista.length === 0) return UI.showAlert("Sin datos", `No hay solicitudes de permiso${mesStr ? ' en ' + mesStr : ''} con ese filtro.`, "info");
+
+            const btn = document.getElementById('btn-exportar-permisos');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Generando...';
+            try {
+                const [ExcelJS, diario, variosDias, perfiles] = await Promise.all([
+                    cargarExcelJS(), leerArchivoComoBuffer(RUTA_FORMATO_DIARIO), leerArchivoComoBuffer(RUTA_FORMATO_VARIOS_DIAS), obtenerPerfilesEmpleados()
+                ]);
+                const aprobados = lista.filter(p => p.estado === 'aprobado');
+                const obraPorPermiso = await obtenerObraPorPermiso(aprobados);
+                const conFirmas = new Map((await Promise.all(aprobados.map(permisoConFirmasListas))).map(p => [p.id, p]));
+                const permisos = lista.map(p => conFirmas.get(p.id) || p);
+
+                const tituloMes = mesStr ? new Date(`${mesStr}-15T12:00:00`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }) : 'todos los meses';
+                const libro = await generarLibroPermisosExcel(ExcelJS, { diario, multi: variosDias }, { permisos, perfiles, obraPorPermiso, esVencido: estaVencido, tituloMes });
+                const buffer = await libro.xlsx.writeBuffer();
+                descargarBlobComoArchivo(
+                    new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+                    `Permisos_INDIMON_${mesStr || 'todos'}_${getTodayStr()}.xlsx`
+                );
+                registrarAuditoria('Exportar permisos a Excel', `${lista.length} solicitud(es) · ${aprobados.length} aprobada(s) en los formatos GH-F-011/GH-F-012 · ${mesStr || 'todos los meses'}`);
+                if (aprobados.length === 0) {
+                    UI.showAlert("Excel generado", "Ninguna de las solicitudes está aprobada todavía, así que solo se incluyó la hoja Resumen. Los formatos oficiales se llenan solo con permisos aprobados (4 firmas).", "info");
+                }
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo generar el Excel. Verifica tu conexión (se descarga una librería de Excel la primera vez) e inténtalo de nuevo.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        }
+
+        async function generarPdfPermiso(p) {
+            const jsPDFClase = window.jspdf && window.jspdf.jsPDF;
+            if (!jsPDFClase) throw new Error('jsPDF no está cargado');
+            let perfil = {};
+            if (p.trabajador_cedula) {
+                try { const s = await getDoc(doc(db, 'empleados', p.trabajador_cedula)); if (s.exists()) perfil = s.data(); } catch (e) { /* sin cargo, el PDF igual se genera */ }
+            }
+            const [logo, listo] = await Promise.all([leerArchivoComoDataUrl(RUTA_LOGO_FORMATO).catch(() => null), permisoConFirmasListas(p)]);
+            return construirPdfPermiso(jsPDFClase, listo, perfil, logo);
+        }
+
+        async function descargarPdfPermiso(p) {
+            const pdf = await generarPdfPermiso(p);
+            pdf.save(nombreArchivoPdfPermiso(p));
+        }
+
+        function buildEnlaceConstancia(permisoId) {
+            return `${window.location.origin}${window.location.pathname}?permiso=${encodeURIComponent(permisoId)}&constancia=1`;
+        }
+
         async function cargarHistorialPermisos() {
             const cont = document.getElementById('permisos-historial-lista');
             cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Cargando...</p>';
@@ -7244,6 +8055,15 @@
                                 </div>`;
                             }).join('')}
                         </div>
+                        ${aprobado ? `
+                        <div class="flex gap-2 mt-3">
+                            <button class="btn-pdf-permiso btn-touch flex-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}">
+                                <i class="ph-bold ph-file-pdf"></i> Descargar PDF
+                            </button>
+                            <button class="btn-reenviar-permiso btn-touch flex-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}">
+                                <i class="ph-bold ph-envelope-simple"></i> Enviar por correo
+                            </button>
+                        </div>` : ''}
                         <button class="btn-eliminar-permiso btn-touch w-full mt-3 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}" data-trabajador="${escapeHtml(p.trabajador)}">
                             <i class="ph-bold ph-trash"></i> Eliminar esta solicitud (creada por error)
                         </button>
@@ -7255,6 +8075,51 @@
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     eliminarPermiso(btn.dataset.id, btn.dataset.trabajador);
+                });
+            });
+
+            cont.querySelectorAll('.btn-pdf-permiso').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const p = permisosCache.find(x => x.id === btn.dataset.id);
+                    if (!p) return;
+                    const original = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Generando...';
+                    try {
+                        await descargarPdfPermiso(p);
+                    } catch (err) {
+                        console.error(err);
+                        UI.showAlert("Error", "No se pudo generar el PDF. Verifica tu conexión e inténtalo de nuevo.", "error");
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = original;
+                    }
+                });
+            });
+
+            cont.querySelectorAll('.btn-reenviar-permiso').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const p = permisosCache.find(x => x.id === btn.dataset.id);
+                    if (!p) return;
+                    const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
+                    if (destinos.length === 0) {
+                        return UI.showAlert("Sin destinatarios", "Configura el correo de RRHH y/o del Coordinador de Proyectos en el panel Admin (Configuración) antes de enviar.", "error");
+                    }
+                    const original = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Enviando...';
+                    try {
+                        const enviados = await enviarNotificacionPermiso(p, p.id);
+                        registrarAuditoria('Reenviar constancia de permiso', `${p.trabajador} (ID ${p.id}) · ${enviados}/${destinos.length} correo(s)`);
+                        UI.showAlert(enviados > 0 ? "Correo enviado" : "No se pudo enviar", enviados > 0
+                            ? `Se envió el aviso con el enlace al PDF a ${destinos.join(' y ')}.`
+                            : "EmailJS no aceptó el envío. Revisa la configuración de correo e inténtalo de nuevo.", enviados > 0 ? "success" : "error");
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = original;
+                    }
                 });
             });
 
@@ -7298,32 +8163,7 @@
 
         document.getElementById('permiso-filtro-nombre').addEventListener('input', renderHistorialPermisos);
 
-        document.getElementById('btn-exportar-permisos').addEventListener('click', () => {
-            if (permisosCache.length === 0) return UI.showAlert("Aviso", "No hay solicitudes de permiso para exportar.", "info");
-
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-            csvContent += "TRABAJADOR;CEDULA;TIPO DE PERMISO;FECHA;HORAS;DIAS DE VACACIONES;ESTADO;CREADO POR;CREADO EN;" +
-                SIGNANTES.map(s => `${s.label.toUpperCase()} - NOMBRE;${s.label.toUpperCase()} - FIRMADO`).join(';') + "\n";
-
-            permisosCache.forEach(p => {
-                const estado = p.estado === 'aprobado' ? 'Aprobado' : (estaVencido(p) ? 'Vencido' : 'Pendiente');
-                const row = [
-                    p.trabajador || '', p.trabajador_cedula || '', p.tipo || '', p.fecha || '', p.horas || 0, p.dias_vacaciones || 0,
-                    estado, p.creado_por || '', p.creado_en || '',
-                    ...SIGNANTES.flatMap(s => [p.firmantes?.[s.key]?.nombre || '', p.firmantes?.[s.key]?.firmado ? 'SI' : 'NO'])
-                ].map(sanitizeCsvField).join(";");
-                csvContent += row + "\n";
-            });
-
-            const nombreArchivo = `Permisos_INDIMON_${getTodayStr()}.csv`;
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", nombreArchivo);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
+        document.getElementById('btn-exportar-permisos').addEventListener('click', exportarPermisosExcel);
 
         // ------------------------------- Firma remota (abierta desde el enlace individual) -------------------------------
         function checkFirmarReady() {
@@ -7489,6 +8329,88 @@
             }
         }
 
+        // Vista que abre el enlace del correo de aprobación (?permiso=ID&constancia=1): muestra el resumen del
+        // permiso y deja descargar el PDF con las 4 firmas. Igual que los enlaces de firma, no pide iniciar
+        // sesión (el ID de la solicitud es el "secreto" del enlace). Todo se pinta con textContent.
+        async function loadConstanciaStandalone(permisoId) {
+            ocultarTodasLasVistasPermisos();
+            document.getElementById('permiso-view-constancia').classList.remove('hidden');
+            document.getElementById('permiso-view-constancia').classList.add('flex');
+            document.getElementById('permisos-subtabs').classList.add('hidden');
+
+            const loading = document.getElementById('constancia-loading');
+            const errorBox = document.getElementById('constancia-error');
+            const contenido = document.getElementById('constancia-contenido');
+            loading.classList.remove('hidden'); errorBox.classList.add('hidden'); contenido.classList.add('hidden'); contenido.classList.remove('flex');
+            const mostrarError = (msg) => { loading.classList.add('hidden'); errorBox.classList.remove('hidden'); errorBox.textContent = msg; };
+
+            try {
+                const snap = await getDoc(doc(db, 'permisos', permisoId));
+                if (!snap.exists()) return mostrarError('Esta solicitud no existe o el enlace ya no es válido.');
+                const p = { id: snap.id, ...snap.data() };
+                const aprobado = p.estado === 'aprobado';
+                const esVac = p.tipo === 'Vacaciones';
+
+                document.getElementById('constancia-trabajador').textContent = p.trabajador || '—';
+                document.getElementById('constancia-tipo').textContent = p.tipo || '—';
+                document.getElementById('constancia-fecha').textContent = fechaDMAPermiso(p.fecha) || '—';
+                document.getElementById('constancia-duracion-label').textContent = esVac ? 'Días' : 'Horas';
+                document.getElementById('constancia-duracion').textContent = esVac ? (p.dias_vacaciones != null ? String(p.dias_vacaciones) : '—') : (p.horas ? `${p.horas}h` : '—');
+                if (p.nota) {
+                    document.getElementById('constancia-nota-wrap').classList.remove('hidden');
+                    document.getElementById('constancia-nota').textContent = p.nota;
+                }
+                const estado = document.getElementById('constancia-estado');
+                estado.textContent = aprobado ? 'Aprobado' : 'Pendiente de firmas';
+                estado.className = `text-[10px] font-bold uppercase px-2 py-1 rounded-full flex-shrink-0 ${aprobado ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`;
+
+                const firmas = document.getElementById('constancia-firmas');
+                firmas.textContent = '';
+                SIGNANTES.forEach(s => {
+                    const f = (p.firmantes && p.firmantes[s.key]) || {};
+                    const caja = document.createElement('div');
+                    caja.className = 'bg-slate-50 rounded-lg p-2 border border-slate-100';
+                    const rol = document.createElement('p');
+                    rol.className = 'text-[9px] font-bold text-slate-500 uppercase';
+                    rol.textContent = s.label;
+                    const nombre = document.createElement('p');
+                    nombre.className = 'text-[10px] font-semibold text-slate-700 truncate';
+                    nombre.textContent = f.nombre || '—';
+                    const est = document.createElement('p');
+                    est.className = `text-[10px] font-bold ${f.firmado ? 'text-emerald-600' : 'text-amber-600'}`;
+                    est.textContent = f.firmado ? `Firmó ${fechaHoraPermiso(f.firmado_en)}` : 'Pendiente';
+                    caja.append(rol, nombre, est);
+                    firmas.appendChild(caja);
+                });
+
+                const btn = document.getElementById('btn-constancia-descargar');
+                const aviso = document.getElementById('constancia-aviso');
+                btn.disabled = !aprobado;
+                aviso.classList.toggle('hidden', aprobado);
+                if (!aprobado) aviso.textContent = 'Este permiso todavía no tiene las 4 firmas. El PDF se podrá descargar cuando quede aprobado.';
+                btn.onclick = async () => {
+                    const original = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin text-xl"></i> Generando PDF...';
+                    try {
+                        await descargarPdfPermiso(p);
+                    } catch (e) {
+                        console.error(e);
+                        UI.showAlert("Error", "No se pudo generar el PDF. Verifica tu conexión e inténtalo de nuevo.", "error");
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = original;
+                    }
+                };
+
+                loading.classList.add('hidden');
+                contenido.classList.remove('hidden'); contenido.classList.add('flex');
+            } catch (e) {
+                console.error(e);
+                mostrarError('No se pudo cargar la constancia. Verifica tu conexión e inténtalo de nuevo.');
+            }
+        }
+
         async function confirmarFirmaStandalone(permisoId, rolKey) {
             const btn = document.getElementById('btn-firmar-confirmar');
             const originalHTML = btn.innerHTML;
@@ -7528,7 +8450,7 @@
                 });
 
                 if (quedoAprobado) {
-                    await enviarNotificacionPermiso(data);
+                    await enviarNotificacionPermiso(data, permisoId);
                     await sincronizarPermisoConNomina(data, permisoId);
                     // FASE 4: el saldo de vacaciones solo se descuenta cuando la solicitud queda
                     // realmente aprobada (4 firmas) — no al crearla, porque hasta entonces podría
@@ -8067,7 +8989,10 @@
             const permisoId = params.get('permiso');
             const rol = params.get('rol');
             const despId = params.get('desprendible');
-            if (permisoId && rol) {
+            if (permisoId && params.get('constancia')) {
+                UI.switchTab('tab-permisos');
+                loadConstanciaStandalone(permisoId);
+            } else if (permisoId && rol) {
                 UI.switchTab('tab-permisos');
                 loadFirmaStandalone(permisoId, rol);
             } else if (despId) {
