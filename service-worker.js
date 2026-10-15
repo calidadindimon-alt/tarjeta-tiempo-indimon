@@ -1,17 +1,20 @@
 // Service Worker de la Tarjeta de Tiempo INDIMON.
 // Objetivo: una vez que alguien abre la app CON señal al menos una vez, guardar en el celular una copia
-// de los estilos visuales (Tailwind, Google Fonts, íconos), las librerías (Firebase, jsPDF, Chart.js) y
+// de los estilos visuales (Google Fonts, íconos), las librerías (Firebase, jsPDF, Chart.js) y
 // el propio archivo de la app — para que si la vuelve a abrir SIN señal, se siga viendo con el diseño
 // normal (colores, tipografía, botones) en vez de aparecer "en crudo", como pasaba antes.
 // Esto NO reemplaza la sincronización de datos (fichajes, permisos), que ya la maneja Firestore por su
 // cuenta con su propia persistencia offline — este archivo solo se encarga de la PARTE VISUAL.
+//
+// Tailwind CSS ya NO depende de cdn.tailwindcss.com (y por lo tanto ya no necesita cachearse aquí):
+// ahora viene compilado e incluido directamente dentro de index.html, así que llega siempre junto con
+// la página misma, sin una segunda conexión a otro servidor que pudiera fallar con señal débil.
 
 // IMPORTANTE: sube este número (v2 → v3 → ...) cada vez que cambies ALGO de este archivo.
 // Cambiar el nombre es lo que obliga al navegador a tratar esto como un service worker nuevo.
-const CACHE_NAME = 'indimon-estaticos-v2';
+const CACHE_NAME = 'indimon-estaticos-v3';
 
 const HOSTS_A_CACHEAR = [
-    'cdn.tailwindcss.com',
     'unpkg.com',
     'fonts.googleapis.com',
     'fonts.gstatic.com',
