@@ -7,10 +7,14 @@ on:
     paths:
       - 'index.html'
       - 'tests/**'
+      - 'formatos/**'
+      - 'scripts/regenerar-tailwind.mjs'
   pull_request:
     paths:
       - 'index.html'
       - 'tests/**'
+      - 'formatos/**'
+      - 'scripts/regenerar-tailwind.mjs'
   workflow_dispatch: {}
 
 jobs:
@@ -36,3 +40,12 @@ jobs:
 
       - name: Probar las 3 tablas del export a Excel (extras, permisos, ausencias)
         run: node tests/test-excel-consolidado.mjs
+
+      - name: Instalar librerías para probar el Excel y el PDF de permisos
+        run: npm install --no-save exceljs@4.4.0 jspdf@2.5.2
+
+      - name: Probar el Excel de permisos (formatos oficiales GH-F-011 y GH-F-012) y el PDF de la constancia
+        run: node tests/test-permisos-formatos.mjs
+
+      - name: Verificar que el CSS de Tailwind embebido en index.html no tenga clases faltantes
+        run: node scripts/regenerar-tailwind.mjs --check
