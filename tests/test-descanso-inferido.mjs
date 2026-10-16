@@ -17,7 +17,7 @@ const fuente = leerFuente(RUTA_INDEX);
 fs.writeFileSync(RUTA_EXTRAIDO, extraerDescansoInferido(fuente));
 const require = createRequire(import.meta.url);
 delete require.cache[RUTA_EXTRAIDO];
-const { esDiaDescansoInferido, diasADescontarPorSemana } = require('./_extraido-descanso.cjs');
+const { esDiaDescansoInferido, diasADescontarPorSemana, metaSemanalOrdinaria, etiquetaDescansoRemunerado } = require('./_extraido-descanso.cjs');
 
 const results = [];
 function caso(nombre, fecha, horasPorDia, esperado) {
@@ -59,6 +59,30 @@ caso('6. Semana con falta injustificada (Jhon Freddy) -> sábado NO se infiere c
   results.push({ nombre: '7b. Esa misma semana SÍ marca sanción (2 días descontados)', ok: ok7b });
   console.log(`${ok7b ? '✅ PASS' : '❌ FAIL'} — 7b. Esa misma semana SÍ marca sanción (2 días descontados)${ok7b ? '' : `  (esperado 2, obtuvo ${diasDescontados})`}`);
 }
+
+// ---------- FASE 1 (Ley 2101/2021, arts. 173, 174 y 177 CST): meta semanal con festivos ----------
+// Horario pactado: lun-jue 8,5 h y vie 8,0 h (42 h). Lunes 12/oct/2026 es festivo (Día de la Raza).
+function ig(nombre, obtenido, esperado) {
+  const ok = JSON.stringify(obtenido) === JSON.stringify(esperado);
+  results.push({ nombre, ok });
+  console.log(`${ok ? '✅ PASS' : '❌ FAIL'} — ${nombre}${ok ? '' : `  (esperado ${JSON.stringify(esperado)}, obtuvo ${JSON.stringify(obtenido)})`}`);
+}
+const semanaFestivo = [
+  { fecha: '2026-10-13', horas_ordinarias: 8, horas_extras_diurnas: 0.5 },
+  { fecha: '2026-10-14', horas_ordinarias: 8, horas_extras_diurnas: 0.5 },
+  { fecha: '2026-10-15', horas_ordinarias: 8, horas_extras_diurnas: 0.5 },
+  { fecha: '2026-10-16', horas_ordinarias: 8 },
+];
+ig('8. Meta de la semana con lunes festivo sin trabajar = 33,5 h (no 35, no 42)', metaSemanalOrdinaria('2026-10-14'), 33.5);
+ig('9. Semana normal (19-23 oct) = 42 h', metaSemanalOrdinaria('2026-10-21'), 42);
+ig('10. Si se TRABAJÓ el festivo, no se descuenta de la meta', metaSemanalOrdinaria('2026-10-14', ['2026-10-12']), 42);
+ig('11. Festivo en viernes (2026-12-25 es viernes) descuenta 8,0 h', metaSemanalOrdinaria('2026-12-23'), 34);
+ig('12. Lunes festivo sin trabajar, semana con 33,5 h trabajadas -> Descanso remunerado', esDiaDescansoInferido('2026-10-12', semanaFestivo), true);
+ig('13. Sábado de esa semana festiva (33,5 h trabajadas) -> Descanso remunerado', esDiaDescansoInferido('2026-10-17', semanaFestivo), true);
+ig('14. Semana festiva con una falta (25,5 h trabajadas) -> NO es descanso', esDiaDescansoInferido('2026-10-17', semanaFestivo.slice(1)), false);
+ig('15. Etiqueta del festivo: remunerado, no se repone, meta 33,5', etiquetaDescansoRemunerado('2026-10-12', semanaFestivo, true),
+  'Festivo remunerado — no se repone ni se alarga la jornada (meta de la semana: 33,5 h)');
+ig('16. Etiqueta del sábado en semana normal', etiquetaDescansoRemunerado('2026-10-24', [{ fecha: '2026-10-19', horas_ordinarias: 8, horas_extras_diurnas: 0.5 }], false).startsWith('Descanso remunerado — completó las 42 h'), true);
 
 console.log('\n========== RESUMEN ==========');
 const fails = results.filter((r) => !r.ok);
