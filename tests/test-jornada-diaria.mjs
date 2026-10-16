@@ -129,6 +129,52 @@ caso('12. Turno 10am-9pm -> 2h extra nocturnas', {
   reg: { fecha: '2026-06-01', entrada: '10:00', salida: '21:00' },
 }, { ord: 8, extD: 0, extN: 2, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
 
+// ---------------------------------------------------------------
+// 13+. Clasificación por SEMANA: ordinarias hasta la meta semanal (tope diario de 9 h), extras solo lo que pase
+// ---------------------------------------------------------------
+const CERO = { extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 };
+caso('13. Día de 8,5 h con meta semanal por cumplir (quedan 33,5 h) -> 8,5 ordinarias, 0 extras', {
+  reg: { fecha: '2026-10-13', entrada: '07:30', salida: '17:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 33.5,
+}, { ord: 8.5, extD: 0, ...CERO });
+caso('14. Día de 10 h con meta por cumplir -> máximo 9 ordinarias por día, 1 extra', {
+  reg: { fecha: '2026-10-13', entrada: '07:00', salida: '18:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 9, extD: 1, ...CERO });
+caso('15. Quedan 8 h de meta y se trabajan 8,5 -> 8 ordinarias y 0,5 extra', {
+  reg: { fecha: '2026-10-16', entrada: '07:30', salida: '17:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 8,
+}, { ord: 8, extD: 0.5, ...CERO });
+caso('16. Meta semanal ya cumplida -> todo el día (sábado de 4 h) es extra', {
+  reg: { fecha: '2026-10-17', entrada: '07:00', salida: '11:00' }, tope: 0,
+}, { ord: 0, extD: 4, ...CERO });
+
+// Semana completa, día por día, igual que se guarda al marcar cada salida (acumulando lo ordinario ya usado).
+function semana(meta, dias) {
+  let acum = 0, ord = 0, ext = 0;
+  for (const [fecha, entrada, salida] of dias) {
+    setCatalogosCache({ horarios_obra: {}, festivos: [] });
+    const r = calcularJornadaDiaria({ fecha, entrada, salida, almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, meta - acum);
+    acum += r.ord; ord += r.ord; ext += r.extD + r.extN;
+  }
+  return { ord: Math.round(ord * 100) / 100, ext: Math.round(ext * 100) / 100 };
+}
+function casoSemana(nombre, meta, dias, esperado) {
+  const o = semana(meta, dias);
+  const ok = aprox(o.ord, esperado.ord) && aprox(o.ext, esperado.ext);
+  results.push({ nombre, ok, diffs: [], obtenido: o });
+  console.log(`${ok ? '✅ PASS' : '❌ FAIL'} — ${nombre}${ok ? '' : `  (esperado ${JSON.stringify(esperado)}, obtuvo ${JSON.stringify(o)})`}`);
+}
+casoSemana('17. Semana normal 8,5 h lun-jue + 8 h vie (42 h) -> 42 ordinarias, 0 extras', 42,
+  [['2026-10-19', '07:30', '17:00'], ['2026-10-20', '07:30', '17:00'], ['2026-10-21', '07:30', '17:00'], ['2026-10-22', '07:30', '17:00'], ['2026-10-23', '07:30', '16:30']],
+  { ord: 42, ext: 0 });
+casoSemana('18. Semana con lunes festivo (meta 33,5) y 33,5 h trabajadas -> 33,5 ordinarias, 0 extras', 33.5,
+  [['2026-10-13', '07:30', '17:00'], ['2026-10-14', '07:30', '17:00'], ['2026-10-15', '07:30', '17:00'], ['2026-10-16', '07:30', '16:30']],
+  { ord: 33.5, ext: 0 });
+casoSemana('19. Semana con tardanza (menos de la meta) -> todo ordinario, sin extras inventadas', 42,
+  [['2026-10-19', '08:00', '17:00'], ['2026-10-20', '07:30', '17:00'], ['2026-10-21', '07:30', '17:00'], ['2026-10-22', '07:30', '17:00'], ['2026-10-23', '07:30', '16:30']],
+  { ord: 41.5, ext: 0 });
+casoSemana('20. Obra con sábado: lun-vie 8,5 h + sábado 7:00-14:00 (6 h netas) = 48,5 h -> 42 ordinarias y 6,5 extras (lo que pasa de la meta)', 42,
+  [['2026-10-19', '07:00', '16:30'], ['2026-10-20', '07:00', '16:30'], ['2026-10-21', '07:00', '16:30'], ['2026-10-22', '07:00', '16:30'], ['2026-10-23', '07:00', '16:30'], ['2026-10-24', '07:00', '14:00']],
+  { ord: 42, ext: 6.5 });
+
 console.log('\n========== RESUMEN ==========');
 const fails = results.filter((r) => !r.ok);
 console.log(`${results.length - fails.length} / ${results.length} casos correctos`);
@@ -137,6 +183,6 @@ if (fails.length > 0) {
   fails.forEach((f) => console.log(` - ${f.nombre}`));
   process.exit(1);
 } else {
-  console.log('\ncalcularJornadaDiaria() sigue calculando exactamente lo esperado en los 14 casos probados.');
+  console.log(`\ncalcularJornadaDiaria() sigue calculando exactamente lo esperado en los ${results.length} casos probados.`);
   process.exit(0);
 }

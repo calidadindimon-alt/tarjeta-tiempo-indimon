@@ -1629,7 +1629,12 @@
             HORA_INICIO_NOCTURNA: 19.0,   // 7:00 p.m.
             HORA_FIN_NOCTURNA: 30.0,      // 6:00 a.m. del día siguiente, en escala continua
             JORNADA_ORDINARIA_DIARIA: 8,
-            JORNADA_ORDINARIA_SEMANAL: 42, // tope semanal de horas ordinarias (jornada NO flexible)
+            // Las horas se clasifican por la SEMANA: son ordinarias hasta completar la meta semanal (42 h, o menos si
+            // hay festivo entre semana) y extras solo lo que pase de ella. Un solo día no puede pasar de este tope de
+            // horas ordinarias (art. 161 lit. c CST: jornada distribuida en 5 días, máximo 9 h diarias). Aplica si el
+            // contrato o el Reglamento pacta la jornada de 8,5 h diarias; para volver a topar cada día en 8 h, poner 8.
+            JORNADA_ORDINARIA_DIARIA_MAXIMA: 9,
+            JORNADA_ORDINARIA_SEMANAL: 42, // meta semanal de horas ordinarias
             RECARGO_NOCTURNO_ORDINARIO: 0.35,
             RECARGO_EXTRA_DIURNA: 0.25,
             RECARGO_EXTRA_NOCTURNA: 0.75,
@@ -2867,7 +2872,7 @@
             // pero nunca se usaba — las horas extra reales se calculan más abajo, por intervalos, para
             // repartirlas correctamente entre diurnas/nocturnas. Era código muerto sin efecto en el
             // resultado; se quita para no confundir a quien lea esta función después.
-            const topeDia = Math.max(0, Math.min(LEY.JORNADA_ORDINARIA_DIARIA, topeOrdinarioDia));
+            const topeDia = Math.max(0, Math.min(LEY.JORNADA_ORDINARIA_DIARIA_MAXIMA, topeOrdinarioDia));
             const ordAntesDeTardanza = Math.min(topeDia, efectivas);
 
             // Punto en el tiempo donde terminan las horas ordinarias y empiezan las extra
@@ -4057,6 +4062,19 @@
                 btn.innerHTML = originalHTML; btn.disabled = false;
                 await checkTodayState();
                 await calculateMonthlyAccumulated();
+
+                // Las horas se clasifican por la SEMANA (ordinarias hasta la meta semanal, extras solo lo que pase):
+                // al cerrar el día se recalcula toda la semana para que los días anteriores queden clasificados con
+                // la misma regla (por ejemplo los guardados antes de este cambio). Si falla o el fichaje quedó
+                // pendiente de sincronizar, no pasa nada: se corrige en el siguiente cierre o con "Recalcular semana".
+                if (action === 'out' && resultado === 'confirmado') {
+                    try {
+                        const rec = await recalcularSemana(currentUserId, tStr);
+                        if (rec.actualizados > 0) { await calculateMonthlyAccumulated(); await checkTodayState(); }
+                    } catch (eRecalculo) {
+                        console.error('No se pudo recalcular la semana al cerrar el día:', eRecalculo);
+                    }
+                }
 
                 // El aviso del GPS va DESPUÉS de guardar: el fichaje nunca se bloquea por falta de
                 // ubicación, pero el colaborador sí se entera de que quedó sin GPS y cómo arreglarlo.
