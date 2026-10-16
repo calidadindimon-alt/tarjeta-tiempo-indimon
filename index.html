@@ -3401,10 +3401,26 @@
         });
 
         // ===================================== Registro diario (entrada/almuerzo/salida) =====================================
+        // Un permiso POR HORAS (cita médica, diligencia…) aprobado ANTES de su fecha crea ese día un registro
+        // "completado" vacío (ver sincronizarPermisoConNomina) solo para dejar constancia del permiso. Ese
+        // registro NO es un día trabajado ni un día completo de permiso: la persona sí va a trabajar el resto
+        // de la jornada. Si la pantalla lo tratara como "jornada completada", bloquearía el fichaje de entrada
+        // de todo el día (le pasó a Doris Cruz el 16/10/2026). Se reconoce así: completado, sin entrada ni
+        // salida, sin horas trabajadas, con un permiso por horas MENOR a una jornada completa (8 h). Las
+        // vacaciones, las ausencias y los permisos de un día completo siguen bloqueando el fichaje, como antes.
+        const HORAS_PERMISO_DIA_COMPLETO = 8;
+        function esRegistroSoloPermisoParcial(d) {
+            if (!d || d.estado !== 'completado' || d.entrada || d.salida) return false;
+            if (!d.tipo_permiso || d.tipo_permiso === 'Vacaciones' || esAusenciaSinHoras(d.tipo_permiso)) return false;
+            const horasPermiso = Number(d.horas_permiso) || 0;
+            if (!(horasPermiso > 0 && horasPermiso < HORAS_PERMISO_DIA_COMPLETO)) return false;
+            return !d.horas_ordinarias && !d.horas_extras_diurnas && !d.horas_extras_nocturnas;
+        }
+
         async function checkTodayState() {
             const t = getTodayStr();
             const snap = await getDoc(doc(db, 'empleados', currentUserId, 'registros', t));
-            const data = snap.exists() ? snap.data() : null;
+            const data = (snap.exists() && !esRegistroSoloPermisoParcial(snap.data())) ? snap.data() : null;
 
             if (data) {
                 fechaRegistroActivo = t;
@@ -3812,6 +3828,15 @@
                     obra: document.getElementById('sel-obra').value.trim(),
                     autoriza: document.getElementById('sel-autoriza').value.trim()
                 };
+
+                // Entrada sobre el registro vacío que dejó un permiso por horas aprobado de antemano: ese registro
+                // trae cliente/obra/autoriza vacíos, así que se toman de lo que la persona eligió en pantalla
+                // (el permiso_id, el tipo y las horas del permiso se conservan: el guardado hace merge).
+                if (action === 'in' && esRegistroSoloPermisoParcial(data)) {
+                    data.cliente = document.getElementById('sel-cliente').value.trim();
+                    data.obra = document.getElementById('sel-obra').value.trim();
+                    data.autoriza = document.getElementById('sel-autoriza').value.trim();
+                }
 
                 let loc = null;
                 let gpsMotivo = null;
