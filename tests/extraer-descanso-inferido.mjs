@@ -20,7 +20,7 @@ export function extraerDescansoInferido(fuente) {
     bloqueBalanceado(fuente, 'function diasADescontarPorSemana(registrosSemana) {'),
     bloqueBalanceado(fuente, 'function esFinDeSemanaOFestivo(fecha) {'),
     bloqueBalanceado(fuente, 'function motivoAvisoSemanal(totalHoras, metaSemana, diasConTardanza, diasAusencia) {'),
-    bloqueBalanceado(fuente, 'function esDiaDescansoInferido(fecha, registrosSemana) {'),
+    bloqueBalanceado(fuente, 'function esDiaDescansoInferido(fecha, registrosSemana, primeraFecha, fechasConPermiso) {'),
   ];
 
   const cuerpo = [
