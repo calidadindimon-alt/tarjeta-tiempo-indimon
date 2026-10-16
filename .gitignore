@@ -5,3 +5,5 @@ tests/_extraido-descanso.cjs
 tests/_extraido-excel.cjs
 tests/_extraido-permisos.cjs
 tests/_extraido-anticipacion.cjs
+tests/_extraido-registro-permiso.cjs
+tests/_extraido-clasificacion.cjs
