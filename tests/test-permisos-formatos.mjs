@@ -188,9 +188,11 @@ const obraPorPermiso = new Map([['a', 'MYKW'], ['b', 'BOGOTA'], ['c', 'MYKW'], [
     const texto = bytes.toString('latin1');
     ['CONSTANCIA DE PERMISO', 'APROBADO', 'DORIS AMANDA CRUZ ROMERO', 'ASISTENTE ADMINISTRATIVO', 'ID de la solicitud: a'].forEach(t => assertTrue(texto.includes(t), `el PDF debe incluir "${t}"`));
     assertEqual((texto.match(/\/Subtype\s*\/Image/g) || []).length, 4, 'las 4 firmas como imagen');
+    assertTrue(texto.includes('obligatorio por ley entregar a RRHH el soporte'), 'el PDF recuerda entregar el soporte (2 a 5 dias)');
     // Pendiente, sin cargo y sin ninguna firma: debe generarse igual
     const vacio = api.construirPdfPermiso(jsPDF, { id: 'z', trabajador: 'X', tipo: 'Vacaciones', fecha: '2026-11-03', dias_vacaciones: 3, estado: 'pendiente', firmantes: {} }, {}, null);
     assertEqual(Buffer.from(vacio.output('arraybuffer')).toString('latin1').includes('PENDIENTE'), true, 'estado pendiente');
+    assertEqual(Buffer.from(vacio.output('arraybuffer')).toString('latin1').includes('soporte del permiso'), false, 'vacaciones no llevan recordatorio de soporte');
   });
 
   await caso('13. Nombre del archivo PDF sin tildes ni caracteres raros', () => {

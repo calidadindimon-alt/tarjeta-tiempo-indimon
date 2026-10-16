@@ -77,6 +77,13 @@ ig('24. Se descuenta / se repone / no remunerado',
   ['Se descuenta del salario', 'El trabajador repone las horas', 'No remunerado (licencia art. 51 CST: contrato suspendido, sin pago de salario)']);
 ig('25. El sustento del Reglamento se agrega al texto', m.textoRemuneracionPermiso({ tipo: REGLAMENTO, remuneracion: 'remunerado', sustento_reglamento: 'Art. 32' }), 'Remunerado — Reglamento Interno: Art. 32');
 
+// --- Recordatorio del soporte obligatorio (2 a 5 días) ---
+ig('27. Vacaciones no llevan recordatorio de soporte', m.textoRecordatorioSoporte('Vacaciones'), '');
+ig('28. Los demás 12 tipos recuerdan entregar el soporte en 2 a 5 días',
+  [...LEY, PERSONAL, ART51, REGLAMENTO].map(t => /obligatorio por ley entregar a RRHH el soporte/.test(m.textoRecordatorioSoporte(t)) && /2 a 5 días/.test(m.textoRecordatorioSoporte(t))),
+  [...LEY, PERSONAL, ART51, REGLAMENTO].map(() => true));
+ig('29. El recordatorio dice qué documento llevar (luto -> certificado de defunción)', /certificado de defunción/.test(m.textoRecordatorioSoporte('Licencia por luto (familiar cercano)')), true);
+
 // --- El desplegable del formulario y el catálogo deben decir lo mismo ---
 {
   const sel = fuente.slice(fuente.indexOf('id="permiso-tipo"'), fuente.indexOf('</select>', fuente.indexOf('id="permiso-tipo"')));

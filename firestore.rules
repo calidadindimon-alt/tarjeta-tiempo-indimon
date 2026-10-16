@@ -279,7 +279,9 @@ service cloud.firestore {
       allow update: if esAdmin() ||
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firmantes', 'estado']) &&
          (request.resource.data.estado != 'aprobado' || permisoTieneLas4Firmas()));
-      allow delete: if true; // cámbialo a "esAdmin()" si quieres exigir login de Admin para borrar
+      // ENDURECIDO: borrar una solicitud exige Admin. Antes era "if true": cualquier colaborador (o cualquiera con las
+      // credenciales públicas de Firebase) podía borrar solicitudes de permiso de los demás desde el Historial.
+      allow delete: if esAdmin();
     }
 
     // -------------------------------------------------------------------------
