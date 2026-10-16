@@ -19,6 +19,7 @@ export function extraerDescansoInferido(fuente) {
     bloqueBalanceado(fuente, 'function esAusenciaInjustificada(tipoPermiso) {'),
     bloqueBalanceado(fuente, 'function diasADescontarPorSemana(registrosSemana) {'),
     bloqueBalanceado(fuente, 'function esFinDeSemanaOFestivo(fecha) {'),
+    bloqueBalanceado(fuente, 'function motivoAvisoSemanal(totalHoras, metaSemana, diasConTardanza, diasAusencia) {'),
     bloqueBalanceado(fuente, 'function esDiaDescansoInferido(fecha, registrosSemana) {'),
   ];
 
@@ -26,7 +27,7 @@ export function extraerDescansoInferido(fuente) {
     '"use strict";',
     'let catalogosCache = { horarios_obra: {}, festivos: [] };',
     ...piezas,
-    'module.exports = { esDiaDescansoInferido, metaSemanalOrdinaria, etiquetaDescansoRemunerado, diasADescontarPorSemana, setCatalogosCache: (c) => { catalogosCache = c; } };',
+    'module.exports = { esDiaDescansoInferido, metaSemanalOrdinaria, etiquetaDescansoRemunerado, motivoAvisoSemanal, diasADescontarPorSemana, setCatalogosCache: (c) => { catalogosCache = c; } };',
   ].join('\n\n');
 
   return cuerpo;
