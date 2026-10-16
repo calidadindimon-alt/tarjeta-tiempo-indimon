@@ -2520,6 +2520,18 @@
         // total trabajó menos de las 42 horas reglamentarias Y hubo algún día con tardanza esa
         // semana, se le avisa por correo a RRHH/Coordinador con el detalle — la decisión de aplicar
         // o no un descuento queda en sus manos, revisando el Consolidado de Tiempos.
+        // ¿Hay algo que RRHH deba revisar de la semana anterior? Se avisa si hubo ausencia injustificada o
+        // tardanza, AUNQUE las horas totales (con extras) lleguen a la meta: las extras se pagan tal cual
+        // y no se restan, pero RRHH decide si corresponde algún ajuste. Devuelve null si no hay nada.
+        function motivoAvisoSemanal(totalHoras, metaSemana, diasConTardanza, diasAusencia) {
+            if (diasAusencia <= 0 && diasConTardanza <= 0) return null;
+            const incompleta = totalHoras < metaSemana - 0.01;
+            const partes = [];
+            if (diasAusencia > 0) partes.push(`${diasAusencia} día(s) de ausencia injustificada`);
+            if (diasConTardanza > 0) partes.push(`${diasConTardanza} día(s) de tardanza`);
+            return { incompleta, asunto: incompleta ? 'no completó las horas de la semana' : 'ausencia o tardanza esta semana', detalle: partes.join(' y ') };
+        }
+
         async function verificarCumplimientoSemanal(cedula, nombre, fechaHoy) {
             try {
                 const [y, m, d] = fechaHoy.split('-').map(Number);
@@ -2539,10 +2551,11 @@
                     where(documentId(), '>=', lunesAnterior),
                     where(documentId(), '<=', domingoAnterior)
                 ));
-                let totalHoras = 0, totalTardanzaMin = 0, diasConTardanza = 0;
+                let totalHoras = 0, totalTardanzaMin = 0, diasConTardanza = 0, diasAusencia = 0;
                 const fechasTrabajadas = [];
                 snap.forEach(d2 => {
                     const r = d2.data();
+                    if (esAusenciaInjustificada(r.tipo_permiso)) diasAusencia++;
                     if (r.estado !== 'completado') return;
                     totalHoras += horasTrabajadasRegistro(r);
                     if (horasTrabajadasRegistro(r) > 0) fechasTrabajadas.push(d2.id);
@@ -2551,7 +2564,8 @@
 
                 // Meta de esa semana: 42 h menos los festivos de lunes a viernes (descanso remunerado, no se repone).
                 const metaSemana = metaSemanalOrdinaria(lunesAnterior, fechasTrabajadas);
-                if (totalHoras < metaSemana - 0.01 && diasConTardanza > 0) {
+                const aviso = motivoAvisoSemanal(totalHoras, metaSemana, diasConTardanza, diasAusencia);
+                if (aviso) {
                     await setDoc(marcaRef, { cedula, nombre, semana_lunes: lunesAnterior, horas_trabajadas: Number(totalHoras.toFixed(2)), enviado_en: new Date().toISOString() });
                     if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_GENERAL_ID) return;
                     const destinos = [catalogosCache.email_rrhh, catalogosCache.email_coordinador].filter(Boolean);
@@ -2560,8 +2574,8 @@
                     for (const destino of destinos) {
                         await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_GENERAL_ID, {
                             to_email: destino,
-                            asunto: `Revisar semana de ${nombre} — no completó las ${metaTxt}h`,
-                            cuerpo: `${nombre} trabajó ${totalHoras.toFixed(1)}h en la semana del ${lunesAnterior} al ${domingoAnterior} (le faltaron ${faltante}h para las ${metaTxt}h de esa semana${metaSemana < LEY.JORNADA_ORDINARIA_SEMANAL ? ', ya descontado el festivo remunerado' : ' reglamentarias'}), con ${diasConTardanza} día(s) de tardanza esa semana (${totalTardanzaMin} min en total).\n\nLa app YA NO descuenta esto del pago automáticamente. Revisa el detalle en el Consolidado de Tiempos y decide si corresponde algún ajuste.`
+                            asunto: `Revisar semana de ${nombre} — ${aviso.asunto}`,
+                            cuerpo: `${nombre} trabajó ${totalHoras.toFixed(1)}h en la semana del ${lunesAnterior} al ${domingoAnterior} (meta de esa semana: ${metaTxt}h${metaSemana < LEY.JORNADA_ORDINARIA_SEMANAL ? ', ya descontado el festivo remunerado' : ''}), con ${aviso.detalle}${diasConTardanza > 0 ? ` (${totalTardanzaMin} min de tardanza en total)` : ''}.${aviso.incompleta ? ` Le faltaron ${faltante}h.` : ' Las horas totales sí llegan a la meta porque se trabajaron horas extras.'}\n\nLa app NO descuenta esto del pago ni lo resta de las horas extras: las extras se pagan tal cual fueron trabajadas. Revisa el detalle en el Consolidado de Tiempos y decide si corresponde algún ajuste (el descuento del domingo por ausencia injustificada, art. 173 CST, se calcula aparte).`
                         }).catch(e => console.error('No se pudo enviar el aviso de semana incompleta:', e));
                     }
                 }
@@ -2668,6 +2682,9 @@
 
         function esDiaDescansoInferido(fecha, registrosSemana) {
             if (!esFinDeSemanaOFestivo(fecha)) return false;
+            // Una ausencia injustificada en la semana nunca se tapa con extras: ese día no se infiere como
+            // descanso remunerado (el descuento del art. 173 lo decide diasADescontarPorSemana / RRHH).
+            if (diasADescontarPorSemana(registrosSemana) > 0) return false;
             // Se compara lo trabajado (ordinarias + extras) contra la meta de ESA semana: 42 h, o menos si
             // hubo festivo entre semana (descanso remunerado que no se repone, arts. 173, 177 CST).
             const totalHorasSemana = registrosSemana.reduce((acc, r) => acc + horasTrabajadasRegistro(r), 0);
