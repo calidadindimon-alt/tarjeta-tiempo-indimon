@@ -6,6 +6,9 @@ import { bloqueBalanceado, hastaPuntoYComa } from './extraer-calculadora.mjs';
 export function extraerExcelConsolidado(fuente) {
   const piezas = [
     hastaPuntoYComa(fuente, "const TIPOS_AUSENCIA = ["),
+    hastaPuntoYComa(fuente, 'const PERMISOS_CATALOGO = ['),
+    bloqueBalanceado(fuente, 'function infoTipoPermiso(tipo) {'),
+    bloqueBalanceado(fuente, 'function esTipoVariosDias(tipo) {'),
     bloqueBalanceado(fuente, 'function getRangoSemana(fechaStr) {'),
     bloqueBalanceado(fuente, 'function esAusenciaInjustificada(tipoPermiso) {'),
     bloqueBalanceado(fuente, 'function diasADescontarPorSemana(registrosSemana) {'),

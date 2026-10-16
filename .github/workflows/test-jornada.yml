@@ -41,6 +41,9 @@ jobs:
       - name: Probar las 3 tablas del export a Excel (extras, permisos, ausencias)
         run: node tests/test-excel-consolidado.mjs
 
+      - name: Probar la clasificación de permisos (remunerados por ley, voluntarios, art. 51 y Reglamento Interno)
+        run: node tests/test-permisos-clasificacion.mjs
+
       - name: Probar que un permiso por horas aprobado de antemano no bloquee el fichaje del día
         run: node tests/test-registro-permiso.mjs
 
