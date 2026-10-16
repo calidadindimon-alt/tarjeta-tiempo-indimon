@@ -11,6 +11,11 @@ export function extraerDescansoInferido(fuente) {
     hastaPuntoYComa(fuente, 'const FESTIVOS_SET = new Set(FESTIVOS_COLOMBIA);'),
     bloqueBalanceado(fuente, 'function esDiaFestivo(fechaStr) {'),
     bloqueBalanceado(fuente, 'function esDominicalOFestivo(fechaStr) {'),
+    bloqueBalanceado(fuente, 'function getRangoSemana(fechaStr) {'),
+    hastaPuntoYComa(fuente, 'const HORARIO_PACTADO_HORAS = {'),
+    bloqueBalanceado(fuente, 'function metaSemanalOrdinaria(fechaStr, fechasConTrabajo) {'),
+    bloqueBalanceado(fuente, 'function horasTrabajadasRegistro(r) {'),
+    bloqueBalanceado(fuente, 'function etiquetaDescansoRemunerado(fecha, registrosSemana, segundaPersona) {'),
     bloqueBalanceado(fuente, 'function esAusenciaInjustificada(tipoPermiso) {'),
     bloqueBalanceado(fuente, 'function diasADescontarPorSemana(registrosSemana) {'),
     bloqueBalanceado(fuente, 'function esFinDeSemanaOFestivo(fecha) {'),
@@ -21,7 +26,7 @@ export function extraerDescansoInferido(fuente) {
     '"use strict";',
     'let catalogosCache = { horarios_obra: {}, festivos: [] };',
     ...piezas,
-    'module.exports = { esDiaDescansoInferido, diasADescontarPorSemana, setCatalogosCache: (c) => { catalogosCache = c; } };',
+    'module.exports = { esDiaDescansoInferido, metaSemanalOrdinaria, etiquetaDescansoRemunerado, diasADescontarPorSemana, setCatalogosCache: (c) => { catalogosCache = c; } };',
   ].join('\n\n');
 
   return cuerpo;
