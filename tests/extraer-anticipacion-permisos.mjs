@@ -10,12 +10,18 @@ export function extraerAnticipacionPermisos(fuente) {
     bloqueBalanceado(fuente, 'function fechaHoraPermiso(isoDatetime) {'),
     hastaPuntoYComa(fuente, 'const HORAS_ANTICIPACION_PERMISO ='),
     bloqueBalanceado(fuente, 'function inicioPermisoBogota(fecha, hora) {'),
+    hastaPuntoYComa(fuente, 'const PERMISOS_CATALOGO = ['),
+    bloqueBalanceado(fuente, 'function infoTipoPermiso(tipo) {'),
+    bloqueBalanceado(fuente, 'function esTipoVariosDias(tipo) {'),
+    bloqueBalanceado(fuente, 'function clasificarPermiso(tipo, extra) {'),
+    bloqueBalanceado(fuente, 'function validarDiasPermiso(tipo, dias) {'),
+    bloqueBalanceado(fuente, 'function textoRemuneracionPermiso(p) {'),
     bloqueBalanceado(fuente, 'function validarHorarioPermiso(tipo, salida, entrada) {'),
     bloqueBalanceado(fuente, 'function validarAnticipacionPermiso(datos) {'),
   ];
   return [
     '"use strict";',
     ...piezas,
-    'module.exports = { inicioPermisoBogota, validarHorarioPermiso, validarAnticipacionPermiso };',
+    'module.exports = { inicioPermisoBogota, validarHorarioPermiso, validarAnticipacionPermiso, esTipoVariosDias, infoTipoPermiso, clasificarPermiso, validarDiasPermiso, textoRemuneracionPermiso };',
   ].join('\n\n');
 }
