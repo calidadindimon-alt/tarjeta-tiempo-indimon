@@ -2520,12 +2520,15 @@
         // total trabajó menos de las 42 horas reglamentarias Y hubo algún día con tardanza esa
         // semana, se le avisa por correo a RRHH/Coordinador con el detalle — la decisión de aplicar
         // o no un descuento queda en sus manos, revisando el Consolidado de Tiempos.
-        // ¿Hay algo que RRHH deba revisar de la semana anterior? Se avisa si hubo ausencia injustificada o
-        // tardanza, AUNQUE las horas totales (con extras) lleguen a la meta: las extras se pagan tal cual
+        // ¿Hay algo que RRHH deba revisar de la semana anterior? Se avisa si hubo ausencia injustificada
+        // (AUNQUE las horas totales, con extras, lleguen a la meta) o si faltaron horas: las extras se pagan tal cual
         // y no se restan, pero RRHH decide si corresponde algún ajuste. Devuelve null si no hay nada.
         function motivoAvisoSemanal(totalHoras, metaSemana, diasConTardanza, diasAusencia) {
-            if (diasAusencia <= 0 && diasConTardanza <= 0) return null;
             const incompleta = totalHoras < metaSemana - 0.01;
+            // Solo se avisa si hubo ausencia injustificada, o si faltaron horas Y hubo tardanza (como antes). La
+            // tardanza sola NO manda correo: el plan gratis de EmailJS tiene un límite mensual y ya queda visible
+            // en el Consolidado.
+            if (diasAusencia <= 0 && !(incompleta && diasConTardanza > 0)) return null;
             const partes = [];
             if (diasAusencia > 0) partes.push(`${diasAusencia} día(s) de ausencia injustificada`);
             if (diasConTardanza > 0) partes.push(`${diasConTardanza} día(s) de tardanza`);

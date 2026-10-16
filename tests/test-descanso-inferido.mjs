@@ -95,9 +95,10 @@ const semanaConFaltaCompensada = [
 ig('17. Falta injustificada compensada con extras (42 h en total): el sábado NO es descanso', esDiaDescansoInferido('2026-10-24', semanaConFaltaCompensada.slice(0, 4)), false);
 ig('18. Mismo caso: el domingo tampoco es descanso (lo cubre la sanción del art. 173)', esDiaDescansoInferido('2026-10-25', semanaConFaltaCompensada), false);
 ig('19. Aviso: ausencia compensada con extras (horas llegan a la meta) -> SÍ avisa', motivoAvisoSemanal(42, 42, 0, 1), { incompleta: false, asunto: 'ausencia o tardanza esta semana', detalle: '1 día(s) de ausencia injustificada' });
-ig('20. Aviso: solo tardanza y horas completas -> avisa sin decir que faltaron horas', motivoAvisoSemanal(42, 42, 2, 0), { incompleta: false, asunto: 'ausencia o tardanza esta semana', detalle: '2 día(s) de tardanza' });
+ig('20. Aviso: solo tardanza y horas completas -> NO avisa (ahorra correos)', motivoAvisoSemanal(42, 42, 2, 0), null);
 ig('21. Aviso: tardanza y semana incompleta -> avisa como incompleta', motivoAvisoSemanal(38, 42, 1, 0).incompleta, true);
 ig('22. Aviso: semana sin ausencia ni tardanza -> no avisa', motivoAvisoSemanal(41, 42, 0, 0), null);
+ig('23. Aviso: ausencia injustificada y horas incompletas -> avisa', motivoAvisoSemanal(30, 42, 0, 1).incompleta, true);
 
 console.log('\n========== RESUMEN ==========');
 const fails = results.filter((r) => !r.ok);
