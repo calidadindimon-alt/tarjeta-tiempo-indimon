@@ -41,6 +41,9 @@ jobs:
       - name: Probar las 3 tablas del export a Excel (extras, permisos, ausencias)
         run: node tests/test-excel-consolidado.mjs
 
+      - name: Probar la regla de 24 horas y el horario obligatorio de los permisos
+        run: node tests/test-permisos-anticipacion.mjs
+
       - name: Instalar librerías para probar el Excel y el PDF de permisos
         run: npm install --no-save exceljs@4.4.0 jspdf@2.5.2
 

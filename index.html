@@ -879,27 +879,28 @@
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Fecha del Permiso</label>
                                 <input type="date" id="permiso-fecha" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
+                            <!-- Hora de salida y de regreso: OBLIGATORIAS en permisos por horas. Con la hora de salida se
+                                 verifica la regla de 24 horas de anticipación (ver validarAnticipacionPermiso) y con las dos
+                                 se calculan solas las horas del permiso; además las piden los formatos oficiales GH-F-011. -->
+                            <div id="wrap-permiso-horario" class="grid grid-cols-2 gap-3 md:col-span-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de salida <span class="text-rose-500">*</span></label>
+                                    <input type="time" id="permiso-hora-salida" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de regreso <span class="text-rose-500">*</span></label>
+                                    <input type="time" id="permiso-hora-entrada" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                                <p id="permiso-horario-error" class="hidden col-span-2 text-[11px] font-bold text-rose-600"></p>
+                            </div>
                             <div id="wrap-permiso-horas">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Horas Solicitadas</label>
-                                <input type="number" id="permiso-horas" min="0" step="0.5" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 4">
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Horas Solicitadas <span class="text-slate-400 normal-case font-medium">(se calculan solas)</span></label>
+                                <input type="number" id="permiso-horas" readonly tabindex="-1" class="w-full bg-slate-100 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold outline-none" placeholder="Con la salida y el regreso">
                             </div>
                             <div id="wrap-permiso-dias-vacaciones" class="hidden">
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Días de Vacaciones Solicitados</label>
                                 <input type="number" id="permiso-dias-vacaciones" min="0.5" step="0.5" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 5">
                                 <p id="permiso-saldo-vacaciones-info" class="text-[10px] text-slate-400 mt-1"></p>
-                            </div>
-                            <!-- Datos opcionales que piden los formatos oficiales de permiso (GH-F-011 y GH-F-012) al
-                                 exportar a Excel. No son obligatorios: si se dejan vacíos, esas casillas del formato
-                                 quedan en blanco para llenarlas a mano. -->
-                            <div id="wrap-permiso-horario" class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de salida <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
-                                    <input type="time" id="permiso-hora-salida" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de regreso <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
-                                    <input type="time" id="permiso-hora-entrada" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
-                                </div>
                             </div>
                             <div id="wrap-permiso-fecha-fin" class="hidden">
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Último día de ausencia <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
@@ -915,7 +916,8 @@
                                     Es una <span class="font-bold">calamidad doméstica o emergencia</span> — marca esta casilla para saltarte el aviso mínimo de 24 horas.
                                 </label>
                             </div>
-                            <p class="md:col-span-2 text-[10px] text-slate-400 -mt-1">Regla general: todo permiso debe solicitarse con mínimo 24 horas de anticipación.</p>
+                            <p id="permiso-regla-24h" class="hidden md:col-span-2 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3 leading-relaxed"></p>
+                            <p class="md:col-span-2 text-[10px] text-slate-400 -mt-1">Regla general: todo permiso debe solicitarse con mínimo 24 horas de anticipación, contadas desde la hora de salida. Si falta menos, el sistema no deja enviarla, salvo calamidad doméstica o emergencia.</p>
                         </div>
                     </div>
 
@@ -6858,6 +6860,63 @@
             });
         }
 
+        // ---------------------------------------- Reglas de la solicitud de permiso ----------------------------------------
+        // Funciones puras (no tocan la pantalla), con prueba automática en tests/test-permisos-anticipacion.mjs.
+        const HORAS_ANTICIPACION_PERMISO = 24;
+
+        // Instante exacto en que empieza el permiso, en hora de Bogotá (UTC-5, Colombia no tiene horario de verano).
+        function inicioPermisoBogota(fecha, hora) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha || '')) return null;
+            const d = new Date(`${fecha}T${/^\d{2}:\d{2}$/.test(hora || '') ? hora : '00:00'}:00-05:00`);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        // Los permisos por horas exigen hora de salida y de regreso (el regreso debe ser después de la salida).
+        // Con las dos se calculan solas las horas solicitadas. Vacaciones se pide en días y no usa horario.
+        function validarHorarioPermiso(tipo, salida, entrada) {
+            if (tipo === 'Vacaciones') return { ok: true, horas: null };
+            if (!salida || !entrada) return { ok: false, vacio: true, razon: 'Indica la hora de salida y la hora de regreso del permiso.' };
+            if (entrada <= salida) return { ok: false, razon: 'La hora de regreso debe ser después de la hora de salida.' };
+            const [h1, m1] = salida.split(':').map(Number);
+            const [h2, m2] = entrada.split(':').map(Number);
+            return { ok: true, horas: Math.round(((h2 * 60 + m2) - (h1 * 60 + m1)) / 60 * 100) / 100 };
+        }
+
+        // Regla de anticipación: el permiso se pide con mínimo 24 horas antes de la HORA DE SALIDA (no basta con que
+        // sea otro día del calendario). Excepción: calamidad doméstica o emergencia. Las vacaciones no tienen hora,
+        // así que se exige que la fecha de inicio sea posterior a hoy (día de Bogotá).
+        function validarAnticipacionPermiso(datos) {
+            const { tipo, fecha, horaSalida, esEmergencia, ahora } = datos;
+            if (esEmergencia) return { ok: true };
+            const ahoraReal = ahora || new Date();
+            const excepcion = ' Si es una calamidad doméstica o una emergencia, marca la casilla correspondiente.';
+            if (tipo === 'Vacaciones') {
+                const hoy = partesFechaPermiso(ahoraReal.toISOString()).iso;
+                if (!fecha || fecha > hoy) return { ok: true };
+                return { ok: false, razon: 'Las vacaciones deben solicitarse con anticipación: la fecha de inicio tiene que ser posterior a hoy.' + excepcion };
+            }
+            const inicio = inicioPermisoBogota(fecha, horaSalida);
+            if (!inicio || !horaSalida) return { ok: true }; // falta información: la piden las demás validaciones
+            const minimo = new Date(ahoraReal.getTime() + HORAS_ANTICIPACION_PERMISO * 60 * 60 * 1000);
+            if (inicio.getTime() >= minimo.getTime()) return { ok: true };
+            return {
+                ok: false,
+                minimo,
+                razon: `Este permiso empieza el ${fechaHoraPermiso(inicio.toISOString())} y faltan menos de ${HORAS_ANTICIPACION_PERMISO} horas. ` +
+                       `Debe pedirse con mínimo ${HORAS_ANTICIPACION_PERMISO} horas de anticipación: lo más pronto que se puede solicitar ahora es para el ${fechaHoraPermiso(minimo.toISOString())}` + excepcion
+            };
+        }
+
+        function leerDatosAnticipacionPermiso() {
+            return {
+                tipo: document.getElementById('permiso-tipo').value,
+                fecha: document.getElementById('permiso-fecha').value,
+                horaSalida: document.getElementById('permiso-hora-salida').value,
+                esEmergencia: document.getElementById('permiso-es-emergencia').checked,
+                ahora: new Date()
+            };
+        }
+
         function datosBasicosPermisoCompletos() {
             const tipo = document.getElementById('permiso-tipo').value.trim();
             const camposBasicosOk = document.getElementById('permiso-trabajador').value.trim() &&
@@ -6865,9 +6924,23 @@
                    tipo &&
                    document.getElementById('permiso-fecha').value.trim();
             if (!camposBasicosOk) return false;
-            // Vacaciones se pide en días, no en horas — el resto de tipos siguen usando horas.
+            // Vacaciones se pide en días, no en horas — el resto de tipos exigen hora de salida y de regreso.
             if (tipo === 'Vacaciones') return !!document.getElementById('permiso-dias-vacaciones').value.trim();
-            return true;
+            return validarHorarioPermiso(tipo, document.getElementById('permiso-hora-salida').value, document.getElementById('permiso-hora-entrada').value).ok;
+        }
+
+        // Las horas solicitadas se calculan con la salida y el regreso (así nunca quedan distintas a lo que se pidió).
+        function sincronizarHorasPermiso() {
+            const tipo = document.getElementById('permiso-tipo').value;
+            if (tipo === 'Vacaciones') return;
+            const salida = document.getElementById('permiso-hora-salida').value;
+            const entrada = document.getElementById('permiso-hora-entrada').value;
+            const r = validarHorarioPermiso(tipo, salida, entrada);
+            document.getElementById('permiso-horas').value = r.ok ? String(r.horas) : '';
+            const error = document.getElementById('permiso-horario-error');
+            const mostrar = !r.ok && !r.vacio; // solo se avisa cuando ya hay 2 horas y están al revés
+            error.classList.toggle('hidden', !mostrar);
+            error.textContent = mostrar ? r.razon : '';
         }
 
         // FASE 4: Vacaciones se solicita en días (no horas) y muestra el saldo disponible del
@@ -6912,15 +6985,24 @@
             const progreso = document.getElementById('permiso-progreso');
             const datosOk = datosBasicosPermisoCompletos();
             const nombresOk = nombresFirmantesCompletos();
-            btn.disabled = !(datosOk && nombresOk);
+            const anticipacion = validarAnticipacionPermiso(leerDatosAnticipacionPermiso());
+            const cajaRegla = document.getElementById('permiso-regla-24h');
+            cajaRegla.classList.toggle('hidden', anticipacion.ok);
+            cajaRegla.textContent = anticipacion.ok ? '' : anticipacion.razon;
+            btn.disabled = !(datosOk && nombresOk && anticipacion.ok);
 
-            if (!datosOk) progreso.textContent = 'Completa trabajador, tu nombre, tipo y fecha del permiso.';
+            if (!datosOk) progreso.textContent = 'Completa trabajador, tu nombre, tipo, fecha y la hora de salida y de regreso (en vacaciones, los días).';
+            else if (!anticipacion.ok) progreso.textContent = 'No se puede enviar: faltan menos de 24 horas para el permiso (ver el aviso en rojo arriba).';
             else if (!nombresOk) progreso.textContent = 'Completa el nombre de los 4 firmantes.';
             else progreso.textContent = 'Todo listo. Se generará un enlace de firma para cada persona.';
         }
-        ['permiso-trabajador', 'permiso-creado-por', 'permiso-tipo', 'permiso-fecha'].forEach(id => {
+        ['permiso-trabajador', 'permiso-creado-por', 'permiso-tipo', 'permiso-fecha', 'permiso-hora-salida', 'permiso-hora-entrada', 'permiso-es-emergencia'].forEach(id => {
             document.getElementById(id).addEventListener('input', updateCrearSolicitudState);
             document.getElementById(id).addEventListener('change', updateCrearSolicitudState);
+        });
+        ['permiso-hora-salida', 'permiso-hora-entrada', 'permiso-tipo'].forEach(id => {
+            document.getElementById(id).addEventListener('input', sincronizarHorasPermiso);
+            document.getElementById(id).addEventListener('change', sincronizarHorasPermiso);
         });
 
         // Punto 5: aviso (no bloqueante) si el colaborador ya superó el límite configurado del mismo
@@ -7035,7 +7117,6 @@
                 const cedulaTrabajador = empleadosNombreCedula[nombreTrabajador.toUpperCase()] || null;
                 const tipo = document.getElementById('permiso-tipo').value;
                 const fecha = document.getElementById('permiso-fecha').value;
-                const esEmergencia = document.getElementById('permiso-es-emergencia').checked;
 
                 // BUG CORREGIDO (auditoría 20/09): "Trabajador" es un campo de texto libre (con sugerencias
                 // de la lista, pero sin obligar a elegir una). Si el nombre escrito no coincidía EXACTO con
@@ -7056,19 +7137,24 @@
                     );
                 }
 
-                // Regla: todo permiso debe solicitarse con mínimo 24 horas de anticipación (es decir, no el mismo
-                // día ni para fechas ya pasadas), salvo que se marque como calamidad doméstica o emergencia.
-                if (!esEmergencia) {
-                    const hoyStr = getTodayStr();
-                    if (fecha <= hoyStr) {
-                        btn.disabled = false;
-                        btn.innerHTML = originalHTML;
-                        return UI.showAlert(
-                            "Aviso de 24 horas requerido",
-                            "Los permisos deben solicitarse con al menos 24 horas de anticipación (no el mismo día ni fechas pasadas). Si es una calamidad doméstica o una emergencia, marca la casilla correspondiente y vuelve a intentarlo.",
-                            "error"
-                        );
-                    }
+                // Horario obligatorio en permisos por horas (salida y regreso). Es la misma validación que bloquea el
+                // botón en pantalla, repetida aquí por si algo la salta.
+                const horario = validarHorarioPermiso(tipo, document.getElementById('permiso-hora-salida').value, document.getElementById('permiso-hora-entrada').value);
+                if (!horario.ok) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    return UI.showAlert("Falta el horario del permiso", horario.razon, "error");
+                }
+
+                // Regla: todo permiso debe solicitarse con mínimo 24 horas de anticipación, contadas desde la HORA DE
+                // SALIDA (no basta con que sea otro día del calendario), salvo calamidad doméstica o emergencia.
+                // Antes solo se comparaba la fecha con la de hoy, así que un permiso para mañana a las 7:00 pedido hoy
+                // a las 3 p. m. pasaba aunque faltaran 16 horas.
+                const anticipacion = validarAnticipacionPermiso(leerDatosAnticipacionPermiso());
+                if (!anticipacion.ok) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    return UI.showAlert("Aviso de 24 horas requerido", anticipacion.razon, "error");
                 }
 
                 const mesStr = fecha.slice(0, 7);
