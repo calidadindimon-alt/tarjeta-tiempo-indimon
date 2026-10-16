@@ -2266,7 +2266,7 @@
             if (dow >= 1 && dow <= 5 && esDiaFestivo(fecha)) {
                 return `Festivo remunerado — no se repone ni se alarga la jornada (meta de la semana: ${metaTxt} h)`;
             }
-            return `Descanso remunerado — ${segundaPersona ? 'completaste' : 'completó'} las ${metaTxt} h de la semana`;
+            return `Descanso remunerado — ${segundaPersona ? 'trabajaste' : 'trabajó'} todos los días laborales de la semana`;
         }
 
         // Suma las horas ordinarias ya guardadas esta semana (lunes-domingo) para un empleado,
@@ -2668,11 +2668,10 @@
         // sábado. En vez de agregar una configuración manual de "¿qué días se trabajan?" por obra
         // (que habría que mantener al día y podría quedar desactualizada), la app INFIERE sola: un
         // sábado, domingo o festivo SIN ningún registro de tiempo se muestra como "Descanso
-        // remunerado" únicamente si esa semana YA completó las 42 horas ordinarias reglamentarias
-        // (LEY.JORNADA_ORDINARIA_SEMANAL). Si no las completó -por ejemplo, porque hubo una falta esa
-        // semana, como el caso de Jhon Freddy- el día NO se infiere como descanso, para no confundirlo
-        // nunca con una ausencia real; en ese caso el hueco queda visible tal cual, junto al descuento
-        // del Art. 173 CST (ver diasADescontarPorSemana arriba), que es justo lo que se quiere ver.
+        // remunerado". La regla exacta (festivo entre semana siempre; sábado/domingo si los 5 días
+        // laborales tienen registro y no hubo ausencia injustificada) está documentada en
+        // esDiaDescansoInferido(). Con ausencia injustificada el hueco queda visible, junto al
+        // descuento del Art. 173 CST (ver diasADescontarPorSemana arriba).
         //
         // Es puramente una ETIQUETA calculada al mostrar el historial -nunca se escribe un documento
         // en Firestore para esto- así que no hay riesgo de que quede desactualizada ni de que choque
@@ -2683,16 +2682,35 @@
             return dow === 6 || esDominicalOFestivo(fecha); // esDominicalOFestivo ya cubre domingo y festivos
         }
 
-        function esDiaDescansoInferido(fecha, registrosSemana) {
+        // Regla de descanso remunerado (arts. 173, 174 y 177 CST), sin depender de sumar horas:
+        // 1) Festivo de lunes a viernes sin registro -> SIEMPRE "Festivo remunerado" (art. 177: el festivo se paga
+        //    aunque no se trabaje y no se repone). No depende de cómo vaya la semana. Solo se omiten las fechas
+        //    anteriores al primer registro de la persona (primeraFecha), para no marcar días previos a su ingreso.
+        // 2) Sábado/domingo (o festivo en fin de semana) sin registro -> "Descanso remunerado" si todos los días
+        //    laborales de esa semana (lunes a viernes, sin festivos) tienen algún registro (trabajado, ausencia
+        //    justificada o permiso/vacaciones). Si falta un día sin NINGÚN registro, el hueco queda visible.
+        // 3) Una ausencia injustificada en la semana nunca se tapa con un descanso en sábado/domingo (sanción
+        //    del art. 173, ver diasADescontarPorSemana). El festivo entre semana sí se sigue pagando.
+        // primeraFecha y fechasConPermiso son opcionales (fechasConPermiso: Set de fechas con permiso aprobado/pendiente).
+        function esDiaDescansoInferido(fecha, registrosSemana, primeraFecha, fechasConPermiso) {
             if (!esFinDeSemanaOFestivo(fecha)) return false;
-            // Una ausencia injustificada en la semana nunca se tapa con extras: ese día no se infiere como
-            // descanso remunerado (el descuento del art. 173 lo decide diasADescontarPorSemana / RRHH).
+            if (primeraFecha && fecha < primeraFecha) return false;
+            const [y, m, d] = fecha.split('-').map(Number);
+            const dow = new Date(y, m - 1, d).getDay();
+            if (dow >= 1 && dow <= 5) return true; // festivo entre semana (esFinDeSemanaOFestivo ya lo garantiza)
             if (diasADescontarPorSemana(registrosSemana) > 0) return false;
-            // Se compara lo trabajado (ordinarias + extras) contra la meta de ESA semana: 42 h, o menos si
-            // hubo festivo entre semana (descanso remunerado que no se repone, arts. 173, 177 CST).
-            const totalHorasSemana = registrosSemana.reduce((acc, r) => acc + horasTrabajadasRegistro(r), 0);
-            const fechasTrabajadas = registrosSemana.filter(r => horasTrabajadasRegistro(r) > 0).map(r => r.fecha);
-            return totalHorasSemana >= metaSemanalOrdinaria(fecha, fechasTrabajadas) - 0.01;
+            if (registrosSemana.length === 0) return false;
+            const conRegistro = new Set(registrosSemana.map(r => r.fecha));
+            const [lunes] = getRangoSemana(fecha);
+            const [ly, lm, ld] = lunes.split('-').map(Number);
+            for (let i = 0; i < 5; i++) {
+                const f = new Date(ly, lm - 1, ld + i).toLocaleDateString('en-CA');
+                if (esDiaFestivo(f)) continue;
+                if (primeraFecha && f < primeraFecha) continue;
+                if (conRegistro.has(f) || (fechasConPermiso && fechasConPermiso.has(f))) continue;
+                return false;
+            }
+            return true;
         }
 
         function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {
@@ -3058,6 +3076,8 @@
                 const hoy = getTodayStr();
                 const [anioMes, mesNum] = mesStr.split('-').map(Number);
                 const ultimoDiaMes = new Date(anioMes, mesNum, 0).getDate();
+                const primeraFecha = todosLosRegistros.reduce((min, r) => (!min || r.fecha < min ? r.fecha : min), '');
+                const fechasConPermiso = new Set(Object.keys(permisosPorFecha));
                 const diasDescansoInferido = new Map(); // fecha -> etiqueta
                 const diasSancionDominical = new Set();
                 for (let dia = 1; dia <= ultimoDiaMes; dia++) {
@@ -3068,7 +3088,7 @@
                     if (fecha === domingo && diasADescontarPorSemana(registrosSemana) > 0) {
                         diasSancionDominical.add(fecha);
                         fechas.add(fecha);
-                    } else if (esDiaDescansoInferido(fecha, registrosSemana)) {
+                    } else if (esDiaDescansoInferido(fecha, registrosSemana, primeraFecha, fechasConPermiso)) {
                         diasDescansoInferido.set(fecha, etiquetaDescansoRemunerado(fecha, registrosSemana, true));
                         fechas.add(fecha);
                     }
@@ -5872,6 +5892,7 @@
                 const ultimoDiaMes = new Date(anioMes, mesNum, 0).getDate();
                 const descanso = [];
                 const sancion = [];
+                const primeraFecha = todosLosRegistros.reduce((min, r) => (!min || r.fecha < min ? r.fecha : min), '');
                 for (let dia = 1; dia <= ultimoDiaMes; dia++) {
                     const fecha = `${mesStr}-${String(dia).padStart(2, '0')}`;
                     if (fecha >= hoy || registrosPorFecha[fecha] || fechasConPermiso.has(fecha) || !esFinDeSemanaOFestivo(fecha)) continue;
@@ -5879,7 +5900,7 @@
                     const registrosSemana = todosLosRegistros.filter(r => r.fecha >= lunes && r.fecha <= domingo);
                     if (fecha === domingo && diasADescontarPorSemana(registrosSemana) > 0) {
                         sancion.push(fecha);
-                    } else if (esDiaDescansoInferido(fecha, registrosSemana)) {
+                    } else if (esDiaDescansoInferido(fecha, registrosSemana, primeraFecha, fechasConPermiso)) {
                         descanso.push({ fecha, etiqueta: etiquetaDescansoRemunerado(fecha, registrosSemana, false) });
                     }
                 }
