@@ -14,6 +14,8 @@ export function extraerPermisosFormatos(fuente) {
     hastaPuntoYComa(fuente, 'const PERMISOS_CATALOGO = ['),
     bloqueBalanceado(fuente, 'function infoTipoPermiso(tipo) {'),
     bloqueBalanceado(fuente, 'function esTipoVariosDias(tipo) {'),
+    hastaPuntoYComa(fuente, 'const PLAZO_SOPORTE_PERMISO ='),
+    bloqueBalanceado(fuente, 'function textoRecordatorioSoporte(tipo) {'),
     bloqueBalanceado(fuente, 'function textoRemuneracionPermiso(p) {'),
     bloqueBalanceado(fuente, 'function esPermisoVariosDias(p) {'),
     bloqueBalanceado(fuente, 'function motivoPermiso(p) {'),
