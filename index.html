@@ -691,6 +691,10 @@
                     </div>
                     <p class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg p-2 mb-2"><i class="ph-bold ph-wifi-slash"></i> <b>¿El colaborador no pudo marcar por falta de internet?</b> Registra solo la <b>Entrada</b> (y el inicio del almuerzo si ya salió) y deja la <b>Salida</b> en blanco. Solo se puede en el día de hoy: el turno queda <b>abierto</b> y él marca lo que falta desde su celular cuando tenga señal.</p>
                     <p class="text-[10px] text-slate-400 mb-1">Deja el almuerzo en blanco si ese día no hubo pausa (ej. turnos cortos de sábado).</p>
+                    <label class="flex items-start gap-2 mb-2 text-[11px] text-slate-600 bg-emerald-50/60 border border-emerald-100 rounded-lg p-2 cursor-pointer">
+                        <input type="checkbox" id="manual-entrada-temprana" class="mt-0.5">
+                        <span><b>Entrada temprana autorizada.</b> Marca esto si los citaron ANTES de la hora oficial de la obra (por ejemplo, entrar a las 7:00 en BODEGA, cuya hora oficial es 7:30): se pagará desde la hora que digites. Sin esta casilla, la hora anterior a la oficial no se paga.</span>
+                    </label>
                     <label class="flex items-start gap-2 mb-3 text-[11px] text-slate-600 bg-indigo-50/60 border border-indigo-100 rounded-lg p-2 cursor-pointer">
                         <input type="checkbox" id="manual-almuerzo-omitido" class="mt-0.5">
                         <span><b>Jornada sin almuerzo autorizada por producción.</b> Marca esto si ese día se trabajó de corrido por decisión de producción: no se descontará la hora legal de almuerzo. Si lo dejas sin marcar y no pones horas de almuerzo, se descuenta 1 hora como en cualquier día normal.</span>
@@ -2778,12 +2782,15 @@
 
             // Si la obra tiene una hora de entrada oficial configurada y el colaborador marcó ANTES de
             // esa hora, el cálculo de horas empieza en la hora oficial (no se paga tiempo no autorizado
-            // llegado antes de tiempo). La hora real marcada se sigue guardando tal cual para el registro.
+            // llegado antes de tiempo), salvo que Admin haya autorizado la entrada temprana en ese registro
+            // (entrada_temprana_autorizada). La hora real marcada se sigue guardando tal cual para el registro.
             const horaEsperadaObra = getHoraEsperadaObra(reg.obra);
             let minutosTarde = 0;
             if (horaEsperadaObra) {
                 const horaEsperadaFloat = timeStrToFloat(horaEsperadaObra);
-                if (hIn < horaEsperadaFloat && horaEsperadaFloat < hOut) hIn = horaEsperadaFloat;
+                // Excepción: si Admin dejó marcada la entrada temprana como AUTORIZADA (p. ej. los citaron más temprano),
+                // sí se paga desde la hora real marcada.
+                if (!reg.entrada_temprana_autorizada && hIn < horaEsperadaFloat && horaEsperadaFloat < hOut) hIn = horaEsperadaFloat;
                 // REFACTOR (auditoría 20/09, ronda 5): "¿es tardanza o es otro turno?" ya no se calcula
                 // aquí por su cuenta — se llama a calcularMinutosTardanza(), la MISMA función que usa
                 // evaluarTardanza() para la alerta en vivo. Antes esta regla (el tope de
@@ -5565,6 +5572,7 @@
             document.getElementById('manual-almuerzo-inicio').value = '';
             document.getElementById('manual-almuerzo-fin').value = '';
             document.getElementById('manual-almuerzo-omitido').checked = false;
+            document.getElementById('manual-entrada-temprana').checked = false;
             document.getElementById('manual-tipo-permiso').value = '';
             document.getElementById('manual-horas-permiso').value = '';
             document.getElementById('manual-nota-permiso').value = '';
@@ -5579,6 +5587,7 @@
             const entrada = document.getElementById('manual-entrada').value;
             const salida = document.getElementById('manual-salida').value;
             const almuerzoOmitido = document.getElementById('manual-almuerzo-omitido').checked;
+            const entradaTemprana = document.getElementById('manual-entrada-temprana').checked;
             const almuerzoInicio = document.getElementById('manual-almuerzo-inicio').value;
             const almuerzoFin = document.getElementById('manual-almuerzo-fin').value;
             const tipoPermiso = document.getElementById('manual-tipo-permiso').value;
@@ -5705,6 +5714,7 @@
                     almuerzo_inicio: almuerzoInicio || null, almuerzo_fin: almuerzoFin || null,
                     almuerzo_omitido: almuerzoOmitido,
                     almuerzo_omitido_autoriza: almuerzoOmitido ? (autoriza || 'Admin') : null,
+                    entrada_temprana_autorizada: entradaTemprana,
                     tipo_permiso: tipoPermiso || null, horas_permiso: horasPermiso || 0, nota_permiso: notaPermiso || null,
                     estado: esTurnoAbierto ? 'activo' : 'completado', loc_entrada: null, loc_salida: null
                 };
@@ -6520,7 +6530,7 @@
                 const snap = await getDoc(doc(db, 'empleados', cedula, 'registros', fecha));
                 if (!snap.exists()) return UI.showAlert("No encontrado", "Este registro ya no existe (puede que lo hayan borrado).", "error");
                 const d = snap.data();
-                editarRegistroActual = { cedula, fecha, obra: d.obra || '' };
+                editarRegistroActual = { cedula, fecha, obra: d.obra || '', entrada_temprana_autorizada: !!d.entrada_temprana_autorizada };
 
                 document.getElementById('editar-registro-subtitulo').textContent = `${d.empleado_nombre || cedula} · ${fecha}`;
                 document.getElementById('editar-registro-entrada').value = d.entrada || '';
@@ -6576,7 +6586,8 @@
                     entrada, salida, fecha, obra,
                     almuerzo_inicio: almuerzoInicio || null,
                     almuerzo_fin: almuerzoFin || null,
-                    almuerzo_omitido: almuerzoOmitido
+                    almuerzo_omitido: almuerzoOmitido,
+                    entrada_temprana_autorizada: !!editarRegistroActual.entrada_temprana_autorizada
                 }, topeDia);
 
                 const datosNuevos = {
