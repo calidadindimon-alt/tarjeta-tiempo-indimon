@@ -689,6 +689,7 @@
                             <input type="time" id="manual-almuerzo-fin" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                     </div>
+                    <p class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg p-2 mb-2"><i class="ph-bold ph-wifi-slash"></i> <b>¿El colaborador no pudo marcar por falta de internet?</b> Registra solo la <b>Entrada</b> (y el inicio del almuerzo si ya salió) y deja la <b>Salida</b> en blanco. Solo se puede en el día de hoy: el turno queda <b>abierto</b> y él marca lo que falta desde su celular cuando tenga señal.</p>
                     <p class="text-[10px] text-slate-400 mb-1">Deja el almuerzo en blanco si ese día no hubo pausa (ej. turnos cortos de sábado).</p>
                     <label class="flex items-start gap-2 mb-3 text-[11px] text-slate-600 bg-indigo-50/60 border border-indigo-100 rounded-lg p-2 cursor-pointer">
                         <input type="checkbox" id="manual-almuerzo-omitido" class="mt-0.5">
@@ -5594,8 +5595,17 @@
             if (fecha > getTodayStr()) {
                 return UI.showAlert("Fecha inválida", `La fecha (${fecha}) es futura. No se pueden registrar tiempos trabajados que todavía no han pasado.`, "error");
             }
-            if ((entrada && !salida) || (!entrada && salida)) {
-                return UI.showAlert("Horario incompleto", "Si registras horario trabajado, completa tanto Entrada como Salida (o déjalas ambas en blanco si el día fue 100% permiso).", "error");
+            // Turno ABIERTO: solo Entrada (sin Salida), únicamente para HOY. Sirve cuando el colaborador no pudo marcar su
+            // entrada por falta de internet: el turno queda activo y él marca almuerzo/salida desde su celular después.
+            const esTurnoAbierto = !!entrada && !salida;
+            if (!entrada && salida) {
+                return UI.showAlert("Horario incompleto", "Si registras la Salida, también necesitas la Entrada.", "error");
+            }
+            if (esTurnoAbierto && fecha !== getTodayStr()) {
+                return UI.showAlert("Falta la Salida", "Solo se puede dejar el turno abierto (sin Salida) en el día de hoy. Para un día pasado, completa Entrada y Salida.", "error");
+            }
+            if (esTurnoAbierto && (tipoPermiso || horasPermiso > 0)) {
+                return UI.showAlert("Turno abierto sin permiso", "Un turno abierto no lleva tipo de permiso. Quita el permiso, o completa Entrada y Salida.", "error");
             }
             if (!entrada && !salida && !(tipoPermiso && horasPermiso > 0)) {
                 return UI.showAlert("Datos Incompletos", "Registra un horario de Entrada/Salida, o un Tipo de permiso con sus horas — el día no puede quedar vacío.", "error");
@@ -5603,7 +5613,8 @@
             if ((tipoPermiso && !horasPermiso) || (!tipoPermiso && horasPermiso > 0)) {
                 return UI.showAlert("Permiso incompleto", "Si registras un permiso, indica tanto el Tipo como las Horas.", "error");
             }
-            if ((almuerzoInicio && !almuerzoFin) || (!almuerzoInicio && almuerzoFin)) {
+            // En un turno abierto se acepta solo el inicio del almuerzo (la persona sigue en su pausa).
+            if ((almuerzoInicio && !almuerzoFin && !esTurnoAbierto) || (!almuerzoInicio && almuerzoFin)) {
                 return UI.showAlert("Almuerzo incompleto", "Si registras almuerzo, completa tanto la hora de inicio como la de fin (o deja ambas en blanco).", "error");
             }
             // La comprobación anterior exigía que el fin fuera mayor que el inicio comparando las horas
@@ -5695,8 +5706,13 @@
                     almuerzo_omitido: almuerzoOmitido,
                     almuerzo_omitido_autoriza: almuerzoOmitido ? (autoriza || 'Admin') : null,
                     tipo_permiso: tipoPermiso || null, horas_permiso: horasPermiso || 0, nota_permiso: notaPermiso || null,
-                    estado: 'completado', loc_entrada: null, loc_salida: null
+                    estado: esTurnoAbierto ? 'activo' : 'completado', loc_entrada: null, loc_salida: null
                 };
+                if (esTurnoAbierto) {
+                    // Constancia de que la entrada la digitó Admin (no hay foto ni GPS del fichaje real).
+                    data.entrada_registrada_por_admin = auth.currentUser?.email || 'Admin';
+                    data.entrada_registrada_en = new Date().toISOString();
+                }
 
                 // Ver esAusenciaSinHoras() (arriba, junto a calcularJornadaDiaria) para el porqué:
                 // si el Admin dejó algo digitado en Entrada/Salida en un día marcado como Ausencia,
@@ -5710,6 +5726,18 @@
                     data.es_dominical_festivo = esDominicalOFestivo(fecha);
                     data.horas_dominicales = 0;
                     data.minutos_tarde = 0;
+                    data.horas_descuento_tardanza = 0;
+                } else if (esTurnoAbierto) {
+                    // Turno que sigue abierto: todavía no hay horas que liquidar (se calculan cuando se marque la salida).
+                    const evalTardanzaManual = evaluarTardanza(obra, entrada);
+                    data.horas_ordinarias = 0;
+                    data.horas_extras_diurnas = 0;
+                    data.horas_extras_nocturnas = 0;
+                    data.horas_recargo_nocturno = 0;
+                    data.es_dominical_festivo = esDominicalOFestivo(fecha);
+                    data.horas_dominicales = 0;
+                    data.llegada_tarde = !!(evalTardanzaManual && evalTardanzaManual.tarde);
+                    data.minutos_tarde = evalTardanzaManual && evalTardanzaManual.tarde ? evalTardanzaManual.minutos : 0;
                     data.horas_descuento_tardanza = 0;
                 } else if (entrada && salida) {
                     const topeDia = await getTopeOrdinarioDia(cedula, fecha);
@@ -5767,7 +5795,11 @@
                         avisoRecalculo = ' OJO: no se pudo recalcular la semana automáticamente — usa el botón "Recalcular semana" antes de liquidar.';
                     }
                 }
-                UI.showAlert("Guardado", `Registro manual agregado para el día ${fecha}.${avisoRecalculo}`, "success");
+                if (esTurnoAbierto) {
+                    UI.showAlert("Entrada registrada", `Entrada de ${nombre} a las ${entrada}. El turno de hoy quedó ABIERTO: cuando tenga señal, ${nombre} abre la app y marca su ${almuerzoInicio && !almuerzoFin ? 'regreso del almuerzo y su ' : ''}salida normalmente. Si prefieres, también puedes completar la Salida aquí al final del día.`, "success");
+                } else {
+                    UI.showAlert("Guardado", `Registro manual agregado para el día ${fecha}.${avisoRecalculo}`, "success");
+                }
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo guardar el registro manual.", "error");
