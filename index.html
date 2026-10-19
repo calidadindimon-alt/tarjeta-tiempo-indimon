@@ -1709,6 +1709,58 @@
             return digitos.length <= 2 ? digitos : `${digitos.slice(0, 2)}:${digitos.slice(2)}`;
         }
 
+        // Selector táctil de 24 horas: primero se toca la hora (00-23) y luego los minutos (de 5 en 5); si necesitan
+        // un minuto exacto, lo escriben en el campo.
+        let _selectorHora = null;
+        function cerrarSelectorHora() { if (_selectorHora) { _selectorHora.remove(); _selectorHora = null; } }
+        function abrirSelectorHora(campo) {
+            cerrarSelectorHora();
+            const panel = document.createElement('div');
+            panel.style.cssText = 'position:fixed;z-index:100000;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:10px;width:260px;max-width:92vw;';
+            const titulo = document.createElement('div');
+            titulo.style.cssText = 'font-weight:700;font-size:13px;color:#334155;margin-bottom:8px;text-align:center;';
+            const grid = document.createElement('div');
+            grid.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:4px;';
+            panel.append(titulo, grid);
+            const boton = (txt, fn) => {
+                const b = document.createElement('button');
+                b.type = 'button'; b.textContent = txt;
+                b.style.cssText = 'padding:8px 0;border-radius:8px;background:#f1f5f9;font-size:14px;font-weight:600;color:#0f172a;';
+                b.addEventListener('click', fn); grid.appendChild(b);
+            };
+            const poner = (hh, mm) => {
+                campo.value = `${hh}:${mm}`;
+                campo.dispatchEvent(new Event('input', { bubbles: true }));
+                campo.dispatchEvent(new Event('change', { bubbles: true }));
+                cerrarSelectorHora();
+            };
+            const verHoras = () => {
+                grid.innerHTML = ''; titulo.textContent = 'Hora (00 a 23)';
+                for (let h = 0; h < 24; h++) { const hh = String(h).padStart(2, '0'); boton(hh, () => verMinutos(hh)); }
+            };
+            const verMinutos = (hh) => {
+                grid.innerHTML = ''; titulo.textContent = `${hh}:__  Minutos`;
+                for (let m = 0; m < 60; m += 5) { const mm = String(m).padStart(2, '0'); boton(mm, () => poner(hh, mm)); }
+            };
+            verHoras();
+            document.body.appendChild(panel); _selectorHora = panel;
+            const r = campo.getBoundingClientRect();
+            panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - panel.offsetWidth - 8)) + 'px';
+            const abajo = r.bottom + 6;
+            panel.style.top = (abajo + panel.offsetHeight > window.innerHeight ? Math.max(8, r.top - panel.offsetHeight - 6) : abajo) + 'px';
+        }
+        document.addEventListener('mousedown', (e) => {
+            if (_selectorHora && !_selectorHora.contains(e.target) && !(e.target.classList && e.target.classList.contains('hora24-reloj'))) cerrarSelectorHora();
+        }, true);
+        function crearBotonReloj(campo) {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'hora24-reloj'; b.textContent = '🕐';
+            b.title = 'Elegir hora (24 horas)'; b.setAttribute('aria-label', 'Elegir hora en formato 24 horas');
+            b.style.cssText = 'flex:none;padding:0 10px;border-radius:8px;background:#e2e8f0;font-size:18px;';
+            b.addEventListener('click', () => abrirSelectorHora(campo));
+            return b;
+        }
+
         // Convierte cada <input type="time"> de la página en un campo de texto de 24 horas. El input original queda
         // oculto y sigue siendo la fuente del valor (solo ve '' o una hora completa y válida 'HH:MM'), así que el resto
         // del código no cambia: lo que escriben en el campo visible se copia al original y se avisa con input/change, y
@@ -1727,7 +1779,11 @@
                 visible.setAttribute('aria-label', 'Hora en formato 24 horas, por ejemplo 17:30');
                 visible.value = descValue.get.call(real) || '';
                 real._hora24 = visible; visible._real = real;
-                real.parentNode.insertBefore(visible, real);
+                const envoltura = document.createElement('div');
+                envoltura.style.cssText = 'display:flex;gap:6px;align-items:stretch;';
+                visible.style.flex = '1 1 auto'; visible.style.minWidth = '0';
+                envoltura.append(visible, crearBotonReloj(visible));
+                real.parentNode.insertBefore(envoltura, real);
                 real.style.display = 'none';
                 real.tabIndex = -1;
                 Object.defineProperty(real, 'value', {
@@ -1840,6 +1896,15 @@
                     in1.placeholder = esHora ? 'HH:MM' : placeholder; in1.maxLength = esHora ? 8 : 60;
                     in1.inputMode = esHora ? 'numeric' : (opts.type === 'number' ? 'decimal' : 'text');
                     in1.classList.toggle('hora24-texto', esHora);
+                    let btnRelojPrompt = document.getElementById('btn-reloj-prompt');
+                    if (!btnRelojPrompt) {
+                        btnRelojPrompt = crearBotonReloj(in1);
+                        btnRelojPrompt.id = 'btn-reloj-prompt';
+                        btnRelojPrompt.style.cssText += 'display:block;width:100%;margin-top:8px;padding:8px 0;';
+                        btnRelojPrompt.textContent = '🕐 Elegir hora (24 h)';
+                        in1.insertAdjacentElement('afterend', btnRelojPrompt);
+                    }
+                    btnRelojPrompt.style.display = esHora ? 'block' : 'none';
                     in1.removeAttribute('pattern');
                     in2.classList.add('hidden');
 
