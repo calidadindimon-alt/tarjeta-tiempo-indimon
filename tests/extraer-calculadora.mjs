@@ -48,6 +48,8 @@ export function extraerCalculadora(fuente) {
     hastaPuntoYComa(fuente, 'const overlap = (aStart, aEnd, bStart, bEnd) =>'),
     hastaPuntoYComa(fuente, 'const TOLERANCIA_TARDANZA_MIN ='),
     hastaPuntoYComa(fuente, 'const MAX_HORAS_DESFASE_TARDANZA ='),
+    hastaPuntoYComa(fuente, 'const TOLERANCIA_SALIDA_MIN ='),
+    bloqueBalanceado(fuente, 'const HORARIO_PACTADO_HORAS = {'),
     hastaPuntoYComa(fuente, 'const ALMUERZO_LEGAL_HORAS ='),
     hastaPuntoYComa(fuente, 'const MIN_ALMUERZO_VALIDO_MIN ='),
     hastaPuntoYComa(fuente, 'const JORNADA_MIN_PARA_ALMUERZO_ASUMIDO ='),
