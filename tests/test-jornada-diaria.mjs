@@ -146,6 +146,21 @@ caso('16. Meta semanal ya cumplida -> todo el día (sábado de 4 h) es extra', {
   reg: { fecha: '2026-10-17', entrada: '07:00', salida: '11:00' }, tope: 0,
 }, { ord: 0, extD: 4, ...CERO });
 
+// Entrada temprana: BODEGA tiene hora oficial 07:30. Si llegan antes SIN autorización, lo anterior a las 07:30 no se paga;
+// si Admin la dejó autorizada (los citaron más temprano), se paga desde la hora real.
+caso('21. Entrada 07:00 en BODEGA (oficial 07:30) SIN autorización -> se paga desde las 07:30', {
+  catalogos: { horarios_obra: { BODEGA: '07:30' } },
+  reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '07:00', salida: '16:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 33.5,
+}, { ord: 8, extD: 0, ...CERO });
+caso('22. Entrada 07:00 en BODEGA CON entrada temprana autorizada -> se paga desde las 07:00 (8,5 h)', {
+  catalogos: { horarios_obra: { BODEGA: '07:30' } },
+  reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '07:00', salida: '16:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', entrada_temprana_autorizada: true }, tope: 33.5,
+}, { ord: 8.5, extD: 0, ...CERO });
+caso('23. La autorización no cambia la tardanza: entrada 08:00 con autorización sigue siendo 30 min tarde', {
+  catalogos: { horarios_obra: { BODEGA: '07:30' } },
+  reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '08:00', salida: '16:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', entrada_temprana_autorizada: true }, tope: 33.5,
+}, { ord: 7.5, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 30, horasDescontadasTardanza: 0.5 });
+
 // Semana completa, día por día, igual que se guarda al marcar cada salida (acumulando lo ordinario ya usado).
 function semana(meta, dias) {
   let acum = 0, ord = 0, ext = 0;
