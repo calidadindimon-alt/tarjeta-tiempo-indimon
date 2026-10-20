@@ -1634,10 +1634,9 @@
             HORA_INICIO_NOCTURNA: 19.0,   // 7:00 p.m.
             HORA_FIN_NOCTURNA: 30.0,      // 6:00 a.m. del día siguiente, en escala continua
             JORNADA_ORDINARIA_DIARIA: 8,
-            // Las horas se clasifican por la SEMANA: son ordinarias hasta completar la meta semanal (42 h, o menos si
-            // hay festivo entre semana) y extras solo lo que pase de ella. Un solo día no puede pasar de este tope de
-            // horas ordinarias (art. 161 lit. c CST: jornada distribuida en 5 días, máximo 9 h diarias). Aplica si el
-            // contrato o el Reglamento pacta la jornada de 8,5 h diarias; para volver a topar cada día en 8 h, poner 8.
+            // De lunes a viernes (no festivo) las horas se clasifican por el HORARIO FIJO PACTADO: ordinarias hasta
+            // la hora de salida pactada, extras lo que pase de ella (ver ventanaPactada en calcularJornadaDiaria).
+            // Este tope y la meta semanal solo se usan para domingos y festivos trabajados.
             JORNADA_ORDINARIA_DIARIA_MAXIMA: 9,
             JORNADA_ORDINARIA_SEMANAL: 42, // meta semanal de horas ordinarias
             RECARGO_NOCTURNO_ORDINARIO: 0.35,
@@ -2293,6 +2292,10 @@
         // Si alguien entra más de estas horas después del horario oficial de la obra, no es una tardanza:
         // es otro turno (ver A3 en calcularJornadaDiaria).
         const MAX_HORAS_DESFASE_TARDANZA = 5;
+        // Tolerancia de salida: quedarse menos de estos minutos después de la hora de salida pactada no
+        // genera horas extra (esos minutos no se pagan). Desde estos minutos en adelante, se paga como extra
+        // todo el tiempo desde la hora de salida pactada.
+        const TOLERANCIA_SALIDA_MIN = 15;
         // Almuerzo legal que se asume cuando el colaborador no marcó ninguno.
         const ALMUERZO_LEGAL_HORAS = 1;
         // Duración mínima para que un almuerzo marcado cuente como almuerzo real. Por debajo de esto
@@ -2972,6 +2975,30 @@
                 return new Date(y, m - 1, d).getDay(); // 0=domingo … 6=sábado
             })();
             const esDiaLaborableConAlmuerzo = diaSemana !== null && diaSemana >= 1 && diaSemana <= 5;
+            const hoyEsDomFest = esDominicalOFestivo(reg.fecha);
+
+            // HORARIO FIJO PACTADO (CST arts. 158 y 159): de lunes a viernes (no festivo) la jornada ordinaria es
+            // la del horario pactado; lo que pase de la hora de salida pactada es hora extra ESE día, aunque la
+            // persona haya llegado tarde (la tardanza no se compensa con extras: la maneja RRHH aparte).
+            //   - Inicio: hora oficial de la obra (o la entrada real si la obra no tiene horario, si Admin
+            //     autorizó la entrada temprana, o si entró tan tarde que es otro turno).
+            //   - Salida pactada: inicio + horas pactadas del día (HORARIO_PACTADO_HORAS) + 1 h de almuerzo
+            //     → 7:30 a 17:00 de lunes a jueves y 7:30 a 16:30 el viernes.
+            // El sábado no tiene horario pactado: todo lo trabajado es extra. Domingos y festivos siguen la
+            // regla anterior (ordinarias con recargo dominical/festivo hasta el tope del día; extras por encima).
+            let ventanaPactada = null;
+            if (diaSemana >= 1 && diaSemana <= 5 && !hoyEsDomFest) {
+                let inicio = hIn;
+                if (horaEsperadaObra) {
+                    const esperada = timeStrToFloat(horaEsperadaObra);
+                    const esOtroTurno = hIn - esperada > MAX_HORAS_DESFASE_TARDANZA;
+                    if (!esOtroTurno) inicio = Math.min(esperada, hIn);
+                }
+                const horasPactadas = HORARIO_PACTADO_HORAS[diaSemana];
+                ventanaPactada = { inicio, fin: inicio + horasPactadas + ALMUERZO_LEGAL_HORAS, horasPactadas };
+                // Tolerancia de salida: salir menos de TOLERANCIA_SALIDA_MIN después de la salida pactada no genera extra.
+                if (hOut > ventanaPactada.fin && (hOut - ventanaPactada.fin) * 60 < TOLERANCIA_SALIDA_MIN) hOut = ventanaPactada.fin;
+            }
 
             // REGLA DE ALMUERZO (reescrita tras la auditoría del 18/09). Tres situaciones posibles:
             //
@@ -3034,8 +3061,17 @@
             // pero nunca se usaba — las horas extra reales se calculan más abajo, por intervalos, para
             // repartirlas correctamente entre diurnas/nocturnas. Era código muerto sin efecto en el
             // resultado; se quita para no confundir a quien lea esta función después.
-            const topeDia = Math.max(0, Math.min(LEY.JORNADA_ORDINARIA_DIARIA_MAXIMA, topeOrdinarioDia));
-            const ordAntesDeTardanza = Math.min(topeDia, efectivas);
+            let ordAntesDeTardanza;
+            if (ventanaPactada) {
+                // Ordinario = lo trabajado hasta la hora de salida pactada (máximo las horas pactadas del día).
+                const dentroDelHorario = intervals.reduce((acc, [s, e]) => acc + Math.max(0, Math.min(e, ventanaPactada.fin) - s), 0);
+                ordAntesDeTardanza = Math.min(ventanaPactada.horasPactadas, dentroDelHorario);
+            } else if (diaSemana === 6 && !hoyEsDomFest) {
+                ordAntesDeTardanza = 0; // sábado: fuera del horario pactado, todo es extra
+            } else {
+                const topeDia = Math.max(0, Math.min(LEY.JORNADA_ORDINARIA_DIARIA_MAXIMA, topeOrdinarioDia));
+                ordAntesDeTardanza = Math.min(topeDia, efectivas);
+            }
 
             // Punto en el tiempo donde terminan las horas ordinarias y empiezan las extra
             // (se calcula ANTES de aplicar el descuento por tardanza, para que las horas extra
@@ -3066,7 +3102,6 @@
             // a lunes 6am cobraba de más 6 horas que en realidad eran de lunes. Ahora se cuentan por
             // separado las horas que caen en el día de hoy y las que caen en el día calendario
             // siguiente, y solo se recarga cada una si ESE día específico es domingo/festivo.
-            const hoyEsDomFest = esDominicalOFestivo(reg.fecha);
             const mananaEsDomFest = reg.fecha ? esDominicalOFestivo(fechaSiguiente(reg.fecha)) : false;
 
             let extD = 0, extN = 0, recNoct = 0, horasDominicales = 0;
@@ -4225,9 +4260,8 @@
                 await checkTodayState();
                 await calculateMonthlyAccumulated();
 
-                // Las horas se clasifican por la SEMANA (ordinarias hasta la meta semanal, extras solo lo que pase):
-                // al cerrar el día se recalcula toda la semana para que los días anteriores queden clasificados con
-                // la misma regla (por ejemplo los guardados antes de este cambio). Si falla o el fichaje quedó
+                // Al cerrar el día se recalcula toda la semana para que los días anteriores queden clasificados con
+                // la misma regla (por ejemplo los guardados antes de un cambio de regla). Si falla o el fichaje quedó
                 // pendiente de sincronizar, no pasa nada: se corrige en el siguiente cierre o con "Recalcular semana".
                 if (action === 'out' && resultado === 'confirmado') {
                     try {

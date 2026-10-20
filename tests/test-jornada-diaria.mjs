@@ -49,9 +49,9 @@ caso('1. Jornada normal 7am-4pm, almuerzo asumido', {
 // ---------------------------------------------------------------
 // 2. Jornada larga -> genera horas extra diurnas
 // ---------------------------------------------------------------
-caso('2. Jornada 7am-6pm -> 2h extra diurnas', {
+caso('2. Jornada 7am-6pm (lunes, obra sin horario) -> salida pactada 16:30: 8,5 ordinarias y 1,5 extra diurnas', {
   reg: { fecha: '2026-06-01', entrada: '07:00', salida: '18:00' },
-}, { ord: 8, extD: 2, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+}, { ord: 8.5, extD: 1.5, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
 
 // ---------------------------------------------------------------
 // 3. Turno nocturno completo cruzando medianoche (bug de la "madrugada")
@@ -86,9 +86,9 @@ caso('6. Llega 30min antes -> no infla las horas pagadas', {
 // ---------------------------------------------------------------
 // 7. Almuerzo real marcado (1h exacta) -> se descuenta lo marcado, no el legal a ciegas
 // ---------------------------------------------------------------
-caso('7. Almuerzo real de 12 a 1pm', {
+caso('7. Almuerzo real de 12 a 1pm (7:00-17:00, salida pactada 16:30) -> 8,5 ordinarias y 0,5 extra', {
   reg: { fecha: '2026-06-02', entrada: '07:00', salida: '17:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' },
-}, { ord: 8, extD: 1, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+}, { ord: 8.5, extD: 0.5, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
 
 // ---------------------------------------------------------------
 // 8. Almuerzo demasiado corto (10 min, dos toques por error) -> se ignora, aplica el legal (bug C1)
@@ -125,9 +125,9 @@ caso('11. Turno 2pm-10pm -> 3h de recargo nocturno ordinario', {
 // ---------------------------------------------------------------
 // 12. Horas EXTRA que caen en horario nocturno (75% recargo extra nocturna)
 // ---------------------------------------------------------------
-caso('12. Turno 10am-9pm -> 2h extra nocturnas', {
+caso('12. Turno 10am-9pm (salida pactada 19:30) -> 1,5 h extra nocturnas y 0,5 h de recargo nocturno ordinario', {
   reg: { fecha: '2026-06-01', entrada: '10:00', salida: '21:00' },
-}, { ord: 8, extD: 0, extN: 2, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+}, { ord: 8.5, extD: 0, extN: 1.5, recNoct: 0.5, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
 
 // ---------------------------------------------------------------
 // 13+. Clasificación por SEMANA: ordinarias hasta la meta semanal (tope diario de 9 h), extras solo lo que pase
@@ -136,9 +136,45 @@ const CERO = { extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minu
 caso('13. Día de 8,5 h con meta semanal por cumplir (quedan 33,5 h) -> 8,5 ordinarias, 0 extras', {
   reg: { fecha: '2026-10-13', entrada: '07:30', salida: '17:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 33.5,
 }, { ord: 8.5, extD: 0, ...CERO });
-caso('14. Día de 10 h con meta por cumplir -> máximo 9 ordinarias por día, 1 extra', {
+caso('14. Martes 7:00-18:00 (10 h) aunque falte meta semanal -> 8,5 ordinarias (horario pactado), 1,5 extra', {
   reg: { fecha: '2026-10-13', entrada: '07:00', salida: '18:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
-}, { ord: 9, extD: 1, ...CERO });
+}, { ord: 8.5, extD: 1.5, ...CERO });
+
+// Opción B con los casos reales de la semana del 12 al 18 de octubre de 2026 (BODEGA, hora oficial 07:30).
+const BODEGA = { horarios_obra: { BODEGA: '07:30' } };
+caso('24. Viernes 7:30-18:30 (Jovanny) -> 8 ordinarias y 2 extra (salida pactada del viernes 16:30)', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-16', obra: 'BODEGA', entrada: '07:30', salida: '18:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 9,
+}, { ord: 8, extD: 2, ...CERO });
+caso('25. Viernes 7:30-17:30 (Brayan) -> 8 ordinarias y 1 extra (antes 9 y 0)', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-16', obra: 'BODEGA', entrada: '07:30', salida: '17:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 9,
+}, { ord: 8, extD: 1, ...CERO });
+caso('26. Viernes 7:25-19:26 con almuerzo de 62 min (Sandra) -> 7,97 ordinarias, 2,5 extra diurnas, 0,43 extra nocturnas', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-16', obra: 'BODEGA', entrada: '07:25', salida: '19:26', almuerzo_inicio: '12:11', almuerzo_fin: '13:13' }, tope: 9,
+}, { ord: 7.97, extD: 2.5, ...CERO, extN: 0.43 });
+caso('27. Sábado 7:30-18:30 con 30 min de almuerzo, aunque falte meta semanal -> todo extra (10,5)', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-17', obra: 'BODEGA', entrada: '07:30', salida: '18:30', almuerzo_inicio: '14:00', almuerzo_fin: '14:30' }, tope: 24,
+}, { ord: 0, extD: 10.5, ...CERO });
+caso('28. Llega tarde (9:00) y se queda hasta 18:30 -> 7 ordinarias y 1,5 extra; la tardanza queda aparte para RRHH', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '09:00', salida: '18:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 7, extD: 1.5, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 90, horasDescontadasTardanza: 1.5 });
+caso('29. Tolerancia de salida: sale 17:01 un martes -> 8,5 ordinarias y 0 extra (sin 0,02 h sueltas)', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '07:30', salida: '17:01', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 8.5, extD: 0, ...CERO });
+caso('30. Tolerancia de salida: sale 17:14 -> todavía sin extra', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '07:30', salida: '17:14', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 8.5, extD: 0, ...CERO });
+caso('31. Sale 17:15 -> se paga como extra todo desde las 17:00 (0,25 h)', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '07:30', salida: '17:15', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 8.5, extD: 0.25, ...CERO });
+caso('32. Viernes sale 17:02 (salida pactada 16:30) -> 8 ordinarias y 0,53 extra', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-16', obra: 'BODEGA', entrada: '07:30', salida: '17:02', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 8.03,
+}, { ord: 8, extD: 0.53, ...CERO });
+caso('33. Entrada temprana autorizada 7:00 y salida 17:30 -> el horario corre desde las 7:00: 8,5 ordinarias y 1 extra', {
+  catalogos: BODEGA, reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '07:00', salida: '17:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', entrada_temprana_autorizada: true }, tope: 42,
+}, { ord: 8.5, extD: 1, ...CERO });
+caso('34. Festivo trabajado (lunes 12 oct) sigue la regla anterior: ordinarias con recargo festivo', {
+  reg: { fecha: '2026-10-12', entrada: '06:59', salida: '15:07' }, tope: 42,
+}, { ord: 7.13, extD: 0, extN: 0, recNoct: 0, dominical: true, horas_dominicales: 7.13, minutosTarde: 0, horasDescontadasTardanza: 0 });
 caso('15. Quedan 8 h de meta y se trabajan 8,5 -> 8 ordinarias y 0,5 extra', {
   reg: { fecha: '2026-10-16', entrada: '07:30', salida: '17:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 8,
 }, { ord: 8, extD: 0.5, ...CERO });
