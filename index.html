@@ -1458,7 +1458,7 @@
             getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId,
             serverTimestamp, increment, runTransaction
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-check.js";
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-check.js";
         import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/+esm";
 
         // =====================================================================================
@@ -1517,18 +1517,19 @@
 
         const app = initializeApp(firebaseConfig);
 
-        // APP CHECK: Google reCAPTCHA v3 certifica en silencio (sin captcha) que cada petición a Firebase viene de
+        // APP CHECK: Google reCAPTCHA (Fraud Defense, antes reCAPTCHA Enterprise) certifica en silencio (sin captcha) que cada petición a Firebase viene de
         // esta página, en un navegador real, y no de un script con la llave pública copiada. Se inicia ANTES de
         // Firestore para que todas las peticiones lleven el certificado. Mientras en la consola de Firebase no se
         // pulse "Aplicar" para Cloud Firestore, App Check solo mide (no bloquea nada).
-        // La clave del sitio es pública. Se creó en google.com/recaptcha con la cuenta dueña del proyecto de
-        // Firebase, dentro del proyecto de Google Cloud "Tarjeta de tiempo INDIMON", solo para el dominio
-        // calidadindimon-alt.github.io; su clave secreta está guardada en Firebase → App Check (no en el código).
+        // La clave del sitio es pública. Está en el mismo proyecto de Google Cloud que Firebase
+        // (tarjeta-de-tiempo-indimon → Seguridad → Fraud Defense → Claves, "Tarjeta de Tiempo INDIMON"), solo
+        // para el dominio calidadindimon-alt.github.io, y está registrada en Firebase → App Check como proveedor
+        // "Fraud Defense". Se usa Fraud Defense y no "reCAPTCHA" clásico porque Google marcó este último como obsoleto.
         // Solo se activa en ese dominio: en cualquier otro (pruebas locales) reCAPTCHA rechazaría la clave.
         const RECAPTCHA_SITE_KEY = '6LdT3_gtAAAAALEqi9CSlJcfZzN_RaJrnl1QSbcD';
         if (location.hostname === 'calidadindimon-alt.github.io') {
             try {
-                initializeAppCheck(app, { provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
+                initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
             } catch (eAppCheck) {
                 // Nunca debe impedir que la app arranque: sin App Check activado en la consola, todo sigue funcionando.
                 console.error('No se pudo iniciar App Check:', eAppCheck);

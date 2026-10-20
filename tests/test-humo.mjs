@@ -73,7 +73,7 @@ export const writeBatch = () => { const ops = []; return { set(r, d) { ops.push(
 export const arrayUnion = (...a) => a; export const serverTimestamp = () => new Date().toISOString(); export const increment = (n) => n;
 export const runTransaction = async (db, fn) => fn({ get: async (r) => snapDoc(r.path), update() {}, set() {} });`;
 const STUB_EMAILJS = `export default { init() {}, send: async () => ({ status: 200 }) };`;
-const STUB_APPCHECK = `export const initializeAppCheck = () => ({}); export class ReCaptchaV3Provider { constructor() {} }`;
+const STUB_APPCHECK = `export const initializeAppCheck = () => ({}); export class ReCaptchaEnterpriseProvider { constructor() {} }`;
 
 // Datos de prueba ficticios: un colaborador, un admin y un registro por revisar.
 const DATOS = () => {
