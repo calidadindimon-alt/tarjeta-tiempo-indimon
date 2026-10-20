@@ -57,6 +57,8 @@ export function extraerCalculadora(fuente) {
     bloqueBalanceado(fuente, 'function esDiaFestivo(fechaStr) {'),
     bloqueBalanceado(fuente, 'function esDominicalOFestivo(fechaStr) {'),
     bloqueBalanceado(fuente, 'function getHoraEsperadaObra(obra) {'),
+    bloqueBalanceado(fuente, 'function getJornadaObra(obra) {'),
+    bloqueBalanceado(fuente, 'function horasPactadasJornadaObra(j) {'),
     bloqueBalanceado(fuente, 'function fechaSiguiente(fechaStr) {'),
     bloqueBalanceado(fuente, 'function calcularJornadaDiaria(reg, topeOrdinarioDia = LEY.JORNADA_ORDINARIA_DIARIA) {'),
   ];
@@ -65,7 +67,7 @@ export function extraerCalculadora(fuente) {
     '"use strict";',
     'let catalogosCache = { horarios_obra: {}, festivos: [] };',
     ...piezas,
-    'module.exports = { calcularJornadaDiaria, esDominicalOFestivo, esDiaFestivo, setCatalogosCache: (c) => { catalogosCache = c; } };',
+    'module.exports = { calcularJornadaDiaria, horasPactadasJornadaObra, esDominicalOFestivo, esDiaFestivo, setCatalogosCache: (c) => { catalogosCache = c; } };',
   ].join('\n\n');
 
   return cuerpo;
