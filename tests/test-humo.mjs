@@ -83,7 +83,8 @@ const DATOS = () => {
     'empleados_publico': { '111': { nombre: 'COLABORADOR DE PRUEBA', authUid: 'u1' } },
     'empleados': { '111': { nombre: 'COLABORADOR DE PRUEBA', cargo: 'AUXILIAR', sueldo_base: 1750905, activo: true, authUid: 'u1' } },
     'empleados/111/registros': {
-      '2026-10-15': { fecha: '2026-10-15', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '17:40', estado: 'requiere_revision_admin', horas_ordinarias: 8.5, horas_extras_diurnas: 0.67, nota_revision: 'Fuera de la geocerca (salida a 90m de la obra).' }
+      '2026-10-15': { fecha: '2026-10-15', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '17:40', estado: 'requiere_revision_admin', horas_ordinarias: 8.5, horas_extras_diurnas: 0.67, nota_revision: 'Fuera de la geocerca (salida a 90m de la obra).' },
+      '2026-10-22': { fecha: '2026-10-22', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '18:30', estado: 'completado', horas_ordinarias: 8.5, horas_extras_diurnas: 1.5, extras_estado: 'por_aprobar', extras_autoriza: 'JLAF' }
     }
   };
 };
@@ -149,7 +150,17 @@ try {
   await page.click('#btn-aviso-por-revisar');
   await page.waitForTimeout(400);
   ok('   … con el registro pendiente y su botón Aprobar', await page.isVisible('#modal-por-revisar-box') && (await page.locator('.btn-aprobar-revision').count()) === 1);
-  ok('8. Ningún error de JavaScript durante todo el recorrido', errores.length === 0, errores.join(' | '));
+  await page.click('#btn-por-revisar-cerrar');
+  await page.waitForTimeout(400);
+  ok('8. El aviso de "Extras por aprobar" aparece y abre la lista por semana',
+    await page.isVisible('#btn-aviso-extras') && /1,5 h extra por aprobar/.test(await page.textContent('#aviso-extras-texto')));
+  await page.click('#btn-aviso-extras');
+  await page.waitForTimeout(400);
+  ok('   … con el botón de aprobar de la semana', await page.isVisible('#modal-extras-box') && (await page.locator('.btn-extras-aprobar').count()) >= 1);
+  await page.locator('.btn-extras-aprobar').first().click();
+  await page.waitForTimeout(600);
+  ok('   … y al aprobar, el aviso desaparece', !(await page.isVisible('#btn-aviso-extras')));
+  ok('9. Ningún error de JavaScript durante todo el recorrido', errores.length === 0, errores.join(' | '));
 } catch (e) {
   ok('La prueba de humo pudo terminar el recorrido', false, e.message.split('\n')[0]);
   await page.screenshot({ path: path.join(RAIZ, 'tests', '_humo-fallo.png') }).catch(() => {});

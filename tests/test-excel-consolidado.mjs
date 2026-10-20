@@ -53,10 +53,11 @@ caso('1. Detalle de horas conserva una fila por día, con todas las columnas del
   assertEqual(filas[0], [
     '111', 'ANA', '2026-06-01', 'NO', 'INDIMON', 'BOGOTA', 'JEFE',
     '07:00', '12:00', '13:00', '17:00', 8, 2, 0, 0, 0, 0,
-    'COMPLETADO', 'NO', '', 'NO', '', ''
-  ], 'fila completa del día 1 de ANA');
+    'COMPLETADO', 'NO', '', 'NO', '', '',
+    '', 'ANTERIOR A LA APROBACION', ''
+  ], 'fila completa del día 1 de ANA (extras de antes de la aprobación de RRHH)');
   assertEqual(filas[1][2], '2026-06-02', 'fila del día 2 de ANA (segunda por orden de fecha)');
-  assertEqual(filas[2], ['222', 'BEA', '2026-06-01', 'NO', '', '', '', '', '', '', '', 8, 0, 0, 0, 0, 0, 'COMPLETADO', 'NO', '', 'NO', '', ''], 'fila de BEA');
+  assertEqual(filas[2], ['222', 'BEA', '2026-06-01', 'NO', '', '', '', '', '', '', '', 8, 0, 0, 0, 0, 0, 'COMPLETADO', 'NO', '', 'NO', '', '', '', '', ''], 'fila de BEA (sin extras: columnas de extras vacías)');
 });
 
 // ---- Permisos: incluye incapacidad/vacaciones pero EXCLUYE las ausencias (van en su propia tabla) ----
