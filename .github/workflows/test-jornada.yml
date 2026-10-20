@@ -1,4 +1,4 @@
-name: Pruebas de nómina (jornada y descuentos)
+name: Pruebas de nómina y prueba de humo
 
 # Corre sola cada vez que se modifica index.html (push o pull request), para detectar en segundos
 # si un cambio rompió el cálculo de horas o de descuentos de nómina — antes de que llegue a producción.
@@ -61,3 +61,32 @@ jobs:
 
       - name: Verificar que el CSS de Tailwind embebido en index.html no tenga clases faltantes
         run: node scripts/regenerar-tailwind.mjs --check
+
+  # Prueba de humo: abre la app completa en un Chrome automático (con Firebase simulado, sin tocar la base real)
+  # y comprueba que carga sin errores y que abren sus pantallas principales. Ver tests/test-humo.mjs.
+  humo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar Playwright y Chrome
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Abrir la app y recorrer sus pantallas principales
+        run: node tests/test-humo.mjs
+
+      - name: Guardar la captura de pantalla si falló
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: captura-prueba-de-humo
+          path: tests/_humo-fallo.png
+          if-no-files-found: ignore
