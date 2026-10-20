@@ -197,6 +197,40 @@ caso('23. La autorización no cambia la tardanza: entrada 08:00 con autorizació
   reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '08:00', salida: '16:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', entrada_temprana_autorizada: true }, tope: 33.5,
 }, { ord: 7.5, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 30, horasDescontadasTardanza: 0.5 });
 
+// Jornada propia por obra (Admin → "Horarios por Obra").
+const POSTOBON = { horarios_obra: { POSTOBON: '07:00' }, jornadas_obra: { POSTOBON: { entrada: '07:00', salida_lj: '16:00', salida_v: '16:00', almuerzo: true, sabado: { entrada: '07:00', salida: '09:00', almuerzo: false } } } };
+caso('35. Obra con jornada propia (L-V 7:00-16:00): martes 7:00-18:00 -> 8 ordinarias y 2 extra', {
+  catalogos: POSTOBON, reg: { fecha: '2026-10-20', obra: 'POSTOBON', entrada: '07:00', salida: '18:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 8, extD: 2, ...CERO });
+caso('36. Sábado pactado 7:00-9:00: trabaja 7:00-11:00 -> 2 ordinarias y 2 extra', {
+  catalogos: POSTOBON, reg: { fecha: '2026-10-24', obra: 'POSTOBON', entrada: '07:00', salida: '11:00' }, tope: 42,
+}, { ord: 2, extD: 2, ...CERO });
+caso('37. Sábado pactado: llega 7:30 (tarde) y sale 9:00 -> 1,5 ordinarias, tardanza de 30 min', {
+  catalogos: POSTOBON, reg: { fecha: '2026-10-24', obra: 'POSTOBON', entrada: '07:30', salida: '09:00' }, tope: 42,
+}, { ord: 1.5, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 30, horasDescontadasTardanza: 0.5 });
+const SINALMUERZO = { horarios_obra: { TURNO: '06:00' }, jornadas_obra: { TURNO: { entrada: '06:00', salida_lj: '14:00', salida_v: '14:00', almuerzo: false, sabado: null } } };
+caso('38. Obra sin almuerzo (6:00-14:00 = 8 h): lunes 6:00-15:00 sin marcar almuerzo -> no se descuenta: 8 ordinarias y 1 extra', {
+  catalogos: SINALMUERZO, reg: { fecha: '2026-10-19', obra: 'TURNO', entrada: '06:00', salida: '15:00' }, tope: 42,
+}, { ord: 8, extD: 1, ...CERO });
+caso('39. Obra sin sábado en su jornada: el sábado sigue siendo todo extra', {
+  catalogos: SINALMUERZO, reg: { fecha: '2026-10-24', obra: 'TURNO', entrada: '06:00', salida: '10:00' }, tope: 42,
+}, { ord: 0, extD: 4, ...CERO });
+const NOCHE = { horarios_obra: { NOCHE: '22:00' }, jornadas_obra: { NOCHE: { entrada: '22:00', salida_lj: '06:00', salida_v: '06:00', almuerzo: false, sabado: null } } };
+caso('40. Obra de turno nocturno 22:00-06:00 (cruza medianoche): lunes 22:00-07:00 -> 8 ordinarias con recargo nocturno y 1 extra', {
+  catalogos: NOCHE, reg: { fecha: '2026-10-19', obra: 'NOCHE', entrada: '22:00', salida: '07:00' }, tope: 42,
+}, { ord: 8, extD: 1, extN: 0, recNoct: 8, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+{
+  const { horasPactadasJornadaObra } = require('./_extraido.cjs');
+  const t = horasPactadasJornadaObra(POSTOBON.jornadas_obra.POSTOBON);
+  const ok = aprox(t.lj, 8) && aprox(t.v, 8) && aprox(t.sab, 2) && aprox(t.total, 42);
+  results.push({ nombre: '41. Suma semanal de la jornada POSTOBON = 42 h', ok, diffs: [] });
+  console.log(`${ok ? '✅ PASS' : '❌ FAIL'} — 41. Suma semanal de la jornada POSTOBON = 42 h ${ok ? '' : JSON.stringify(t)}`);
+  const n = horasPactadasJornadaObra(NOCHE.jornadas_obra.NOCHE);
+  const ok2 = aprox(n.lj, 8) && aprox(n.total, 40);
+  results.push({ nombre: '42. Jornada nocturna que cruza medianoche suma 8 h por día (40 h)', ok: ok2, diffs: [] });
+  console.log(`${ok2 ? '✅ PASS' : '❌ FAIL'} — 42. Jornada nocturna que cruza medianoche suma 8 h por día (40 h) ${ok2 ? '' : JSON.stringify(n)}`);
+}
+
 // Semana completa, día por día, igual que se guarda al marcar cada salida (acumulando lo ordinario ya usado).
 function semana(meta, dias) {
   let acum = 0, ord = 0, ext = 0;
