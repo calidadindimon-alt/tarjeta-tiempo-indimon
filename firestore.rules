@@ -51,6 +51,21 @@ service cloud.firestore {
     // pantalla de la app) y, con las reglas de más abajo, seguir fichando/cambiando su sueldo como si
     // nada. Esta función cierra ese hueco a nivel de reglas: además de que el authUid coincida, exige
     // que el documento de empleados NO esté marcado activo:false.
+    // APROBACIÓN DE HORAS EXTRA (RRHH): un colaborador solo puede dejar sus horas extra "por aprobar"
+    // (al marcar la salida) o no tocar el estado. Aprobarlas o marcarlas como no autorizadas, y firmar
+    // esa decisión (extras_revisada_por / extras_revisada_en), solo lo puede hacer Admin. Sin esto, desde la
+    // consola del navegador un colaborador podría escribir extras_estado: 'aprobada' en su propio día.
+    function extrasEstadoPermitidoColaborador() {
+      let nuevo = request.resource.data;
+      let estadoOk = nuevo.get('extras_estado', null) == null ||
+        nuevo.get('extras_estado', null) == 'por_aprobar' ||
+        (resource != null && resource.data.get('extras_estado', null) == nuevo.get('extras_estado', null));
+      let firmaOk = (resource == null && nuevo.get('extras_revisada_por', null) == null && nuevo.get('extras_revisada_en', null) == null) ||
+        (resource != null && resource.data.get('extras_revisada_por', null) == nuevo.get('extras_revisada_por', null) &&
+                             resource.data.get('extras_revisada_en', null) == nuevo.get('extras_revisada_en', null));
+      return estadoOk && firmaOk;
+    }
+
     function esColaboradorActivoAutenticado(cedula) {
       let emp = get(/databases/$(database)/documents/empleados/$(cedula)).data;
       return request.auth != null &&
@@ -205,7 +220,7 @@ service cloud.firestore {
         // ENDURECIDO (ronda 5): ver permisoAprobadoValido() — la rama 3 ya no acepta cualquier
         // registro con horas en cero, exige que exista un permiso real aprobado detrás.
         allow create: if esAdmin() ||
-          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes()) ||
+          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes() && extrasEstadoPermitidoColaborador()) ||
           (request.resource.data.horas_ordinarias == 0 &&
            request.resource.data.horas_extras_diurnas == 0 &&
            request.resource.data.horas_extras_nocturnas == 0 &&
@@ -214,7 +229,7 @@ service cloud.firestore {
            permisoAprobadoValido(request.resource.data.permiso_id, cedula));
 
         allow update: if esAdmin() ||
-          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes()) ||
+          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes() && extrasEstadoPermitidoColaborador()) ||
           (request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['tipo_permiso', 'horas_permiso', 'nota_permiso', 'dias_vacaciones_permiso', 'permiso_id']) &&
            permisoAprobadoValido(request.resource.data.permiso_id, cedula));
