@@ -4,7 +4,7 @@
 // Las pruebas de cálculo (test-jornada-diaria.mjs y las demás) prueban funciones sueltas extraídas del archivo;
 // no notan si un cambio rompe el arranque de la app, un botón o un modal. Esta sí.
 //
-// Firebase y EmailJS se reemplazan por versiones simuladas en memoria (ver STUB_* abajo): la prueba NO lee ni
+// Firebase (incluido App Check) y EmailJS se reemplazan por versiones simuladas en memoria (ver STUB_* abajo): la prueba NO lee ni
 // escribe en Firestore real y no envía correos. Por eso tampoco detecta problemas de la base real (reglas,
 // índices, conexión).
 //
@@ -73,6 +73,7 @@ export const writeBatch = () => { const ops = []; return { set(r, d) { ops.push(
 export const arrayUnion = (...a) => a; export const serverTimestamp = () => new Date().toISOString(); export const increment = (n) => n;
 export const runTransaction = async (db, fn) => fn({ get: async (r) => snapDoc(r.path), update() {}, set() {} });`;
 const STUB_EMAILJS = `export default { init() {}, send: async () => ({ status: 200 }) };`;
+const STUB_APPCHECK = `export const initializeAppCheck = () => ({}); export class ReCaptchaV3Provider { constructor() {} }`;
 
 // Datos de prueba ficticios: un colaborador, un admin y un registro por revisar.
 const DATOS = () => {
@@ -104,6 +105,7 @@ await page.route('**/*', (route) => {
   if (url.includes('firebase-auth.js')) return js(STUB_AUTH);
   if (url.includes('firebase-firestore.js')) return js(STUB_FS);
   if (url.includes('@emailjs/browser')) return js(STUB_EMAILJS);
+  if (url.includes('firebase-app-check.js')) return js(STUB_APPCHECK);
   if (/\.js(\?|$)/.test(url)) return js('/* librería externa omitida en la prueba de humo */');
   return route.abort(); // fuentes, íconos y cualquier otra cosa de internet
 });

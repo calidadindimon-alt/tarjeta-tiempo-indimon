@@ -42,6 +42,9 @@
         .btn-touch { transition: all 0.15s ease; }
         .btn-touch:active { transform: scale(0.97); }
         .btn-touch:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        /* Logo flotante de reCAPTCHA (App Check): tapa el menú inferior en el celular. Google permite ocultarlo si se
+           muestra el aviso de reCAPTCHA en la página; está en la pantalla de ingreso. */
+        .grecaptcha-badge { visibility: hidden; }
         /* BUG CORREGIDO: los campos de PIN usaban type="password" para ocultar los dígitos, pero
            Safari en iOS ignora inputmode="numeric" en campos type="password" y muestra el teclado
            alfanumérico completo. Se cambió a type="tel" (que sí abre el teclado numérico en iOS y
@@ -241,6 +244,7 @@
                         Ingresar <i class="ph-bold ph-arrow-right"></i>
                     </button>
                     <p class="text-[11px] text-center text-slate-400">Tu identidad se protege con un PIN personal. Si es tu primer ingreso, podrás crear uno.</p>
+                    <p class="text-[10px] text-center text-slate-400">Este sitio está protegido por reCAPTCHA y se aplican la <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" class="underline">Política de Privacidad</a> y las <a href="https://policies.google.com/terms" target="_blank" rel="noopener" class="underline">Condiciones del Servicio</a> de Google.</p>
                 </div>
             </div>
 
@@ -1454,6 +1458,7 @@
             getDocs, query, where, orderBy, limit as fsLimit, onSnapshot, writeBatch, arrayUnion, documentId,
             serverTimestamp, increment, runTransaction
         } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-check.js";
         import emailjs from "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/+esm";
 
         // =====================================================================================
@@ -1511,6 +1516,25 @@
         };
 
         const app = initializeApp(firebaseConfig);
+
+        // APP CHECK: Google reCAPTCHA v3 certifica en silencio (sin captcha) que cada petición a Firebase viene de
+        // esta página, en un navegador real, y no de un script con la llave pública copiada. Se inicia ANTES de
+        // Firestore para que todas las peticiones lleven el certificado. Mientras en la consola de Firebase no se
+        // pulse "Aplicar" para Cloud Firestore, App Check solo mide (no bloquea nada).
+        // La clave del sitio es pública. Se creó en google.com/recaptcha con la cuenta dueña del proyecto de
+        // Firebase, dentro del proyecto de Google Cloud "Tarjeta de tiempo INDIMON", solo para el dominio
+        // calidadindimon-alt.github.io; su clave secreta está guardada en Firebase → App Check (no en el código).
+        // Solo se activa en ese dominio: en cualquier otro (pruebas locales) reCAPTCHA rechazaría la clave.
+        const RECAPTCHA_SITE_KEY = '6LdT3_gtAAAAALEqi9CSlJcfZzN_RaJrnl1QSbcD';
+        if (location.hostname === 'calidadindimon-alt.github.io') {
+            try {
+                initializeAppCheck(app, { provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
+            } catch (eAppCheck) {
+                // Nunca debe impedir que la app arranque: sin App Check activado en la consola, todo sigue funcionando.
+                console.error('No se pudo iniciar App Check:', eAppCheck);
+            }
+        }
+
         const auth = getAuth(app);
 
         // NOTA: se evaluó usar una segunda "app" de Firebase separada para los logins de Admin/
