@@ -75,7 +75,7 @@ export const runTransaction = async (db, fn) => fn({ get: async (r) => snapDoc(r
 const STUB_EMAILJS = `export default { init() {}, send: async () => ({ status: 200 }) };`;
 const STUB_APPCHECK = `export const initializeAppCheck = () => ({}); export class ReCaptchaEnterpriseProvider { constructor() {} }`;
 
-// Datos de prueba ficticios: un colaborador, un admin y un registro por revisar.
+// Datos de prueba ficticios: un colaborador, un admin, un registro por revisar y un día con extras aprobadas que cambia al recalcular.
 const DATOS = () => {
   window.__DB__ = {
     'admins': { adm1: { rol: 'admin' } },
@@ -84,6 +84,7 @@ const DATOS = () => {
     'empleados': { '111': { nombre: 'COLABORADOR DE PRUEBA', cargo: 'AUXILIAR', sueldo_base: 1750905, activo: true, authUid: 'u1' } },
     'empleados/111/registros': {
       '2026-10-15': { fecha: '2026-10-15', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '17:40', estado: 'requiere_revision_admin', horas_ordinarias: 8.5, horas_extras_diurnas: 0.67, nota_revision: 'Fuera de la geocerca (salida a 90m de la obra).' },
+      '2026-10-20': { fecha: '2026-10-20', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '17:00', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 0.5, extras_estado: 'aprobada' },
       '2026-10-22': { fecha: '2026-10-22', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '18:30', estado: 'completado', horas_ordinarias: 8.5, horas_extras_diurnas: 1.5, extras_estado: 'por_aprobar', extras_autoriza: 'JLAF' }
     }
   };
@@ -169,7 +170,26 @@ try {
   await page.waitForTimeout(300);
   ok('9. "Resumen de alertas" abre y muestra al colaborador con su alerta de geocerca',
     /COLABORADOR DE PRUEBA/.test(await page.textContent('#alertas-tabla')) && (await page.locator('.fila-alerta').count()) === 1);
-  ok('10. Ningún error de JavaScript durante todo el recorrido', errores.length === 0, errores.join(' | '));
+  await page.click('#btn-alertas-cerrar');
+  await page.waitForTimeout(400);
+  await page.selectOption('#recalc-empleado', '__todos__');
+  await page.fill('#recalc-fecha', '2026-10-21');
+  await page.evaluate(() => document.getElementById('btn-recalcular-semana').click());
+  await page.waitForSelector('#modal-recalc-todos-box', { state: 'visible', timeout: 5000 });
+  const tablaRecalc = await page.textContent('#recalc-todos-tabla');
+  ok('10. "Recalcular semana de todos" muestra la vista previa con el día que cambia y el aviso de extras aprobadas',
+    /COLABORADOR DE PRUEBA/.test(tablaRecalc) && /vuelven a por aprobar/.test(tablaRecalc) && await page.isVisible('#recalc-todos-aviso'), tablaRecalc);
+  await page.click('#btn-recalc-todos-cancelar');
+  await page.waitForTimeout(400);
+  const dia20 = () => page.evaluate(() => window.__DB__['empleados/111/registros']['2026-10-20']);
+  ok('    … Cancelar no guarda nada', (await dia20()).horas_ordinarias === 8 && (await dia20()).extras_estado === 'aprobada');
+  await page.evaluate(() => document.getElementById('btn-recalcular-semana').click());
+  await page.waitForSelector('#modal-recalc-todos-box', { state: 'visible', timeout: 5000 });
+  await page.click('#btn-recalc-todos-aplicar');
+  await page.waitForTimeout(800);
+  const d20 = await dia20();
+  ok('    … y Aplicar guarda las horas nuevas y deja las extras "por aprobar"', d20.horas_extras_diurnas === 0 && d20.extras_estado === 'por_aprobar', JSON.stringify(d20));
+  ok('11. Ningún error de JavaScript durante todo el recorrido', errores.length === 0, errores.join(' | '));
 } catch (e) {
   ok('La prueba de humo pudo terminar el recorrido', false, e.message.split('\n')[0]);
   await page.screenshot({ path: path.join(RAIZ, 'tests', '_humo-fallo.png') }).catch(() => {});
