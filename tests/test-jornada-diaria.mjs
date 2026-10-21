@@ -197,6 +197,13 @@ caso('23. La autorización no cambia la tardanza: entrada 08:00 con autorizació
   reg: { fecha: '2026-10-20', obra: 'BODEGA', entrada: '08:00', salida: '16:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', entrada_temprana_autorizada: true }, tope: 33.5,
 }, { ord: 7.5, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 30, horasDescontadasTardanza: 0.5 });
 
+caso('43. Almuerzo de 59 min y salida 17:01 (Franklin, 20 oct) -> 8,52 ordinarias, sin 0,02 h de extra', {
+  catalogos: { horarios_obra: { PLANTA: '07:30' } }, reg: { fecha: '2026-10-20', obra: 'PLANTA', entrada: '07:26', salida: '17:01', almuerzo_inicio: '12:02', almuerzo_fin: '13:01' }, tope: 42,
+}, { ord: 8.52, extD: 0, ...CERO });
+caso('44. Almuerzo de 30 min y salida 17:00 -> el sobrante de 30 min sí es extra (pasa la tolerancia)', {
+  catalogos: { horarios_obra: { PLANTA: '07:30' } }, reg: { fecha: '2026-10-20', obra: 'PLANTA', entrada: '07:30', salida: '17:00', almuerzo_inicio: '12:00', almuerzo_fin: '12:30' }, tope: 42,
+}, { ord: 8.5, extD: 0.5, ...CERO });
+
 // Jornada propia por obra (Admin → "Horarios por Obra").
 const POSTOBON = { horarios_obra: { POSTOBON: '07:00' }, jornadas_obra: { POSTOBON: { entrada: '07:00', salida_lj: '16:00', salida_v: '16:00', almuerzo: true, sabado: { entrada: '07:00', salida: '09:00', almuerzo: false } } } };
 caso('35. Obra con jornada propia (L-V 7:00-16:00): martes 7:00-18:00 -> 8 ordinarias y 2 extra', {

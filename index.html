@@ -3270,8 +3270,14 @@
             let ordAntesDeTardanza;
             if (ventanaPactada) {
                 // Ordinario = lo trabajado hasta la hora de salida pactada (máximo las horas pactadas del día).
+                // Si dentro del horario se trabajó un poco más de lo pactado (p. ej. almorzó 55 min en vez de 60), esos
+                // minutos se pagan como ordinarios y no como extra cuando son menos de TOLERANCIA_SALIDA_MIN: así no
+                // aparecen "extras" de 1 a 14 minutos que RRHH tendría que aprobar (misma tolerancia que en la salida).
                 const dentroDelHorario = intervals.reduce((acc, [s, e]) => acc + Math.max(0, Math.min(e, ventanaPactada.fin) - s), 0);
-                ordAntesDeTardanza = Math.min(ventanaPactada.horasPactadas, dentroDelHorario);
+                const sobrante = dentroDelHorario - ventanaPactada.horasPactadas;
+                ordAntesDeTardanza = sobrante > 0 && sobrante * 60 < TOLERANCIA_SALIDA_MIN
+                    ? dentroDelHorario
+                    : Math.min(ventanaPactada.horasPactadas, dentroDelHorario);
             } else if (diaSemana === 6 && !hoyEsDomFest) {
                 ordAntesDeTardanza = 0; // sábado: fuera del horario pactado, todo es extra
             } else {
