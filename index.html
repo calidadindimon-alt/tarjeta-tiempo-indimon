@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T. Tiempo INDIMON">
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=2">
 
     <!-- Tailwind CSS: compilado de forma estatica (no se carga desde cdn.tailwindcss.com en cada
          visita). ANTES, cargar el CSS en vivo desde el CDN en cada apertura de la app causaba que en
@@ -179,13 +179,11 @@
     <header class="bg-slate-900 text-white p-4 sticky top-0 z-40 shadow-md">
         <div class="max-w-5xl mx-auto w-full flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <!-- MEJORA (14/10, sugerida por el usuario): logo real de INDIMON en vez del ícono
-                     genérico de casco. El logo original (ver artefacto "Logo INDIMON en la app") es un
-                     lockup ancho con eslogan, pensado para membretes, no para un ícono de 40px — así que
-                     se recortó solo el emblema circular del soldador y se le quitó el fondo gris plano
-                     (era opaco, sin transparencia) para que se vea limpio sobre el header oscuro. El
-                     texto "INDIMON S.A.S." se mantiene aparte porque el emblema solo no lo incluye. -->
-                <img src="logo-indimon.png" alt="INDIMON" class="w-10 h-10 object-contain flex-shrink-0">
+                <!-- Logo de INDIMON (21/10): el soldador gris del logo actual, redibujado en alta resolución, sobre
+                     fondo blanco con borde rojo de la marca — el mismo diseño de los íconos de la app (icon-*.png),
+                     para que se vea igual en el encabezado y en la pantalla del celular. El fondo blanco le da
+                     contraste sobre el header oscuro. El texto "INDIMON S.A.S." va aparte. -->
+                <img src="logo-indimon.png?v=2" alt="INDIMON" class="w-10 h-10 object-contain flex-shrink-0">
                 <div>
                     <h1 class="text-sm md:text-base font-bold leading-tight">INDIMON S.A.S.</h1>
                     <p class="text-[11px] text-slate-400 font-medium" id="header-date">Cargando fecha...</p>
