@@ -9,12 +9,16 @@ on:
       - 'tests/**'
       - 'formatos/**'
       - 'scripts/regenerar-tailwind.mjs'
+      - 'scripts/recordatorios-*.mjs'
+      - 'service-worker.js'
   pull_request:
     paths:
       - 'index.html'
       - 'tests/**'
       - 'formatos/**'
       - 'scripts/regenerar-tailwind.mjs'
+      - 'scripts/recordatorios-*.mjs'
+      - 'service-worker.js'
   workflow_dispatch: {}
 
 jobs:
@@ -52,6 +56,9 @@ jobs:
 
       - name: Probar el resumen de alertas por colaborador y mes
         run: node tests/test-resumen-alertas.mjs
+
+      - name: Probar los recordatorios al celular (almuerzo y salida)
+        run: node tests/test-recordatorios.mjs
 
       - name: Probar que un permiso por horas aprobado de antemano no bloquee el fichaje del día
         run: node tests/test-registro-permiso.mjs

@@ -3,8 +3,8 @@
 // Corre solo, disparado por .github/workflows/backup-semanal.yml (cron), y hace exactamente
 // lo mismo que el botón "Descargar copia completa" del panel Admin (ver index.html,
 // btn-descargar-backup) — misma estructura de archivo — pero sin que nadie tenga que acordarse
-// de darle clic. Guarda el resultado en dos lugares independientes (backups/ en este repo, y
-// una carpeta de OneDrive) para que si uno falla, el otro sigue sirviendo.
+// de darle clic. Deja el archivo en backups/ solo dentro de la máquina de GitHub Actions; el workflow lo sube
+// a OneDrive. NO se guarda en el repositorio, que es público (backups/ está en .gitignore).
 //
 // Requiere el secreto de GitHub FIREBASE_SERVICE_ACCOUNT_JSON (el JSON completo de una cuenta
 // de servicio de Firebase, con permiso de solo lectura sobre Firestore). Nunca se imprime ni se

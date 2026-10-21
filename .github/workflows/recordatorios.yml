@@ -1,0 +1,61 @@
+name: Recordatorios de almuerzo y salida
+
+# Cada 30 minutos, de 10:00 a. m. a 9:00 p. m. hora Colombia, revisa quién tiene el turno abierto y le manda
+# al celular el recordatorio que le toque (ver scripts/recordatorios-turno.mjs). Solo llega a quien aceptó
+# los recordatorios en la app. GitHub puede atrasar estas corridas unos minutos: es un recordatorio, no una alarma.
+#
+# También se puede correr a mano desde la pestaña "Actions" → "Run workflow":
+#   - con una cédula en "cedula_prueba", manda una notificación de prueba a esa persona;
+#   - con "simular" marcado, solo muestra en el registro qué mandaría, sin mandar nada.
+on:
+  schedule:
+    - cron: '7,37 15-23 * * *' # 10:07 a. m. a 6:37 p. m. hora Colombia
+    - cron: '7,37 0-1 * * *'   # 7:07 p. m. a 8:37 p. m. hora Colombia
+    - cron: '7 2 * * *'        # 9:07 p. m. hora Colombia
+  workflow_dispatch:
+    inputs:
+      cedula_prueba:
+        description: 'Cédula para mandar una notificación de prueba (vacío = correr normal)'
+        required: false
+        default: ''
+      simular:
+        description: 'Solo mostrar qué mandaría, sin mandar nada'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recordatorios
+  cancel-in-progress: false
+
+jobs:
+  recordatorios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependencias del script
+        run: npm install firebase-admin@12 --no-save
+
+      - name: Mandar recordatorios
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          CEDULA_PRUEBA: ${{ inputs.cedula_prueba }}
+          SIMULAR: ${{ inputs.simular }}
+        run: |
+          if [ -n "$CEDULA_PRUEBA" ]; then
+            node scripts/recordatorios-turno.mjs --probar "$CEDULA_PRUEBA"
+          elif [ "$SIMULAR" = "true" ]; then
+            node scripts/recordatorios-turno.mjs --simular
+          else
+            node scripts/recordatorios-turno.mjs
+          fi

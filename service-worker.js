@@ -12,7 +12,7 @@
 
 // IMPORTANTE: sube este número (v2 → v3 → ...) cada vez que cambies ALGO de este archivo.
 // Cambiar el nombre es lo que obliga al navegador a tratar esto como un service worker nuevo.
-const CACHE_NAME = 'indimon-estaticos-v3';
+const CACHE_NAME = 'indimon-estaticos-v4';
 
 const HOSTS_A_CACHEAR = [
     'unpkg.com',
@@ -101,4 +101,32 @@ self.addEventListener('fetch', (event) => {
             }).catch(() => caches.match(req).then((r) => r || caches.match('./')))
         );
     }
+});
+
+// RECORDATORIOS AL CELULAR (almuerzo y salida): los manda scripts/recordatorios-turno.mjs por Firebase Cloud
+// Messaging solo a quien los aceptó en la app. Llegan aquí aunque la app esté cerrada, y este archivo los muestra
+// como una notificación normal del celular. Al tocarla se abre la app (o se trae al frente si ya estaba abierta).
+self.addEventListener('push', (event) => {
+    let carga = {};
+    try { carga = event.data ? event.data.json() : {}; } catch (_) { carga = {}; }
+    const d = carga.data || carga.notification || carga;
+    event.waitUntil(self.registration.showNotification(d.title || 'Tarjeta de Tiempo INDIMON', {
+        body: d.body || '',
+        icon: 'icon-192.png',
+        badge: 'icon-192.png',
+        tag: d.tag || 'recordatorio',
+        data: { url: d.url || self.registration.scope }
+    }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = (event.notification.data && event.notification.data.url) || self.registration.scope;
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((pestanas) => {
+            const abierta = pestanas.find((p) => p.url.startsWith(self.registration.scope));
+            if (abierta) return abierta.focus();
+            return self.clients.openWindow(url);
+        })
+    );
 });
