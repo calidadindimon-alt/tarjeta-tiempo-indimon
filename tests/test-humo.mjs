@@ -160,7 +160,16 @@ try {
   await page.locator('.btn-extras-aprobar').first().click();
   await page.waitForTimeout(600);
   ok('   … y al aprobar, el aviso desaparece', !(await page.isVisible('#btn-aviso-extras')));
-  ok('9. Ningún error de JavaScript durante todo el recorrido', errores.length === 0, errores.join(' | '));
+  await page.click('#btn-extras-cerrar');
+  await page.waitForTimeout(400);
+  await page.click('#btn-resumen-alertas');
+  await page.waitForSelector('#modal-alertas-box', { state: 'visible', timeout: 5000 });
+  await page.fill('#alertas-mes', '2026-10');
+  await page.dispatchEvent('#alertas-mes', 'change');
+  await page.waitForTimeout(300);
+  ok('9. "Resumen de alertas" abre y muestra al colaborador con su alerta de geocerca',
+    /COLABORADOR DE PRUEBA/.test(await page.textContent('#alertas-tabla')) && (await page.locator('.fila-alerta').count()) === 1);
+  ok('10. Ningún error de JavaScript durante todo el recorrido', errores.length === 0, errores.join(' | '));
 } catch (e) {
   ok('La prueba de humo pudo terminar el recorrido', false, e.message.split('\n')[0]);
   await page.screenshot({ path: path.join(RAIZ, 'tests', '_humo-fallo.png') }).catch(() => {});
