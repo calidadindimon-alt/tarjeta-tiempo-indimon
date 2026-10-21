@@ -50,6 +50,9 @@ jobs:
       - name: Probar la aprobación de horas extra por RRHH (solo las aprobadas entran a la nómina)
         run: node tests/test-extras-aprobacion.mjs
 
+      - name: Probar el resumen de alertas por colaborador y mes
+        run: node tests/test-resumen-alertas.mjs
+
       - name: Probar que un permiso por horas aprobado de antemano no bloquee el fichaje del día
         run: node tests/test-registro-permiso.mjs
 
