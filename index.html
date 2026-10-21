@@ -1448,7 +1448,7 @@
             <h3 class="text-lg font-bold text-slate-800 mt-1">¿Te avisamos si olvidas marcar?</h3>
             <p class="text-sm text-slate-600 mt-2">Te llega una notificación al celular, aunque tengas la app cerrada, solo si:</p>
             <ul class="text-sm text-slate-700 text-left mt-2 space-y-1">
-                <li>🍽️ llevas 5 horas en turno y no has marcado el almuerzo, o no has marcado el regreso;</li>
+                <li>🍽️ se acerca la hora del almuerzo (para que lo marques al salir) o no has marcado el regreso;</li>
                 <li>🏁 pasaron 30 min de tu hora de salida y el turno sigue abierto (y otra vez a las 8:00 p. m.).</li>
             </ul>
             <button id="btn-recordatorios-si" class="btn-touch w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 rounded-xl shadow-md mt-4">Sí, avísame</button>
@@ -1514,7 +1514,12 @@
                     <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salida L–J</label><input type="time" id="horario-obra-salida-lj" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
                     <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salida viernes</label><input type="time" id="horario-obra-salida-v" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
                 </div>
-                <label class="flex items-center gap-2 text-sm text-slate-700 mb-3"><input type="checkbox" id="horario-obra-almuerzo" class="w-4 h-4 rounded border-slate-300"> Almuerzo de 1 hora (lunes a viernes)</label>
+                <label class="flex items-center gap-2 text-sm text-slate-700 mb-2"><input type="checkbox" id="horario-obra-almuerzo" class="w-4 h-4 rounded border-slate-300"> Almuerzo de 1 hora (lunes a viernes)</label>
+                <div id="horario-obra-almuerzo-hora-campo" class="mb-3">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Hora del almuerzo</label>
+                    <input type="time" id="horario-obra-almuerzo-hora" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <p class="text-[11px] text-slate-500 mt-1">Solo para el recordatorio al celular: llega antes de esta hora. No cambia el cálculo de horas.</p>
+                </div>
                 <label class="flex items-center gap-2 text-sm text-slate-700 mb-2"><input type="checkbox" id="horario-obra-sabado" class="w-4 h-4 rounded border-slate-300"> Se trabaja el sábado como parte de la jornada</label>
                 <div id="horario-obra-sabado-campos" class="hidden mb-2">
                     <div class="grid grid-cols-2 gap-2 mb-2">
@@ -2737,6 +2742,9 @@
         // La hora de entrada se guarda también en "horarios_obra" (como siempre) para que las versiones viejas de
         // la app sigan funcionando. Devuelve null si la obra no tiene jornada configurada: entonces se usa el
         // horario general (entrada + HORARIO_PACTADO_HORAS + 1 h de almuerzo).
+        // Hora del almuerzo de una obra que no la tiene configurada. Solo la usa el recordatorio al celular
+        // (scripts/recordatorios-logica.mjs tiene la misma); no interviene en el cálculo de horas.
+        const HORA_ALMUERZO_POR_DEFECTO = '12:00';
         function getJornadaObra(obra) {
             if (!obra) return null;
             const jornadas = catalogosCache.jornadas_obra || {};
@@ -4954,7 +4962,7 @@
         function textoHorasCorto(h) { return `${String(Number(h.toFixed(2))).replace('.', ',')} h`; }
         function resumenJornadaObra(j) {
             const hp = horasPactadasJornadaObra(j);
-            let t = `L–J ${j.entrada}–${j.salida_lj} · Vie ${j.entrada}–${j.salida_v} · ${j.almuerzo ? 'Almuerzo 1 h' : 'Sin almuerzo'}`;
+            let t = `L–J ${j.entrada}–${j.salida_lj} · Vie ${j.entrada}–${j.salida_v} · ${j.almuerzo ? `Almuerzo 1 h a las ${j.hora_almuerzo || HORA_ALMUERZO_POR_DEFECTO}` : 'Sin almuerzo'}`;
             if (j.sabado) t += ` · Sáb ${j.sabado.entrada}–${j.sabado.salida}`;
             return `${t} · ${textoHorasCorto(hp.total)}/sem`;
         }
@@ -5013,6 +5021,7 @@
             const jornada = {
                 entrada: v('horario-obra-entrada'), salida_lj: v('horario-obra-salida-lj'), salida_v: v('horario-obra-salida-v'),
                 almuerzo: document.getElementById('horario-obra-almuerzo').checked,
+                hora_almuerzo: v('horario-obra-almuerzo-hora') || HORA_ALMUERZO_POR_DEFECTO,
                 sabado: document.getElementById('horario-obra-sabado').checked
                     ? { entrada: v('horario-obra-sab-entrada'), salida: v('horario-obra-sab-salida'), almuerzo: document.getElementById('horario-obra-sab-almuerzo').checked }
                     : null
@@ -5023,6 +5032,8 @@
         }
         function actualizarResumenHorarioObra() {
             document.getElementById('horario-obra-sabado-campos').classList.toggle('hidden', !document.getElementById('horario-obra-sabado').checked);
+            const conAlmuerzo = document.getElementById('horario-obra-almuerzo').checked || (document.getElementById('horario-obra-sabado').checked && document.getElementById('horario-obra-sab-almuerzo').checked);
+            document.getElementById('horario-obra-almuerzo-hora-campo').classList.toggle('hidden', !conAlmuerzo);
             const box = document.getElementById('horario-obra-resumen');
             const btn = document.getElementById('btn-horario-obra-guardar');
             const { jornada, error } = leerFormHorarioObra();
@@ -5057,6 +5068,7 @@
             document.getElementById('horario-obra-salida-lj').value = jornada.salida_lj;
             document.getElementById('horario-obra-salida-v').value = jornada.salida_v;
             document.getElementById('horario-obra-almuerzo').checked = jornada.almuerzo !== false;
+            document.getElementById('horario-obra-almuerzo-hora').value = jornada.hora_almuerzo || HORA_ALMUERZO_POR_DEFECTO;
             document.getElementById('horario-obra-sabado').checked = !!jornada.sabado;
             document.getElementById('horario-obra-sab-entrada').value = jornada.sabado ? jornada.sabado.entrada : jornada.entrada;
             document.getElementById('horario-obra-sab-salida').value = jornada.sabado ? jornada.sabado.salida : '';
@@ -6623,8 +6635,8 @@
         // El colaborador acepta una vez y su celular queda anotado en push_tokens/{cedula}. Quien manda los avisos es
         // scripts/recordatorios-turno.mjs (cada 30 min, por GitHub Actions) y quien los muestra es service-worker.js.
         // Clave web pública de Firebase Cloud Messaging (Firebase → Configuración del proyecto → Cloud Messaging →
-        // Certificados push web). No es secreta. Vacía = los recordatorios quedan apagados y la app no pregunta nada.
-        const VAPID_KEY_RECORDATORIOS = '';
+        // Certificados push web). No es secreta. Si se deja vacía, los recordatorios se apagan y la app no pregunta nada.
+        const VAPID_KEY_RECORDATORIOS = 'BJlwQqt3i1jLx44292gKKyBHsr7Gl8Kls5vKZEIVKxZv7230oLD_wgP6IX-CzE7agUnd5DxjZMOrMUvd_m43trc';
         const RECORDATORIOS_PREGUNTADO_KEY = 'indimon-recordatorios-preguntado';
         const RECORDATORIOS_TOKEN_KEY = 'indimon-recordatorios-token';
         const RECORDATORIOS_PREGUNTAR_CADA_DIAS = 7;

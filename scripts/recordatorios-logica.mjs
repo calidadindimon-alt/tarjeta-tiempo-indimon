@@ -2,14 +2,16 @@
 // para poder probarla con tests/test-recordatorios.mjs. La usa scripts/recordatorios-turno.mjs.
 //
 // Recordatorios (cada uno se manda una sola vez por día):
-//   almuerzo        → lleva AVISO_ALMUERZO_TRAS_HORAS en turno y no ha marcado el almuerzo (ni "no tomo almuerzo").
-//                     Mismo umbral que el aviso amarillo de la app (AVISO_ALMUERZO_TRAS_HORAS en index.html).
+//   almuerzo        → ANTES de la hora del almuerzo de su obra (en los MIN_ANTES_DEL_ALMUERZO previos), para que lo
+//                     marque al salir. La hora se configura en Horarios por Obra; si no, HORA_ALMUERZO_POR_DEFECTO.
+//                     Las corridas son cada 30 min, así que con una ventana de 40 min siempre cae al menos una.
 //   regreso         → marcó el inicio del almuerzo y pasaron MIN_REGRESO_ALMUERZO sin marcar el regreso.
 //   salida1         → 30 min después de la salida pactada de su obra, sigue con el turno abierto.
 //   salida2         → a las 20:00, si sigue abierto (solo si para entonces ya pasó la salida pactada + 30 min).
 // Domingos, festivos y sábados sin jornada no tienen salida pactada: ahí solo aplica el aviso de las 20:00.
 
-export const AVISO_ALMUERZO_TRAS_HORAS = 5;
+export const MIN_ANTES_DEL_ALMUERZO = 40;
+export const HORA_ALMUERZO_POR_DEFECTO = '12:00';
 export const MIN_REGRESO_ALMUERZO = 75;
 export const MIN_DESPUES_DE_SALIDA = 30;
 export const HORA_SEGUNDO_AVISO = '20:00';
@@ -37,13 +39,16 @@ export function salidaPactada(catalogos, obra, fecha, festivos) {
   return dow === 5 ? j.salida_v : j.salida_lj;
 }
 
-function obraTieneAlmuerzo(catalogos, obra, fecha) {
+// Hora del almuerzo de la obra ese día, o null si ese día no hay almuerzo pactado (domingo, festivo, sábado sin
+// jornada u obra sin almuerzo).
+export function horaAlmuerzo(catalogos, obra, fecha, festivos) {
   const j = buscar(catalogos.jornadas_obra, obra);
-  if (!j) return true;
   const [y, m, d] = fecha.split('-').map(Number);
   const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-  if (dow === 6 && j.sabado) return j.sabado.almuerzo !== false;
-  return j.almuerzo !== false;
+  if (dow === 0 || festivos.has(fecha)) return null;
+  if (dow === 6) { if (!j || !j.sabado || !j.sabado.almuerzo) return null; }
+  else if (j && j.almuerzo === false) return null;
+  return (j && j.hora_almuerzo) || HORA_ALMUERZO_POR_DEFECTO;
 }
 
 // registro: el documento de hoy (entrada, almuerzo_inicio, almuerzo_fin, salida, almuerzo_omitido, obra, estado).
@@ -64,9 +69,11 @@ export function recordatoriosPendientes({ ahora, fecha, registro, catalogos, fes
     if (t - aMin(r.almuerzo_inicio) >= MIN_REGRESO_ALMUERZO) {
       agregar('regreso', `¿Ya volviste del almuerzo${saludo}?`, `Saliste a almorzar a las ${r.almuerzo_inicio} y no has marcado el regreso. Si ya volviste, toca aquí y márcalo.`);
     }
-  } else if (!r.almuerzo_inicio && !r.almuerzo_omitido && obraTieneAlmuerzo(catalogos, r.obra, fecha)
-    && t - entrada >= AVISO_ALMUERZO_TRAS_HORAS * 60) {
-    agregar('almuerzo', `¿Ya almorzaste${saludo}?`, `No has marcado tu almuerzo. Si ya saliste a almorzar, toca aquí y márcalo (aunque sea tarde). Si hoy no tomas almuerzo, usa "Hoy no tomo almuerzo".`);
+  } else if (!r.almuerzo_inicio && !r.almuerzo_omitido) {
+    const hora = horaAlmuerzo(catalogos, r.obra, fecha, festivos);
+    if (hora && aMin(hora) > entrada && t >= aMin(hora) - MIN_ANTES_DEL_ALMUERZO && t < aMin(hora)) {
+      agregar('almuerzo', `Ya casi es hora de almorzar${saludo}`, `Tu almuerzo es a las ${hora}. Cuando salgas a almorzar, abre la app y marca "Iniciar Almuerzo". Si hoy no tomas almuerzo, usa "Hoy no tomo almuerzo".`);
+    }
   }
 
   const pactada = salidaPactada(catalogos, r.obra, fecha, festivos);

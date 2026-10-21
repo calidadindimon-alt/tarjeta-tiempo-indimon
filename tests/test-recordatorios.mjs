@@ -1,7 +1,7 @@
-// Prueba de qué recordatorios le tocan a un colaborador (scripts/recordatorios-logica.mjs): almuerzo a las 5 h de
-// turno, regreso del almuerzo a los 75 min, salida 30 min después de la salida pactada de su obra y segundo aviso a
+// Prueba de qué recordatorios le tocan a un colaborador (scripts/recordatorios-logica.mjs): almuerzo ANTES de la hora
+// de almuerzo de su obra, regreso del almuerzo a los 75 min, salida 30 min después de la salida pactada de su obra y segundo aviso a
 // las 8:00 p. m. Cada uno una sola vez por día.
-import { recordatoriosPendientes, salidaPactada } from '../scripts/recordatorios-logica.mjs';
+import { recordatoriosPendientes, salidaPactada, horaAlmuerzo } from '../scripts/recordatorios-logica.mjs';
 
 let fallas = 0, total = 0;
 const caso = (nombre, obtenido, esperado) => {
@@ -15,6 +15,7 @@ const catalogos = {
   horarios_obra: { BODEGA: '07:30', 'ECLA-YUMBO': '07:00' },
   jornadas_obra: {
     BODEGA: { entrada: '07:30', salida_lj: '17:00', salida_v: '16:30', almuerzo: true, sabado: null },
+    TEMPRANO: { entrada: '06:00', salida_lj: '15:30', salida_v: '15:00', almuerzo: true, hora_almuerzo: '11:30', sabado: { entrada: '06:00', salida: '12:00', almuerzo: false } },
     NOCHE: { entrada: '13:00', salida_lj: '21:30', salida_v: '21:30', almuerzo: false, sabado: null },
     CORRIDO: { entrada: '06:00', salida_lj: '14:00', salida_v: '14:00', almuerzo: false, sabado: { entrada: '07:00', salida: '12:00', almuerzo: false } },
   },
@@ -30,11 +31,21 @@ caso('1. Salida pactada: L–J y viernes de la obra; sin jornada, entrada + 9,5 
    salidaPactada(catalogos, 'BODEGA', '2026-11-02', festivos), salidaPactada(catalogos, 'CORRIDO', SAB, festivos)],
   ['17:00', '16:30', '16:30', null, null, '12:00']);
 
-caso('2. 12:00 m., 4,5 h en turno sin almuerzo: todavía nada', tipos({ ahora: '12:00', fecha: MIE, registro: turno() }), []);
-caso('3. 12:37 p. m., 5 h en turno sin marcar almuerzo: aviso de almuerzo', tipos({ ahora: '12:37', fecha: MIE, registro: turno() }), ['almuerzo']);
-caso('4. … que no se repite en la siguiente corrida', tipos({ ahora: '13:07', fecha: MIE, registro: turno(), enviados: ['almuerzo'] }), []);
-caso('5. Marcó "no tomo almuerzo": no hay aviso de almuerzo', tipos({ ahora: '13:07', fecha: MIE, registro: turno({ almuerzo_omitido: true }) }), []);
-caso('6. Obra sin almuerzo en su jornada: no hay aviso de almuerzo', tipos({ ahora: '13:07', fecha: MIE, registro: turno({ obra: 'CORRIDO', entrada: '06:00' }) }), []);
+caso('2. Hora del almuerzo: la de la obra, 12:00 si no tiene; sin almuerzo el domingo, festivo, sábado sin almuerzo u obra sin almuerzo',
+  [horaAlmuerzo(catalogos, 'TEMPRANO', MIE, festivos), horaAlmuerzo(catalogos, 'BODEGA', MIE, festivos), horaAlmuerzo(catalogos, 'ECLA-YUMBO', MIE, festivos),
+   horaAlmuerzo(catalogos, 'BODEGA', DOM, festivos), horaAlmuerzo(catalogos, 'BODEGA', '2026-11-02', festivos), horaAlmuerzo(catalogos, 'TEMPRANO', SAB, festivos),
+   horaAlmuerzo(catalogos, 'CORRIDO', MIE, festivos)],
+  ['11:30', '12:00', '12:00', null, null, null, null]);
+caso('3. Almuerzo a las 12:00: a las 11:07 todavía nada; a las 11:37 llega el aviso (23 min antes)',
+  [tipos({ ahora: '11:07', fecha: MIE, registro: turno() }), tipos({ ahora: '11:37', fecha: MIE, registro: turno() })], [[], ['almuerzo']]);
+caso('4. … aunque GitHub se atrase 15 min (11:52), llega antes de las 12:00; y no se repite',
+  [tipos({ ahora: '11:52', fecha: MIE, registro: turno() }), tipos({ ahora: '11:52', fecha: MIE, registro: turno(), enviados: ['almuerzo'] })], [['almuerzo'], []]);
+caso('5. Ya es la hora del almuerzo o pasó: ya no se manda (no tiene sentido después)',
+  [tipos({ ahora: '12:00', fecha: MIE, registro: turno() }), tipos({ ahora: '12:37', fecha: MIE, registro: turno() })], [[], []]);
+caso('6. Obra con almuerzo a las 11:30: aviso a las 11:07; ya marcó el almuerzo o "no tomo almuerzo": nada',
+  [tipos({ ahora: '11:07', fecha: MIE, registro: turno({ obra: 'TEMPRANO', entrada: '06:00' }) }),
+   tipos({ ahora: '11:37', fecha: MIE, registro: turno({ almuerzo_omitido: true }) }),
+   tipos({ ahora: '11:37', fecha: MIE, registro: turno({ almuerzo_inicio: '11:35' }) })], [['almuerzo'], [], []]);
 caso('7. Salió a almorzar 12:00 y a la 1:07 p. m. no ha vuelto: todavía nada (67 min)',
   tipos({ ahora: '13:07', fecha: MIE, registro: turno({ almuerzo_inicio: '12:00' }) }), []);
 caso('8. … a la 1:37 p. m. (97 min): aviso de regreso del almuerzo',

@@ -1,6 +1,6 @@
 // Recordatorios al celular (notificaciones push) para quien olvida marcar el almuerzo o la salida.
 //
-// Corre solo cada 30 minutos (ver .github/workflows/recordatorios.yml). Revisa a los colaboradores que
+// Corre sola cada 30 minutos (ver .github/workflows/recordatorios.yml). Revisa a los colaboradores que
 // aceptaron los recordatorios en la app (colección push_tokens), mira su registro de HOY y les manda por
 // Firebase Cloud Messaging lo que les toque según scripts/recordatorios-logica.mjs. Cada recordatorio se
 // manda una sola vez por día (se anota en push_tokens/{cedula}.enviados).
