@@ -15,6 +15,12 @@ export const HORA_ALMUERZO_POR_DEFECTO = '12:00';
 export const MIN_REGRESO_ALMUERZO = 75;
 export const MIN_DESPUES_DE_SALIDA = 30;
 export const HORA_SEGUNDO_AVISO = '20:00';
+// Fuera de este horario no se manda nada, aunque GitHub corra la tarea tarde (a veces la atrasa horas):
+// nadie debe recibir un "¿ya saliste?" a las 11 de la noche.
+export const HORARIO_ENVIO = { desde: '10:00', hasta: '21:30' };
+export function dentroDelHorarioDeEnvio(hora) {
+  return aMin(hora) >= aMin(HORARIO_ENVIO.desde) && aMin(hora) <= aMin(HORARIO_ENVIO.hasta);
+}
 const HORARIO_PACTADO_HORAS = { 1: 8.5, 2: 8.5, 3: 8.5, 4: 8.5, 5: 8.0 };
 
 const aMin = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + (m || 0); };

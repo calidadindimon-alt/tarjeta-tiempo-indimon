@@ -1,7 +1,7 @@
 // Prueba de qué recordatorios le tocan a un colaborador (scripts/recordatorios-logica.mjs): almuerzo ANTES de la hora
 // de almuerzo de su obra, regreso del almuerzo a los 75 min, salida 30 min después de la salida pactada de su obra y segundo aviso a
 // las 8:00 p. m. Cada uno una sola vez por día.
-import { recordatoriosPendientes, salidaPactada, horaAlmuerzo } from '../scripts/recordatorios-logica.mjs';
+import { recordatoriosPendientes, salidaPactada, horaAlmuerzo, dentroDelHorarioDeEnvio } from '../scripts/recordatorios-logica.mjs';
 
 let fallas = 0, total = 0;
 const caso = (nombre, obtenido, esperado) => {
@@ -68,6 +68,8 @@ caso('17. Turno de tarde que termina a las 21:30: el primer aviso es a las 22:00
 const msg = recordatoriosPendientes({ ahora: '17:37', fecha: MIE, registro: conAlmuerzo, catalogos, festivos, nombre: 'WILLINTONG LERMA VALLECILLA' })[0];
 caso('18. El mensaje saluda por el primer nombre y dice la obra y la hora de entrada',
   [msg.titulo, msg.cuerpo.startsWith('Tu turno en BODEGA sigue abierto desde las 07:28.')], ['¿Ya saliste, Willintong?', true]);
+caso('19. Si GitHub corre la tarea tarde (11:09 p. m. o 2:25 a. m.), no se manda nada; de 10:00 a 21:30 sí',
+  ['09:59', '10:00', '20:07', '21:30', '23:09', '02:25'].map(dentroDelHorarioDeEnvio), [false, true, true, true, false, false]);
 
 console.log(`\n${total - fallas} / ${total} casos correctos`);
 process.exit(fallas ? 1 : 0);
