@@ -85,7 +85,7 @@ const DATOS = () => {
     'empleados/111/registros': {
       '2026-10-15': { fecha: '2026-10-15', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '17:40', estado: 'requiere_revision_admin', horas_ordinarias: 8.5, horas_extras_diurnas: 0.67, nota_revision: 'Fuera de la geocerca (salida a 90m de la obra).' },
       '2026-10-20': { fecha: '2026-10-20', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '17:00', estado: 'completado', horas_ordinarias: 8, horas_extras_diurnas: 0.5, extras_estado: 'aprobada' },
-      '2026-10-22': { fecha: '2026-10-22', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '18:30', estado: 'completado', horas_ordinarias: 8.5, horas_extras_diurnas: 1.5, extras_estado: 'por_aprobar', extras_autoriza: 'JLAF' }
+      '2026-10-21': { fecha: '2026-10-21', cedula: '111', empleado_nombre: 'COLABORADOR DE PRUEBA', obra: 'BODEGA', entrada: '07:30', salida: '18:30', estado: 'completado', horas_ordinarias: 8.5, horas_extras_diurnas: 1.5, extras_estado: 'por_aprobar', extras_autoriza: 'JLAF' }
     }
   };
 };

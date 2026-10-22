@@ -15,7 +15,7 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { readFileSync } from 'fs';
-import { recordatoriosPendientes } from './recordatorios-logica.mjs';
+import { recordatoriosPendientes, dentroDelHorarioDeEnvio, HORARIO_ENVIO } from './recordatorios-logica.mjs';
 
 const URL_APP = 'https://calidadindimon-alt.github.io/tarjeta-tiempo-indimon/';
 const args = process.argv.slice(2);
@@ -69,6 +69,10 @@ async function main() {
     return;
   }
 
+  if (!dentroDelHorarioDeEnvio(hora)) {
+    console.log(`${fecha} ${hora} (Bogotá): fuera del horario de envío (${HORARIO_ENVIO.desde} a ${HORARIO_ENVIO.hasta}). GitHub corrió la tarea tarde; no se manda nada.`);
+    return;
+  }
   const catalogos = (await db.collection('catalogos').doc('listas').get()).data() || {};
   const festivos = new Set([...festivosDeLaApp(), ...(catalogos.festivos || [])]);
   const suscritos = await db.collection('push_tokens').get();
