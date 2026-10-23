@@ -128,6 +128,14 @@ try {
   ok('3. El colaborador entra con PIN y ve "Registro Diario" con el botón de Entrada',
     await page.isVisible('#view-tarjeta') && await page.isVisible('#state-1-entrada') && await page.isVisible('#btn-punch-in'));
 
+  ok('3b. Mi Tarjeta: el héroe muestra "Aún no marcas entrada" y la obra del último turno queda elegida',
+    (await page.getAttribute('#mt-hero', 'data-estado')) === 'entrada' && (await page.textContent('#mt-fila-obra')) === 'BODEGA');
+  await page.click('#mt-extras');
+  await page.waitForTimeout(300);
+  ok('3c. Al tocar las extras se abre el detalle del mes', await page.isVisible('#hoja-extras') && /Extra diurna/.test(await page.textContent('#hoja-extras-tipo')));
+  await page.click('#btn-hoja-extras-cerrar');
+  await page.waitForTimeout(200);
+
   for (const [tab, nombre] of [['tab-permisos', 'Permisos'], ['tab-desprendibles', 'Nómina']]) {
     await page.locator(`.nav-tab[data-target="${tab}"]:visible`).first().click();
     await page.waitForTimeout(500);
