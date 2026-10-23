@@ -1,20 +1,24 @@
 // Decide qué recordatorios le tocan a un colaborador en este momento. Función pura (sin Firestore ni red),
 // para poder probarla con tests/test-recordatorios.mjs. La usa scripts/recordatorios-turno.mjs.
 //
-// Recordatorios (cada uno se manda una sola vez por día):
-//   almuerzo        → ANTES de la hora del almuerzo de su obra (en los MIN_ANTES_DEL_ALMUERZO previos), para que lo
-//                     marque al salir. La hora se configura en Horarios por Obra; si no, HORA_ALMUERZO_POR_DEFECTO.
-//                     Las corridas son cada 30 min, así que con una ventana de 40 min siempre cae al menos una.
+// Recordatorios (cada uno se manda una sola vez por día). La tarea corre cada 5 minutos (cron-job.org), así que un
+// aviso "5 minutos antes" se manda en la corrida que cae dentro de los MIN_ANTES previos a la hora:
+//   almuerzo        → 5 min antes de la hora del almuerzo de su obra, para que lo marque al salir. La hora se configura
+//                     en Horarios por Obra; si no, HORA_ALMUERZO_POR_DEFECTO.
 //   regreso         → marcó el inicio del almuerzo y pasaron MIN_REGRESO_ALMUERZO sin marcar el regreso.
-//   salida1         → 30 min después de la salida pactada de su obra, sigue con el turno abierto.
-//   salida2         → a las 20:00, si sigue abierto (solo si para entonces ya pasó la salida pactada + 30 min).
-// Domingos, festivos y sábados sin jornada no tienen salida pactada: ahí solo aplica el aviso de las 20:00.
+//   salida0         → 5 min antes de la salida pactada de su obra, para que la marque al irse.
+//   salida1         → a las 17:30 si olvidó marcar la salida (o 30 min después de la salida, si su obra sale más tarde).
+//   salida2         → a las 19:30 si sigue abierto.
+// Domingos, festivos y sábados sin jornada no tienen salida pactada: ahí solo aplica el aviso de las 19:30.
 
-export const MIN_ANTES_DEL_ALMUERZO = 40;
+export const MIN_ANTES = 5;
+// Ventana para el aviso "5 min antes": con corridas cada 5 min siempre cae una, aunque la hora no sea múltiplo de 5.
+const VENTANA_ANTES = MIN_ANTES + 1;
 export const HORA_ALMUERZO_POR_DEFECTO = '12:00';
 export const MIN_REGRESO_ALMUERZO = 75;
+export const HORA_PRIMER_OLVIDO = '17:30';
 export const MIN_DESPUES_DE_SALIDA = 30;
-export const HORA_SEGUNDO_AVISO = '20:00';
+export const HORA_SEGUNDO_AVISO = '19:30';
 // Fuera de este horario no se manda nada, aunque GitHub corra la tarea tarde (a veces la atrasa horas):
 // nadie debe recibir un "¿ya saliste?" a las 11 de la noche.
 export const HORARIO_ENVIO = { desde: '10:00', hasta: '21:30' };
@@ -77,13 +81,16 @@ export function recordatoriosPendientes({ ahora, fecha, registro, catalogos, fes
     }
   } else if (!r.almuerzo_inicio && !r.almuerzo_omitido) {
     const hora = horaAlmuerzo(catalogos, r.obra, fecha, festivos);
-    if (hora && aMin(hora) > entrada && t >= aMin(hora) - MIN_ANTES_DEL_ALMUERZO && t < aMin(hora)) {
-      agregar('almuerzo', `Ya casi es hora de almorzar${saludo}`, `Tu almuerzo es a las ${hora}. Cuando salgas a almorzar, abre la app y marca "Iniciar Almuerzo". Si hoy no tomas almuerzo, usa "Hoy no tomo almuerzo".`);
+    if (hora && aMin(hora) > entrada && t >= aMin(hora) - VENTANA_ANTES && t < aMin(hora)) {
+      agregar('almuerzo', `En 5 minutos es tu almuerzo${saludo}`, `Tu almuerzo es a las ${hora}. Cuando salgas a almorzar, abre la app y marca "Iniciar Almuerzo". Si hoy no tomas almuerzo, usa "Hoy no tomo almuerzo".`);
     }
   }
 
   const pactada = salidaPactada(catalogos, r.obra, fecha, festivos);
-  const primerAviso = pactada ? aMin(pactada) + MIN_DESPUES_DE_SALIDA : null;
+  if (pactada && aMin(pactada) > entrada && t >= aMin(pactada) - VENTANA_ANTES && t < aMin(pactada)) {
+    agregar('salida0', `En 5 minutos es tu salida${saludo}`, `Tu salida es a las ${pactada}. Antes de irte, abre la app y marca "Fin de Jornada". Si te quedas trabajando, ignora este aviso.`);
+  }
+  const primerAviso = pactada ? Math.max(aMin(HORA_PRIMER_OLVIDO), aMin(pactada) + MIN_DESPUES_DE_SALIDA) : null;
   const cuerpoSalida = `Tu turno${obra} sigue abierto desde las ${r.entrada}. Si ya terminaste, toca aquí y marca tu salida. Si sigues trabajando, ignora este aviso.`;
   if (primerAviso !== null && primerAviso > entrada && t >= primerAviso && (t < aMin(HORA_SEGUNDO_AVISO) || primerAviso > aMin(HORA_SEGUNDO_AVISO))) {
     agregar('salida1', `¿Ya saliste${saludo}?`, cuerpoSalida);
