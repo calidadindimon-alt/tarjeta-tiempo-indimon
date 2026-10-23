@@ -1,12 +1,8 @@
 name: Recordatorios de almuerzo y salida
 
-# Revisa quién tiene el turno abierto y le manda al celular el recordatorio que le toque (ver
-# scripts/recordatorios-turno.mjs): 5 min antes del almuerzo y de la salida, y a las 5:30 y 7:30 p. m. si olvidó
-# marcar la salida. Solo llega a quien aceptó los recordatorios en la app.
-#
-# La dispara cron-job.org cada 5 minutos, de 10:00 a. m. a 9:55 p. m. hora Colombia (llamando a la API
-# "workflow_dispatch" con un token que solo puede correr tareas de este repositorio). El "schedule" de abajo
-# queda de respaldo: GitHub se salta o atrasa muchas de esas corridas, así que solo alcanza para los avisos de olvido.
+# Cada 30 minutos, de 10:00 a. m. a 9:00 p. m. hora Colombia, revisa quién tiene el turno abierto y le manda
+# al celular el recordatorio que le toque (ver scripts/recordatorios-turno.mjs). Solo llega a quien aceptó
+# los recordatorios en la app. GitHub puede atrasar estas corridas unos minutos: es un recordatorio, no una alarma.
 #
 # También se puede correr a mano desde la pestaña "Actions" → "Run workflow":
 #   - con una cédula en "cedula_prueba", manda una notificación de prueba a esa persona;
