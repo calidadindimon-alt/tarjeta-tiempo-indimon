@@ -1605,7 +1605,7 @@
 
     <div id="custom-confirm" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-200 px-4">
         <div id="custom-confirm-box" class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-200">
-            <i class="ph-fill ph-warning-circle text-5xl mb-4 text-rose-500 mx-auto block text-center"></i>
+            <i id="cc-icono" class="ph-fill ph-warning-circle text-5xl mb-4 text-rose-500 mx-auto block text-center"></i>
             <h3 id="cc-title" class="text-xl font-bold text-center text-slate-800 mb-2">Título</h3>
             <p id="cc-msg" class="text-sm text-center text-slate-500 mb-6 font-medium leading-relaxed whitespace-pre-line">Mensaje</p>
             <div class="flex gap-3">
@@ -2323,8 +2323,11 @@
                 setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
             },
 
-            // opts (opcional): { texto: 'Sí, cambiar', azul: true } para confirmaciones que no borran nada.
+            // El botón sale rojo ("Eliminar"/"Quitar") solo cuando el título es de borrar o quitar algo; las demás
+            // confirmaciones salen en azul con "Continuar". opts (opcional): { texto: 'Sí, cambiar', azul: true }.
             showConfirm: (title, msg, onConfirm, opts = {}) => {
+                const borra = /^(eliminar|borrar|quitar)/i.test(title);
+                opts = { azul: !borra, texto: borra ? (/^quitar/i.test(title) ? 'Quitar' : 'Eliminar') : 'Continuar', ...opts };
                 const m = document.getElementById('custom-confirm');
                 const b = document.getElementById('custom-confirm-box');
                 document.getElementById('cc-title').textContent = title;
@@ -2335,6 +2338,9 @@
                 btnConfirm.textContent = opts.texto || 'Eliminar';
                 ['bg-rose-500', 'hover:bg-rose-600'].forEach(c => btnConfirm.classList.toggle(c, !opts.azul));
                 ['bg-blue-600', 'hover:bg-blue-700'].forEach(c => btnConfirm.classList.toggle(c, !!opts.azul));
+                document.getElementById('cc-icono').className = opts.azul
+                    ? 'ph-fill ph-question text-5xl mb-4 text-blue-500 mx-auto block text-center'
+                    : 'ph-fill ph-warning-circle text-5xl mb-4 text-rose-500 mx-auto block text-center';
 
                 const cleanup = () => {
                     m.classList.add('opacity-0'); b.classList.add('scale-95');
@@ -4987,7 +4993,8 @@
                         UI.showConfirm(
                             "Recargar la app para arreglarlo",
                             "Esto pasa cuando la app lleva muchos días abierta sin cerrarse. Recargarla lo soluciona de inmediato y vuelves a marcar normal. ¿Recargar ahora?",
-                            () => window.location.reload()
+                            () => window.location.reload(),
+                            { texto: 'Recargar' }
                         );
                     }, 400);
                 }
@@ -5911,7 +5918,8 @@
                 UI.showConfirm(
                     "¿Usar tu ubicación actual?",
                     `Si estás parado en la obra "${obra.trim().toUpperCase()}" ahora mismo, puedes usar la ubicación de tu celular/computador como el centro de la geocerca, en vez de escribir las coordenadas a mano.`,
-                    () => resolve(true)
+                    () => resolve(true),
+                    { texto: 'Usar mi ubicación' }
                 );
                 setTimeout(() => resolve(false), 30000);
             });
@@ -5942,7 +5950,8 @@
                         UI.showConfirm(
                             "Señal GPS imprecisa",
                             `Esta lectura tiene un margen de error de ~${exactitudM} metros (muy alto para fijar el centro de una geocerca). Puede deberse a estar bajo techo, en una bodega, o con mala señal. Sal a cielo abierto e inténtalo de nuevo si puedes.\n\n¿Quieres usarla de todas formas?`,
-                            () => resolve(true)
+                            () => resolve(true),
+                            { texto: 'Usar de todas formas' }
                         );
                         setTimeout(() => resolve(false), 30000);
                     });
