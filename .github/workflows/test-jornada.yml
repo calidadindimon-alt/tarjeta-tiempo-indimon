@@ -78,7 +78,8 @@ jobs:
   # Prueba de humo: abre la app completa en un Chrome automático (con Firebase simulado, sin tocar la base real)
   # y comprueba que carga sin errores y que abren sus pantallas principales. Ver tests/test-humo.mjs.
   humo:
-    runs-on: ubuntu-latest
+    # Fijo en 24.04: "ubuntu-latest" pasó a 26.04 y Playwright 1.56.1 no instala Chromium ahí.
+    runs-on: ubuntu-24.04
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
