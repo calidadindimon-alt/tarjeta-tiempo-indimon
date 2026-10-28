@@ -5336,7 +5336,8 @@
             }
             if (!ultimo) return;
             document.getElementById('sel-cliente').value = ultimo.cliente || '';
-            so.value = ultimo.obra || '';
+            const obraUltima = obraVigenteMT(ultimo.obra);
+            so.value = (catalogosCache.obras_quitadas || []).some(o => o.trim().toUpperCase() === obraUltima.toUpperCase()) ? '' : obraUltima;
             document.getElementById('sel-autoriza').value = ultimo.autoriza || '';
             validarSelectores();
             actualizarMiTarjeta();
@@ -5357,10 +5358,24 @@
             const r = [...registrosMiTarjeta].filter(x => (x.obra || '').trim().toUpperCase() === clave && x.cliente).sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
             return r ? r.cliente : '';
         }
+        // Si Admin renombró una obra, el nombre viejo (guardado en este celular o en registros) pasa al nuevo; y una
+        // obra que Admin quitó de la lista no se ofrece como reciente.
+        function obraVigenteMT(obra) {
+            const ren = catalogosCache.obras_renombradas || {};
+            let actual = (obra || '').trim();
+            for (let i = 0; i < 10; i++) {
+                const k = Object.keys(ren).find(x => x.trim().toUpperCase() === actual.toUpperCase());
+                if (!k) break;
+                actual = ren[k];
+            }
+            return actual;
+        }
         function recientesMT(campo) {
             const vistos = new Set(), out = [];
+            const quitadas = (catalogosCache.obras_quitadas || []).map(o => o.trim().toUpperCase());
             [...registrosMiTarjeta].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).forEach(r => {
-                const val = (r[campo] || '').trim();
+                const val = campo === 'obra' ? obraVigenteMT(r.obra) : (r[campo] || '').trim();
+                if (campo === 'obra' && quitadas.includes(val.toUpperCase())) return;
                 if (val && !vistos.has(val.toUpperCase())) { vistos.add(val.toUpperCase()); out.push(val); }
             });
             return out.slice(0, 4);
@@ -5788,7 +5803,7 @@
             document.getElementById('horarios-obra-vista-form').classList.add('hidden');
             document.getElementById('horarios-obra-vista-lista').classList.remove('hidden');
             const catalogo = (catalogosCache.obras || []).map(o => o.trim().toUpperCase());
-            const fuera = [...new Set([...Object.keys(catalogosCache.horarios_obra || {}), ...Object.keys(catalogosCache.jornadas_obra || {})].map(o => o.trim().toUpperCase()))]
+            const fuera = [...new Set([...Object.keys(catalogosCache.horarios_obra || {}), ...Object.keys(catalogosCache.jornadas_obra || {}), ...(catalogosCache.obras_quitadas || [])].map(o => o.trim().toUpperCase()))]
                 .filter(o => !catalogo.includes(o)).sort();
             const sinHorario = catalogo.filter(o => !getHoraEsperadaObra(o) && !getJornadaObra(o));
             const conHorario = catalogo.filter(o => !sinHorario.includes(o));
@@ -5797,17 +5812,125 @@
                 const aviso = origen === 'ninguno';
                 const detalle = aviso ? `⚠ Sin horario: se usa ${jornada.entrada}–${jornada.salida_lj} / vie ${jornada.salida_v}`
                     : resumenJornadaObra(jornada) + (origen === 'entrada' ? ' (salida calculada)' : '');
-                return `<div class="border ${aviso ? 'border-amber-300 bg-amber-50' : 'border-slate-200'} rounded-xl p-3 flex items-center justify-between gap-2">
+                return `<div class="border ${aviso ? 'border-amber-300 bg-amber-50' : 'border-slate-200'} rounded-xl p-3 flex flex-col gap-2">
                     <div class="min-w-0"><p class="text-sm font-bold text-slate-800">${escapeHtml(obra)}</p>
                     <p class="text-[11px] ${aviso ? 'text-amber-800' : 'text-slate-500'}">${escapeHtml(detalle)}${fueraCatalogo ? ' · ya no está en el catálogo' : ''}</p></div>
-                    <button type="button" class="btn-editar-horario-obra btn-touch flex-shrink-0 ${aviso ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'} px-3 py-2 rounded-lg text-xs font-bold" data-obra="${escapeHtml(obra)}">${aviso ? 'Configurar' : 'Editar'}</button>
+                    <div class="flex flex-wrap gap-1">
+                        <button type="button" class="btn-editar-horario-obra btn-touch ${aviso ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'} px-3 py-2 rounded-lg text-xs font-bold" data-obra="${escapeHtml(obra)}">${aviso ? 'Configurar' : 'Horario'}</button>
+                        <button type="button" class="btn-renombrar-obra btn-touch bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold" data-obra="${escapeHtml(obra)}">Renombrar</button>
+                        ${fueraCatalogo
+                            ? `<button type="button" class="btn-restaurar-obra btn-touch bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg text-xs font-bold" data-obra="${escapeHtml(obra)}">Volver a la lista</button>`
+                            : `<button type="button" class="btn-quitar-obra btn-touch bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 rounded-lg text-xs font-bold" data-obra="${escapeHtml(obra)}">Quitar</button>`}
+                    </div>
                 </div>`;
             };
             let html = [...sinHorario, ...conHorario].map(o => fila(o, false)).join('');
-            if (fuera.length) html += `<p class="text-[10px] font-bold text-slate-500 uppercase pt-2">Obras que ya no están en el catálogo (se conservan para los registros viejos)</p>` + fuera.map(o => fila(o, true)).join('');
+            if (fuera.length) html += `<p class="text-[10px] font-bold text-slate-500 uppercase pt-2">Obras quitadas de la lista (no aparecen para marcar; su horario se conserva para los registros viejos)</p>` + fuera.map(o => fila(o, true)).join('');
             const cont = document.getElementById('horarios-obra-lista');
             cont.innerHTML = html || '<p class="text-sm text-slate-500">No hay obras en el catálogo. Agrégalas con "+ Obra".</p>';
             cont.querySelectorAll('.btn-editar-horario-obra').forEach(btn => btn.addEventListener('click', () => mostrarFormHorarioObra(btn.dataset.obra)));
+            cont.querySelectorAll('.btn-renombrar-obra').forEach(btn => btn.addEventListener('click', () => renombrarObra(btn.dataset.obra)));
+            cont.querySelectorAll('.btn-quitar-obra').forEach(btn => btn.addEventListener('click', () => quitarObra(btn.dataset.obra)));
+            cont.querySelectorAll('.btn-restaurar-obra').forEach(btn => btn.addEventListener('click', () => restaurarObra(btn.dataset.obra)));
+        }
+
+        // ---------- Renombrar / quitar obras (Admin) ----------
+        // El nombre de la obra es la llave de su horario (horarios_obra, jornadas_obra), su geocerca (geocercas_obra) y
+        // de cada registro (campo obra). Renombrar mueve todo eso al nombre nuevo, incluidos los registros ya marcados
+        // (cada uno guarda obra_nombre_anterior), y anota el cambio en obras_renombradas para que los celulares que
+        // tenían guardado el nombre viejo como "última obra" pasen solos al nuevo. Las horas no se recalculan: solo
+        // cambia el nombre. Quitar solo la saca de la lista para marcar; el horario, la geocerca y los registros quedan.
+        const mismaObra = (a, b) => (a || '').trim().toUpperCase() === (b || '').trim().toUpperCase();
+        function moverClaveObra(mapa, viejo, nuevo) {
+            const out = { ...(mapa || {}) };
+            const clave = Object.keys(out).find(k => mismaObra(k, viejo));
+            if (clave !== undefined) { const valor = out[clave]; delete out[clave]; out[nuevo] = valor; }
+            return out;
+        }
+        async function registrosDeObra(obra) {
+            const emps = await getDocs(collection(db, 'empleados'));
+            const encontrados = [];
+            await Promise.all(emps.docs.map(async (e) => {
+                const snap = await getDocs(query(collection(db, 'empleados', e.id, 'registros'), where('obra', '==', obra)));
+                snap.forEach(d => encontrados.push({ ref: d.ref, cedula: e.id }));
+            }));
+            return encontrados;
+        }
+        async function renombrarObra(viejo) {
+            const nuevo = ((await UI.showPrompt('Renombrar obra', `Nombre nuevo para "${viejo}". Se mueven su horario, su geocerca y los registros ya marcados.`, 'Nombre nuevo de la obra', { valorInicial: viejo })) || '').trim().toUpperCase();
+            if (!nuevo || mismaObra(nuevo, viejo)) return;
+            const existe = [...(catalogosCache.obras || []), ...Object.keys(catalogosCache.horarios_obra || {}), ...Object.keys(catalogosCache.jornadas_obra || {}), ...Object.keys(catalogosCache.geocercas_obra || {})].some(o => mismaObra(o, nuevo));
+            if (existe) return UI.showAlert("Ese nombre ya existe", `Ya hay una obra llamada "${nuevo}". Escoge otro nombre (las obras no se pueden unir desde aquí).`, "error");
+            let regs;
+            try { regs = await registrosDeObra(viejo); }
+            catch (e) { console.error(e); return UI.showAlert("Error", "No se pudieron contar los registros de la obra.", "error"); }
+            const personas = new Set(regs.map(r => r.cedula)).size;
+            const texto = `${viejo} → ${nuevo}\n\n` +
+                (regs.length ? `Se actualizarán ${regs.length} registro${regs.length === 1 ? '' : 's'} de ${personas} colaborador${personas === 1 ? '' : 'es'} (cada uno guarda el nombre anterior). Las horas no cambian.` : 'No hay registros marcados con esta obra.') +
+                '\n\nTambién pasan al nombre nuevo el horario, la hora del almuerzo y la geocerca.';
+            UI.showConfirm('¿Renombrar la obra?', texto, async () => {
+                try {
+                    const ref = doc(db, 'catalogos', 'listas');
+                    const actual = (await getDoc(ref)).data() || {};
+                    const renombradas = { ...(actual.obras_renombradas || {}) };
+                    Object.keys(renombradas).forEach(k => { if (mismaObra(renombradas[k], viejo)) renombradas[k] = nuevo; });
+                    renombradas[viejo] = nuevo;
+                    await updateDoc(ref, {
+                        obras: (actual.obras || []).map(o => mismaObra(o, viejo) ? nuevo : o),
+                        obras_quitadas: (actual.obras_quitadas || []).map(o => mismaObra(o, viejo) ? nuevo : o),
+                        horarios_obra: moverClaveObra(actual.horarios_obra, viejo, nuevo),
+                        jornadas_obra: moverClaveObra(actual.jornadas_obra, viejo, nuevo),
+                        geocercas_obra: moverClaveObra(actual.geocercas_obra, viejo, nuevo),
+                        obras_renombradas: renombradas
+                    });
+                    for (let i = 0; i < regs.length; i += 400) {
+                        const lote = writeBatch(db);
+                        regs.slice(i, i + 400).forEach(r => lote.update(r.ref, { obra: nuevo, obra_nombre_anterior: viejo }));
+                        await lote.commit();
+                    }
+                    registrarAuditoria('Renombrar obra', `${viejo} → ${nuevo} · ${regs.length} registro(s) actualizados`);
+                    await cargarCatalogos();
+                    mostrarListaHorariosObra();
+                    UI.showAlert("Obra renombrada", `"${viejo}" ahora se llama "${nuevo}"${regs.length ? ` y sus ${regs.length} registro${regs.length === 1 ? '' : 's'} quedaron actualizados` : ''}.`, "success");
+                } catch (e) {
+                    console.error(e);
+                    UI.showAlert("Error", "No se pudo renombrar la obra. Revisa la conexión e intenta de nuevo (lo que alcanzó a cambiar queda con el nombre nuevo).", "error");
+                }
+            }, { texto: 'Renombrar' });
+        }
+        function quitarObra(obra) {
+            UI.showConfirm('Quitar obra de la lista', `"${obra}" ya no aparecerá para marcar entrada ni en las listas.\n\nNo se borra nada: sus registros, su horario y su geocerca se conservan, y la puedes volver a poner en la lista cuando quieras.`, async () => {
+                try {
+                    const ref = doc(db, 'catalogos', 'listas');
+                    const actual = (await getDoc(ref)).data() || {};
+                    await updateDoc(ref, {
+                        obras: (actual.obras || []).filter(o => !mismaObra(o, obra)),
+                        obras_quitadas: [...(actual.obras_quitadas || []).filter(o => !mismaObra(o, obra)), obra]
+                    });
+                    registrarAuditoria('Quitar obra de la lista', obra);
+                    await cargarCatalogos();
+                    mostrarListaHorariosObra();
+                } catch (e) {
+                    console.error(e);
+                    UI.showAlert("Error", "No se pudo quitar la obra.", "error");
+                }
+            });
+        }
+        async function restaurarObra(obra) {
+            try {
+                const ref = doc(db, 'catalogos', 'listas');
+                const actual = (await getDoc(ref)).data() || {};
+                await updateDoc(ref, {
+                    obras: [...(actual.obras || []).filter(o => !mismaObra(o, obra)), obra],
+                    obras_quitadas: (actual.obras_quitadas || []).filter(o => !mismaObra(o, obra))
+                });
+                registrarAuditoria('Volver a poner obra en la lista', obra);
+                await cargarCatalogos();
+                mostrarListaHorariosObra();
+            } catch (e) {
+                console.error(e);
+                UI.showAlert("Error", "No se pudo volver a poner la obra en la lista.", "error");
+            }
         }
 
         // Lee el formulario; devuelve { jornada, error } (error = texto si falta algo o no es válido).
