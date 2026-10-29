@@ -175,14 +175,10 @@
         .mt-olvido .hora24-reloj { background: rgba(255,255,255,.95); border-radius: 1rem; padding: 0 .8rem; }
         .mt-hero[data-estado="olvido"] #btn-punch-out { background: rgba(255,255,255,.18); color: #fff; border: 1px solid rgba(255,255,255,.35); height: 46px; font-size: 13px; box-shadow: none; }
         .mt-hero[data-estado="olvido"] .mt-fila-sec, .mt-hero[data-estado="olvido"] #btn-activar-recordatorios { display: none; }
-        /* Hora de almuerzo sin marcar: la tarjeta pasa a ámbar y el botón grande es "Iniciar almuerzo". */
-        .mt-hero[data-estado="pide-almuerzo"] { --mt-rgb: 217,119,6; }
-        #btn-mt-iniciar-almuerzo.hidden { display: none; }
-        .mt-hero[data-estado="pide-almuerzo"] #btn-punch-out { background: rgba(255,255,255,.18); color: #fff; border: 1px solid rgba(255,255,255,.35); height: 46px; font-size: 13px; box-shadow: none; }
-        .mt-hero[data-estado="pide-almuerzo"] #btn-punch-lunch-in, .mt-hero[data-estado="pide-almuerzo"] #aviso-recordar-almuerzo { display: none; }
-        .mt-hero[data-estado="pide-almuerzo"] .mt-fila-sec { grid-template-columns: 1fr; }
         .mt-alm-op { width: 100%; display: flex; align-items: center; gap: .75rem; text-align: left; border: 1.5px solid #e2e8f0; border-radius: 1rem; padding: .75rem .9rem; font-size: 14px; color: #0f172a; }
         .mt-alm-op small { display: block; font-size: 12px; color: #64748b; }
+        .mt-alm-si { flex-direction: column; align-items: center; text-align: center; padding: 1rem .6rem; }
+        .mt-alm-si b { font-size: 20px; }
         .mt-alm-op.on { border-color: #2563eb; background: #eff6ff; }
         html.dark .mt-alm-op { border-color: #334155; color: #f1f5f9; } html.dark .mt-alm-op.on { background: #1e3a8a; }
         .mt-pastilla { font-size: 11.5px; font-weight: 600; background: #fff; color: #1e3a8a; border-radius: 999px; padding: .25rem .65rem; }
@@ -490,7 +486,6 @@
                             <i class="ph-bold ph-coffee"></i> Llevas varias horas en turno y no has marcado el almuerzo. Si ya almorzaste, toca "Almuerzo" (aunque sea tarde). Si hoy no tomas almuerzo, toca "Sin almuerzo".
                         </div>
                         <span id="display-hora-entrada" class="hidden">--:--</span>
-                        <button id="btn-mt-iniciar-almuerzo" type="button" class="hidden btn-touch mt-cta mt-cta-claro" style="color:#b45309"><i class="ph-bold ph-coffee"></i> Iniciar almuerzo</button>
                         <button id="btn-punch-out" class="btn-touch mt-cta mt-cta-claro mt-cta-salir"><i class="ph-bold ph-stop"></i> <span id="mt-texto-salir">Terminar turno</span></button>
                         <div class="mt-fila-sec">
                             <button id="btn-punch-lunch-in" class="btn-touch mt-sec"><i class="ph-bold ph-coffee"></i> Almuerzo</button>
@@ -1584,17 +1579,11 @@
         <div class="mt-hoja">
             <div class="mt-asa"></div>
             <h3 class="text-lg font-bold text-slate-800">¿Almorzaste hoy?</h3>
-            <p class="text-sm text-slate-500 mt-1">No marcaste el almuerzo. Dinos para que tu día quede completo antes de terminar el turno.</p>
-            <div id="hoja-almuerzo-opciones" class="space-y-2 mt-3">
-                <button type="button" class="mt-alm-op" data-op="obra"><span class="text-2xl">🍽️</span><span><b id="hoja-almuerzo-obra-titulo">Sí, a la hora de la obra</b><small id="hoja-almuerzo-obra-detalle"></small></span></button>
-                <button type="button" class="mt-alm-op" data-op="otra"><span class="text-2xl">🕐</span><span><b>Sí, pero a otra hora</b><small>Escribe a qué hora saliste y volviste</small></span></button>
-                <div id="hoja-almuerzo-horas" class="hidden grid grid-cols-2 gap-2 px-1">
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salí a almorzar</label><input type="time" id="hoja-almuerzo-inicio" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm"></div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Volví</label><input type="time" id="hoja-almuerzo-fin" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm"></div>
-                </div>
-                <button type="button" class="mt-alm-op" data-op="corrido"><span class="text-2xl">⛔</span><span><b>No almorcé, trabajé corrido</b><small>Te pide quién lo autorizó</small></span></button>
+            <p class="text-sm text-slate-500 mt-1">No marcaste el almuerzo. Responde para terminar el turno.</p>
+            <div id="hoja-almuerzo-opciones" class="grid grid-cols-2 gap-2 mt-3">
+                <button type="button" class="mt-alm-op mt-alm-si" data-op="si"><span class="text-3xl">🍽️</span><span><b>Sí</b><small id="hoja-almuerzo-si-detalle"></small></span></button>
+                <button type="button" class="mt-alm-op mt-alm-si" data-op="no"><span class="text-3xl">⛔</span><span><b>No</b><small>Te pide quién lo autorizó</small></span></button>
             </div>
-            <button id="btn-hoja-almuerzo-guardar" type="button" class="btn-touch w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-4" disabled>Guardar y terminar turno</button>
             <button id="btn-hoja-almuerzo-cancelar" type="button" class="btn-touch w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-3 rounded-xl text-sm mt-2">Cancelar</button>
         </div>
     </div>
@@ -2650,7 +2639,13 @@
             }
             let horasEnTurno = timeStrToFloat(getHoraActualStr()) - timeStrToFloat(data.entrada);
             if (horasEnTurno < 0) horasEnTurno += 24; // turno que cruza medianoche
-            aviso.classList.toggle('hidden', horasEnTurno < AVISO_ALMUERZO_TRAS_HORAS);
+            // También desde la hora de almuerzo de la obra (aunque no lleve 5 h), con un texto que la nombra.
+            const hora = pidiendoAlmuerzoMT() ? horaAlmuerzoHoyMT(data.obra, data.fecha || getTodayStr()) : null;
+            const texto = hora
+                ? `🍽 Ya es la hora de almuerzo de ${data.obra} (${hora12MT(hora)}). Cuando salgas a almorzar, toca "Almuerzo"; al volver, "Volver del almuerzo".`
+                : 'Llevas varias horas en turno y no has marcado el almuerzo. Si ya almorzaste, toca "Almuerzo" (aunque sea tarde). Si hoy no tomas almuerzo, toca "Sin almuerzo".';
+            if (aviso.textContent !== texto) aviso.textContent = texto;
+            aviso.classList.toggle('hidden', !hora && horasEnTurno < AVISO_ALMUERZO_TRAS_HORAS);
         }
 
         // ===================================== Diagnóstico de errores =====================================
@@ -2661,11 +2656,11 @@
         const DIAGNOSTICO_ERRORES = {
             'permission-denied': {
                 titulo: 'Tu sesión ya no es válida',
-                msg: 'Tu sesión se cerró (pasa cuando alguien entra a Admin en este mismo celular, o después de muchas horas con la app abierta). Pulsa el botón de salir arriba a la derecha, vuelve a buscar tu nombre e ingresa con tu PIN. No perdiste nada de lo ya registrado.'
+                msg: 'Tu sesión se cerró (pasa cuando alguien entra a Admin en este mismo celular, o después de muchas horas con la app abierta). Toca "Cerrar sesión" (debajo de tu obra), vuelve a buscar tu nombre e ingresa con tu PIN. No perdiste nada de lo ya registrado.'
             },
             'unauthenticated': {
                 titulo: 'Tu sesión ya no es válida',
-                msg: 'Debes volver a ingresar con tu PIN para poder registrar. Pulsa el botón de salir arriba a la derecha y vuelve a entrar.'
+                msg: 'Debes volver a ingresar con tu PIN para poder registrar. Toca "Cerrar sesión" (debajo de tu obra) y vuelve a entrar.'
             },
             'unavailable': {
                 titulo: 'Sin conexión con el servidor',
@@ -5250,7 +5245,7 @@
             if (faltaAlmuerzoAlSalirMT() && !(await preguntarAlmuerzoAlSalirMT())) return;
             registrarEvento('out', btn);
         });
-        document.getElementById('btn-mt-iniciar-almuerzo').addEventListener('click', () => document.getElementById('btn-punch-lunch-in').click());
+
 
         // "Hoy no tomo almuerzo": cuando producción determina que se trabaja de corrido. Sin esto, la
         // app descontaría igual la hora legal de almuerzo y el colaborador perdería una hora que sí
@@ -5421,10 +5416,8 @@
             const hero = document.getElementById('mt-hero');
             if (!hero) return;
             const { state, data, esTurnoDeAyer } = estadoMiTarjeta;
-            let estado = state === 'turno' && esTurnoDeAyer ? 'olvido' : (state || 'entrada');
-            if (estado === 'turno' && pidiendoAlmuerzoMT()) estado = 'pide-almuerzo';
+            const estado = state === 'turno' && esTurnoDeAyer ? 'olvido' : (state || 'entrada');
             hero.dataset.estado = estado;
-            document.getElementById('btn-mt-iniciar-almuerzo').classList.toggle('hidden', estado !== 'pide-almuerzo');
             const nombre = (currentUserProfile?.nombre || '').trim().split(/\s+/)[0] || '';
             document.getElementById('mt-saludo').textContent = nombre ? nombre.charAt(0) + nombre.slice(1).toLowerCase() : '—';
             document.getElementById('mt-no-eres').textContent = nombre ? nombre.charAt(0) + nombre.slice(1).toLowerCase() : 'tú';
@@ -5447,9 +5440,6 @@
                 const pactada = salidaPactadaDe(data.obra, data.fecha || hoy);
                 if (pactada) partes.push(`Sale ${hora12MT(pactada)}`);
                 detalle.textContent = partes.join(' · ');
-            } else if (estado === 'pide-almuerzo') {
-                badge.textContent = `🍽 Hora de almuerzo${data?.obra ? ' · ' + data.obra : ''}`;
-                detalle.textContent = `Almuerzo de la obra: ${hora12MT(horaAlmuerzoHoyMT(data.obra, data.fecha || hoy))} · aún no lo marcas`;
             } else if (estado === 'almuerzo') {
                 badge.textContent = `☕ Almorzando${data?.obra ? ' · ' + data.obra : ''}`;
                 detalle.textContent = `Saliste a almorzar a las ${hora12MT(data.almuerzo_inicio)}`;
@@ -5471,10 +5461,8 @@
             const { data } = estadoMiTarjeta;
             const reloj = document.getElementById('mt-reloj');
             const unidad = document.getElementById('mt-reloj-unidad');
-            // A la hora del almuerzo (o al pasar la ventana) cambia el modo sin esperar a otro evento.
-            if (['turno', 'pide-almuerzo'].includes(hero.dataset.estado) && (hero.dataset.estado === 'pide-almuerzo') !== pidiendoAlmuerzoMT()) return actualizarMiTarjeta();
             const estado = hero.dataset.estado;
-            if ((estado === 'turno' || estado === 'pide-almuerzo') && data?.entrada) {
+            if (estado === 'turno' && data?.entrada) {
                 let horas = minutosDesdeMT(data.entrada);
                 if (data.almuerzo_inicio && data.almuerzo_fin) {
                     let alm = timeStrToFloat(data.almuerzo_fin) - timeStrToFloat(data.almuerzo_inicio);
@@ -5519,12 +5507,13 @@
             const ahora = timeStrToFloat(getHoraActualStr()), ini = timeStrToFloat(h);
             return ahora >= ini && (!soloVentana || ahora < ini + VENTANA_PIDE_ALMUERZO_H);
         }
-        const pidiendoAlmuerzoMT = () => almuerzoPendienteMT(true);
-        const faltaAlmuerzoAlSalirMT = () => almuerzoPendienteMT(false);
+        function pidiendoAlmuerzoMT() { return almuerzoPendienteMT(true); }
+        function faltaAlmuerzoAlSalirMT() { return almuerzoPendienteMT(false); }
 
-        // "¿Almorzaste hoy?" al terminar el turno: guarda el almuerzo (a la hora de la obra o la que diga la persona) o
-        // la jornada sin almuerzo con quién la autorizó, ANTES de la salida, para que el cálculo de la salida lo use.
-        // Devuelve true si se guardó y se puede marcar la salida; false si canceló.
+        // "¿Almorzaste hoy?" al terminar el turno, solo Sí o No. Sí: se anota el almuerzo a la hora de la obra (1 hora,
+        // la misma que se descontaría sin marcarlo), así queda "Alm: 12:00-13:00" en el Consolidado. No: pide quién
+        // autorizó trabajar de corrido (igual que "Sin almuerzo"). Se guarda ANTES de la salida, para que el cálculo de
+        // la salida lo use. Devuelve true si se guardó y se puede marcar la salida; false si canceló.
         function preguntarAlmuerzoAlSalirMT() {
             return new Promise((resolve) => {
                 const hoja = document.getElementById('hoja-almuerzo');
@@ -5532,63 +5521,40 @@
                 const fecha = fechaRegistroActivo || getTodayStr();
                 const h = horaAlmuerzoHoyMT(data.obra, fecha);
                 const hFin = sumarHorasHHMM(h, ALMUERZO_LEGAL_HORAS);
-                document.getElementById('hoja-almuerzo-obra-titulo').textContent = `Sí, de ${hora12MT(h)} a ${hora12MT(hFin)}`;
-                document.getElementById('hoja-almuerzo-obra-detalle').textContent = `La hora de almuerzo de ${data.obra}`;
+                document.getElementById('hoja-almuerzo-si-detalle').textContent = `Se anota de ${hora12MT(h)} a ${hora12MT(hFin)}`;
                 const ops = [...hoja.querySelectorAll('.mt-alm-op')];
-                const horas = document.getElementById('hoja-almuerzo-horas');
-                const btnGuardar = document.getElementById('btn-hoja-almuerzo-guardar');
                 const btnCancelar = document.getElementById('btn-hoja-almuerzo-cancelar');
-                document.getElementById('hoja-almuerzo-inicio').value = h;
-                document.getElementById('hoja-almuerzo-fin').value = hFin;
-                let opcion = null;
-                const elegir = (op) => {
-                    opcion = op;
-                    ops.forEach(b => b.classList.toggle('on', b.dataset.op === op));
-                    horas.classList.toggle('hidden', op !== 'otra');
-                    btnGuardar.disabled = false;
-                };
-                const onOp = (e) => elegir(e.currentTarget.dataset.op);
+                let ocupado = false;
                 const terminar = (val) => {
                     hoja.classList.add('hidden');
                     ops.forEach(b => b.removeEventListener('click', onOp));
-                    btnGuardar.removeEventListener('click', onGuardar);
                     btnCancelar.removeEventListener('click', onCancelar);
                     resolve(val);
                 };
                 const onCancelar = () => terminar(false);
-                const onGuardar = async () => {
-                    const ref = doc(db, 'empleados', currentUserId, 'registros', fecha);
+                const onOp = async (e) => {
+                    if (ocupado) return;
                     let cambios;
-                    if (opcion === 'obra') {
+                    if (e.currentTarget.dataset.op === 'si') {
                         cambios = { almuerzo_inicio: h, almuerzo_fin: hFin, almuerzo_registrado_al_salir: true };
-                    } else if (opcion === 'otra') {
-                        const ini = document.getElementById('hoja-almuerzo-inicio').value, fin = document.getElementById('hoja-almuerzo-fin').value;
-                        const ahora = getHoraActualStr();
-                        if (!ini || !fin) return UI.showAlert("Faltan horas", "Escribe a qué hora saliste a almorzar y a qué hora volviste.", "error");
-                        if (timeStrToFloat(fin) <= timeStrToFloat(ini)) return UI.showAlert("Revisa las horas", "La hora de regreso debe ser después de la hora de salida a almorzar.", "error");
-                        if (timeStrToFloat(ini) < timeStrToFloat(data.entrada) || timeStrToFloat(fin) > timeStrToFloat(ahora)) return UI.showAlert("Revisa las horas", `El almuerzo debe quedar entre tu entrada (${hora12MT(data.entrada)}) y ahora (${hora12MT(ahora)}).`, "error");
-                        cambios = { almuerzo_inicio: ini, almuerzo_fin: fin, almuerzo_registrado_al_salir: true };
-                    } else if (opcion === 'corrido') {
+                    } else {
                         hoja.classList.add('hidden');
-                        const autoriza = await UI.showPrompt("Trabajaste corrido", "Escribe quién de producción lo autorizó. El día se pagará sin descontar la hora de almuerzo y quedará marcado para revisión de Admin.", "Ej: JLAF");
+                        const autoriza = await UI.showPrompt("No almorzaste", "Escribe quién de producción autorizó trabajar de corrido. El día se pagará sin descontar la hora de almuerzo y quedará marcado para revisión de Admin.", "Ej: JLAF");
                         if (!autoriza || !autoriza.trim()) { hoja.classList.remove('hidden'); return; }
                         cambios = { almuerzo_omitido: true, almuerzo_omitido_autoriza: autoriza.trim(), almuerzo_omitido_marcado_en: serverTimestamp(), almuerzo_registrado_al_salir: true };
-                    } else return;
-                    btnGuardar.disabled = true;
+                    }
+                    ocupado = true;
                     try {
                         // Sin señal, setDoc no termina hasta que vuelve la conexión: se espera máximo 3 s y se sigue con
                         // la salida (la escritura queda en cola y la salida la lee de la caché local, en orden).
-                        await Promise.race([setDoc(ref, cambios, { merge: true }), new Promise(r => setTimeout(r, 3000))]);
+                        await Promise.race([setDoc(doc(db, 'empleados', currentUserId, 'registros', fecha), cambios, { merge: true }), new Promise(r => setTimeout(r, 3000))]);
                         terminar(true);
                     } catch (err) {
-                        btnGuardar.disabled = false;
+                        ocupado = false;
                         mostrarErrorDiagnosticado('almuerzo-al-salir', err);
                     }
                 };
-                ops.forEach(b => { b.classList.remove('on'); b.addEventListener('click', onOp); });
-                horas.classList.add('hidden');
-                btnGuardar.disabled = true;
-                btnGuardar.addEventListener('click', onGuardar);
+                ops.forEach(b => b.addEventListener('click', onOp));
                 btnCancelar.addEventListener('click', onCancelar);
                 hoja.classList.remove('hidden');
             });
