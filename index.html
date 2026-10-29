@@ -239,6 +239,23 @@
         .pin-teclado button:active { background: rgba(255,255,255,.3); }
         .pin-teclado button.pin-txt { background: transparent; border: 0; font-size: 14px; font-weight: 700; }
 
+        /* Permisos (Fase 3) */
+        .mt-hero[data-estado="permisos"] { --mt-rgb: 91,33,182; }
+        .pm-paso { display: flex; align-items: center; gap: .6rem; font-size: 1.05rem; font-weight: 800; color: #0f172a; margin-bottom: 1rem; }
+        .pm-paso span { width: 28px; height: 28px; border-radius: 99px; background: #ede9fe; color: #5b21b6; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        html.dark .pm-paso { color: #f1f5f9; } html.dark .pm-paso span { background: #4c1d95; color: #ddd6fe; }
+        .pm-grupo { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: .4rem; }
+        .pm-tipos { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+        @media (min-width: 768px) { .pm-tipos { grid-template-columns: repeat(3, 1fr); } }
+        .pm-tipo { border: 1.5px solid #e2e8f0; border-radius: 1rem; padding: .7rem .75rem; text-align: left; font-size: 13px; font-weight: 700; color: #0f172a; display: flex; flex-direction: column; gap: .3rem; background: #fff; line-height: 1.25; }
+        .pm-tipo .pm-ic { font-size: 22px; line-height: 1; }
+        .pm-tipo.on { border-color: #7c3aed; background: #f5f3ff; color: #5b21b6; }
+        html.dark .pm-tipo { background: #1e293b; border-color: #334155; color: #f1f5f9; } html.dark .pm-tipo.on { background: #2e1065; border-color: #a78bfa; color: #ddd6fe; }
+        .pm-filtros { display: flex; gap: .4rem; flex-wrap: wrap; }
+        .pm-filtros button { font-size: 12px; font-weight: 800; padding: .35rem .75rem; border-radius: 99px; background: #f1f5f9; color: #475569; }
+        .pm-filtros button.on { background: #ede9fe; color: #5b21b6; }
+        html.dark .pm-filtros button { background: #273449; color: #cbd5e1; } html.dark .pm-filtros button.on { background: #4c1d95; color: #ddd6fe; }
+
         /* Nómina del colaborador */
         #nom-anios.hidden { display: none; }
         .nom-fila { width: 100%; display: flex; align-items: center; gap: .75rem; padding: .75rem 0; text-align: left; }
@@ -1146,6 +1163,12 @@
 
             <div class="max-w-2xl mx-auto">
 
+                <div id="permisos-hero" class="mt-hero in-hero mt-2 mb-3" data-estado="permisos">
+                    <p class="mt-hero-suave text-sm font-semibold">Permisos</p>
+                    <h2 style="font-size:1.7rem">Solicitudes y firmas</h2>
+                    <p class="mt-hero-suave text-sm mt-1">Crea la solicitud, comparte los enlaces y cada firmante firma desde su celular.</p>
+                </div>
+
                 <div id="permisos-subtabs" class="flex gap-2 bg-slate-100 p-1 rounded-xl mb-4 mt-2">
                     <button id="btn-permisos-sub-nuevo" class="permiso-subtab flex-1 py-2.5 rounded-lg text-xs font-bold transition-all bg-white shadow-sm text-slate-800">
                         <i class="ph-bold ph-plus-circle mr-1"></i> Nueva Solicitud
@@ -1159,9 +1182,7 @@
                 <div id="permiso-view-nuevo" class="flex flex-col gap-4">
 
                     <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
-                            <i class="ph-fill ph-note-pencil text-blue-500"></i> Datos del Permiso
-                        </h3>
+                        <h3 class="pm-paso"><span>1</span> ¿Para quién es el permiso?</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="md:col-span-2">
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Trabajador</label>
@@ -1171,7 +1192,16 @@
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre (quien crea esta solicitud)</label>
                                 <input type="text" id="permiso-creado-por" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Supervisor que la registra">
                             </div>
-                            <div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
+                        <h3 class="pm-paso"><span>2</span> ¿Qué tipo de permiso?</h3>
+                        <!-- Tarjetas para elegir el tipo (las arma pintarTiposPermiso() desde el <select>, que sigue siendo la
+                             fuente del valor: al tocar una tarjeta se cambia el select y se avisa con "change"). -->
+                        <div id="permiso-tipos" class="space-y-3"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                            <div class="hidden">
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tipo de Permiso</label>
                                 <select id="permiso-tipo" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                                     <option value="">Selecciona...</option>
@@ -1213,6 +1243,12 @@
                                     <span class="text-xs text-slate-700 font-medium leading-snug">Existe un <span class="font-bold">acuerdo formal por escrito</span> entre el trabajador y la empresa para esta licencia.</span>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
+                        <h3 class="pm-paso"><span>3</span> ¿Cuándo?</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Fecha del Permiso</label>
                                 <input type="date" id="permiso-fecha" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
@@ -1260,9 +1296,7 @@
                     </div>
 
                     <div class="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-800 mb-1 flex items-center gap-2 text-lg">
-                            <i class="ph-fill ph-users-four text-blue-500"></i> Firmantes
-                        </h3>
+                        <h3 class="pm-paso" style="margin-bottom:.25rem"><span>4</span> ¿Quiénes firman?</h3>
                         <p class="text-xs text-slate-500 mb-4">Cada persona firmará desde su propio celular usando un enlace que generarás al final.</p>
                         <div id="firmantes-container" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
                     </div>
@@ -1389,6 +1423,7 @@
                             <button id="btn-exportar-permisos" class="btn-touch bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg text-xs font-bold border border-emerald-200 flex items-center gap-1"><i class="ph-bold ph-file-xls"></i> Exportar a Excel</button>
                         </div>
                     </div>
+                    <div id="permiso-filtros-estado" class="pm-filtros"></div>
                     <div id="permisos-historial-lista" class="space-y-2">
                         <p class="text-xs text-slate-400 text-center py-4">Cargando...</p>
                     </div>
@@ -10077,6 +10112,7 @@
             document.getElementById('permiso-trabajador').value = '';
             document.getElementById('permiso-creado-por').value = '';
             document.getElementById('permiso-tipo').value = '';
+            pintarTiposPermiso();
             document.getElementById('permiso-fecha').value = getTodayStr();
             document.getElementById('permiso-horas').value = '';
             document.getElementById('permiso-dias-vacaciones').value = '';
@@ -11142,10 +11178,53 @@
             return diasPasados > dias;
         }
 
+        let permisoFiltroEstado = 'todos';
+        document.getElementById('permiso-filtros-estado').addEventListener('click', (e) => {
+            const b = e.target.closest('button[data-estado]');
+            if (!b) return;
+            permisoFiltroEstado = b.dataset.estado;
+            renderHistorialPermisos();
+        });
+
+        // ---------- Tipo de permiso en tarjetas (Fase 3) ----------
+        // El <select id="permiso-tipo"> sigue siendo la fuente del valor (toda la lógica lo lee); estas tarjetas solo
+        // lo cambian y avisan con "change", igual que si se eligiera en la lista.
+        const ICONOS_TIPO_PERMISO = [
+            [/m[eé]dica/i, '🩺'], [/calamidad/i, '🏠'], [/judicial/i, '⚖️'], [/escolar/i, '🎒'], [/votaci/i, '🗳️'],
+            [/sindical/i, '🤝'], [/luto/i, '🕊️'], [/matrimonio/i, '💍'], [/bicicleta/i, '🚲'], [/personal/i, '📝'],
+            [/no remunerada/i, '⏸️'], [/reglamento/i, '📘'], [/vacaciones/i, '🌴']
+        ];
+        function iconoTipoPermiso(tipo) { return (ICONOS_TIPO_PERMISO.find(([re]) => re.test(tipo || '')) || [null, '📄'])[1]; }
+        function pintarTiposPermiso() {
+            const sel = document.getElementById('permiso-tipo');
+            const cont = document.getElementById('permiso-tipos');
+            if (!sel || !cont) return;
+            const corto = (t) => t.replace(/\s*\(.*\)\s*$/, '');
+            cont.innerHTML = [...sel.querySelectorAll('optgroup')].map(g => `
+                <div><p class="pm-grupo">${escapeHtml(g.label)}</p><div class="pm-tipos">
+                ${[...g.querySelectorAll('option')].map(o => `<button type="button" class="pm-tipo ${o.value === sel.value ? 'on' : ''}" data-valor="${escapeHtml(o.value)}" title="${escapeHtml(o.value)}"><span class="pm-ic">${iconoTipoPermiso(o.value)}</span>${escapeHtml(corto(o.value))}</button>`).join('')}
+                </div></div>`).join('');
+        }
+        document.getElementById('permiso-tipos').addEventListener('click', (e) => {
+            const b = e.target.closest('.pm-tipo');
+            if (!b) return;
+            const sel = document.getElementById('permiso-tipo');
+            sel.value = b.dataset.valor;
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            pintarTiposPermiso();
+        });
+        document.getElementById('permiso-tipo').addEventListener('change', pintarTiposPermiso);
+        pintarTiposPermiso();
+
         function renderHistorialPermisos() {
             const filtro = document.getElementById('permiso-filtro-nombre').value.trim().toUpperCase();
             const cont = document.getElementById('permisos-historial-lista');
-            const lista = permisosCache.filter(p => !filtro || (p.trabajador || '').toUpperCase().includes(filtro));
+            const porNombre = permisosCache.filter(p => !filtro || (p.trabajador || '').toUpperCase().includes(filtro));
+            const estadoDe = (p) => p.estado === 'aprobado' ? 'aprobados' : estaVencido(p) ? 'vencidos' : 'pendientes';
+            const cuenta = (k) => k === 'todos' ? porNombre.length : porNombre.filter(p => estadoDe(p) === k).length;
+            document.getElementById('permiso-filtros-estado').innerHTML = [['todos', 'Todos'], ['pendientes', 'Pendientes'], ['aprobados', 'Aprobados'], ['vencidos', 'Vencidos']]
+                .map(([k, t]) => `<button type="button" data-estado="${k}" class="${k === permisoFiltroEstado ? 'on' : ''}">${t} · ${cuenta(k)}</button>`).join('');
+            const lista = porNombre.filter(p => permisoFiltroEstado === 'todos' || estadoDe(p) === permisoFiltroEstado);
 
             if (lista.length === 0) {
                 cont.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay solicitudes registradas.</p>';
@@ -11166,9 +11245,10 @@
                 }
 
                 return `
-                <div class="bg-white border border-slate-200 rounded-xl p-3">
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
                     <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.togglePermisoDetalle('${p.id}')">
-                        <div class="min-w-0">
+                        <span class="text-2xl flex-shrink-0">${iconoTipoPermiso(p.tipo)}</span>
+                        <div class="min-w-0 flex-1">
                             <div class="text-sm font-bold text-slate-800 truncate flex items-center gap-1.5">
                                 ${escapeHtml(p.trabajador) || '—'}
                                 ${p.es_emergencia ? '<span class="text-[9px] font-bold uppercase bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded flex-shrink-0">Emergencia</span>' : ''}
