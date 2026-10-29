@@ -129,6 +129,16 @@ try {
 
   ok('3b. Mi Tarjeta: el héroe muestra "Aún no marcas entrada" y la obra del último turno queda elegida',
     (await page.getAttribute('#mt-hero', 'data-estado')) === 'entrada' && (await page.textContent('#mt-fila-obra')) === 'BODEGA');
+  // Admin cambia el horario de la obra mientras el colaborador tiene la app abierta: la tarjeta se actualiza sola.
+  const detalleAntes = await page.textContent('#mt-detalle');
+  await page.evaluate(() => {
+    window.__DB__.catalogos.listas.jornadas_obra = { BODEGA: { entrada: '07:00', salida_lj: '16:30', salida_v: '16:00', almuerzo: true, sabado: { entrada: '07:00', salida: '12:00', almuerzo: false } } };
+    (window.__OYENTES__ || []).forEach(f => f());
+  });
+  await page.waitForTimeout(300);
+  const detalleDespues = await page.textContent('#mt-detalle');
+  ok('3d. Si Admin cambia el horario de la obra, la tarjeta abierta se actualiza sola',
+    detalleAntes.includes('Tu jornada') ? detalleDespues.includes('7:00 a. m.') && detalleDespues !== detalleAntes : true, `${detalleAntes} → ${detalleDespues}`);
   await page.click('#mt-extras');
   await page.waitForTimeout(300);
   ok('3c. Al tocar las extras se abre el detalle del mes', await page.isVisible('#hoja-extras') && /Extra diurna/.test(await page.textContent('#hoja-extras-tipo')));

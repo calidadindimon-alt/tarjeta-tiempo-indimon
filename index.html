@@ -2857,6 +2857,9 @@
                 console.error("Error cargando catálogos:", e);
                 catalogosCache = { ...CATALOGOS_INICIALES };
             }
+            pintarCatalogos();
+        }
+        function pintarCatalogos() {
             const popDatalist = (id, arr) => {
                 const d = document.getElementById(id);
                 d.innerHTML = ''; (arr || []).forEach(item => d.appendChild(new Option(item, item)));
@@ -2865,6 +2868,21 @@
             popDatalist('lista-obras', catalogosCache.obras);
             popDatalist('lista-supervisores', catalogosCache.supervisores);
             actualizarBadgeObrasSinHorario();
+        }
+        // BUG CORREGIDO (29/10): los catálogos (horarios por obra, geocercas, obras…) se leían una sola vez al abrir la
+        // app. Con la sesión mantenida la app puede quedar abierta días, así que un cambio de horario hecho por Admin no
+        // llegaba a la tarjeta del colaborador hasta cerrarla y abrirla. Ahora se escucha el documento en vivo: cualquier
+        // cambio se refleja enseguida (salida pactada, aviso de almuerzo y el cálculo al marcar la salida).
+        let catalogosEscuchando = false;
+        function escucharCatalogos() {
+            if (catalogosEscuchando) return;
+            catalogosEscuchando = true;
+            onSnapshot(doc(db, 'catalogos', 'listas'), (snap) => {
+                if (!snap.exists()) return;
+                catalogosCache = { ...CATALOGOS_INICIALES, ...snap.data() };
+                pintarCatalogos();
+                if (currentUserId) actualizarMiTarjeta();
+            }, (e) => console.warn('No se pudieron escuchar los catálogos en vivo:', e));
         }
 
         async function cargarListaEmpleadosDatalist() {
@@ -2945,6 +2963,7 @@
 
         async function initApp() {
             await cargarCatalogos();
+            escucharCatalogos();
             await cargarListaEmpleadosDatalist();
             verificarIncapacidadesPorVencer(); // no se espera (await) a propósito: no debe demorar el arranque de la app
             limpiarFotosAntiguas(); // idem: borra en segundo plano las fotos de verificación de más de 30 días
