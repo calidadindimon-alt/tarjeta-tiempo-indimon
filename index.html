@@ -112,6 +112,14 @@
         html.dark .hover\:bg-rose-100:hover { background-color: rgba(244,63,94,.25); }
         html.dark .hover\:text-slate-600:hover { color: #e2e8f0; }
         html.dark .hover\:text-blue-600:hover, html.dark .hover\:text-blue-700:hover { color: #93c5fd; }
+        html.dark .text-blue-800 { color: #bfdbfe; }
+        html.dark .border-blue-300 { border-color: rgba(59,130,246,.5); }
+        /* Botón 🕐 y selector de hora de 24 h: se crean con estilos en línea claros. */
+        html.dark .hora24-reloj { background: #334155 !important; }
+        html.dark .mt-olvido .hora24-reloj { background: rgba(255,255,255,.95) !important; }
+        html.dark .sel-hora { background: #1e293b !important; border-color: #334155 !important; }
+        html.dark .sel-hora > div:first-child { color: #e2e8f0 !important; }
+        html.dark .sel-hora button { background: #273449 !important; color: #f1f5f9 !important; }
         html.dark .hover\:text-rose-600:hover, html.dark .hover\:text-rose-700:hover { color: #fda4af; }
 
         html.dark .firma-box.firmado { background: rgba(16,185,129,.12); }
@@ -2339,6 +2347,7 @@
         function abrirSelectorHora(campo) {
             cerrarSelectorHora();
             const panel = document.createElement('div');
+            panel.className = 'sel-hora';
             panel.style.cssText = 'position:fixed;z-index:100000;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:10px;width:260px;max-width:92vw;';
             const titulo = document.createElement('div');
             titulo.style.cssText = 'font-weight:700;font-size:13px;color:#334155;margin-bottom:8px;text-align:center;';
