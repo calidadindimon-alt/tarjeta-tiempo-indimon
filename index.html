@@ -2978,13 +2978,18 @@
         setInterval(verificarNuevaVersion, 20 * 60 * 1000);
 
         async function initApp() {
-            await cargarCatalogos();
+            // RENDIMIENTO (29/10): antes se esperaba a los catálogos, después a la lista de colaboradores y recién ahí se
+            // intentaba entrar con la sesión mantenida. Ahora salen al mismo tiempo; la sesión mantenida solo espera a
+            // los catálogos (los necesita Mi Tarjeta: horarios, obras), no a la lista de nombres, que es para el ingreso.
+            const catalogosListos = cargarCatalogos();
+            const empleadosListos = cargarListaEmpleadosDatalist();
+            restaurarSesionMantenida(catalogosListos); // entra directo a Mi Tarjeta si la persona dejó la sesión mantenida
+            await catalogosListos;
             escucharCatalogos();
-            await cargarListaEmpleadosDatalist();
+            await empleadosListos;
             verificarIncapacidadesPorVencer(); // no se espera (await) a propósito: no debe demorar el arranque de la app
             limpiarFotosAntiguas(); // idem: borra en segundo plano las fotos de verificación de más de 30 días
             verificarNuevaVersion(); // idem: no debe demorar el arranque de la app
-            restaurarSesionMantenida(); // entra directo a Mi Tarjeta si la persona dejó la sesión mantenida
 
             let fecha = document.getElementById('manual-fecha');
             if (fecha) {
@@ -3973,6 +3978,30 @@
             return pago;
         }
 
+        // Registros del colaborador entre dos fechas 'YYYY-MM-DD' (incluidas). Filtra por el campo fecha, que Firestore
+        // indexa solo (no hace falta crear un índice).
+        async function leerRegistrosEntre(desde, hasta) {
+            const snap = await getDocs(query(collection(db, 'empleados', currentUserId, 'registros'), where('fecha', '>=', desde), where('fecha', '<=', hasta)));
+            return snap.docs.map(d => d.data()).filter(r => r.fecha && r.fecha >= desde && r.fecha <= hasta);
+        }
+        function ultimoDiaDelMes(mesStr) {
+            const [y, m] = mesStr.split('-').map(Number);
+            return `${mesStr}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+        }
+        // Fecha del primer registro de la persona (para no marcar "descanso remunerado" días antes de que entrara). No
+        // cambia, así que se consulta una sola vez por colaborador (1 documento, no todo el historial).
+        const primeraFechaPorCedula = {};
+        async function primeraFechaColaborador() {
+            const ced = currentUserId;
+            if (!(ced in primeraFechaPorCedula)) {
+                const snap = await getDocs(query(collection(db, 'empleados', ced, 'registros'), orderBy('fecha', 'asc'), fsLimit(1)));
+                const f = snap.docs.map(d => d.data().fecha).filter(Boolean).sort()[0] || '';
+                if (!f) return ''; // sin registros todavía: no se guarda, se vuelve a consultar cuando tenga
+                primeraFechaPorCedula[ced] = f;
+            }
+            return primeraFechaPorCedula[ced];
+        }
+
         async function calculateMonthlyAccumulated() {
             if (!currentUserId) return;
             const esContratista = currentUserProfile.tipo_vinculacion === 'Contratista';
@@ -3998,14 +4027,14 @@
             const diasConExtras = [];
             const todosLosRegistros = [];
 
-            const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
-            snap.forEach(d => {
-                const reg = d.data();
-                // NORMA LEGAL (30/09): se guarda CADA registro (no solo los del mes actual) porque
-                // calcularDiasDescontadosPorAusenciasMes() necesita la semana COMPLETA de cada
-                // ausencia injustificada para saber si esa semana perdió el domingo — una semana
-                // puede empezar en un mes y terminar en el siguiente.
-                if (reg.fecha) todosLosRegistros.push(reg);
+            // NORMA LEGAL (30/09): no basta con los registros del mes, porque calcularDiasDescontadosPorAusenciasMes()
+            // necesita la semana COMPLETA de cada ausencia injustificada para saber si esa semana perdió el domingo — una
+            // semana puede empezar en un mes y terminar en el siguiente. RENDIMIENTO (29/10): antes se leían TODOS los
+            // registros desde el primer día de la persona (crece cada mes); ahora solo desde el lunes de la semana del día 1
+            // hasta el último día del mes, que son justo las semanas cuyo domingo cae en el mes: el resultado es el mismo.
+            const regsMes = await leerRegistrosEntre(getRangoSemana(currentMonthPrefix + '-01')[0], ultimoDiaDelMes(currentMonthPrefix));
+            regsMes.forEach(reg => {
+                todosLosRegistros.push(reg);
                 if (reg.fecha && reg.fecha.startsWith(currentMonthPrefix) && reg.estado === 'completado') {
                     // Las horas extra solo cuentan si RRHH ya las aprobó (ver extrasPagables).
                     const pag = extrasPagables(reg);
@@ -4034,7 +4063,8 @@
                     if (extDia > 0) diasConExtras.push({ fecha: reg.fecha, horas: extDia, extD: reg.horas_extras_diurnas || 0, extN: reg.horas_extras_nocturnas || 0, estado: estadoEx });
                 }
             });
-            registrosMiTarjeta = todosLosRegistros;
+            registrosMesMT = todosLosRegistros;
+            unirRegistrosMiTarjeta();
             if (estadoMiTarjeta.state === 'entrada') prellenarObraMT();
 
             document.getElementById('ui-horas-mes').textContent = `${(totalExtD + totalExtN).toFixed(1)}h`;
@@ -4100,6 +4130,20 @@
             renderExtrasMT();
         }
 
+        // Permisos de esta persona: los que tienen su cédula y, como respaldo, los que se guardaron sin cédula (nombre que no
+        // coincidió con la lista): esos se filtran por nombre en el historial, sin importar mayúsculas, igual que antes. Antes
+        // se leía la colección completa de permisos de toda la empresa.
+        async function leerPermisosPropios(nombrePropio) {
+            const consultas = [getDocs(query(collection(db, 'permisos'), where('trabajador_cedula', '==', currentUserId)))];
+            if (nombrePropio) {
+                consultas.push(getDocs(query(collection(db, 'permisos'), where('trabajador_cedula', '==', null))));
+                consultas.push(getDocs(query(collection(db, 'permisos'), where('trabajador', '==', nombrePropio))));
+            }
+            const porId = new Map();
+            (await Promise.all(consultas)).forEach(snap => snap.forEach(d => porId.set(d.id, d.data())));
+            return [...porId.values()];
+        }
+
         // Historial del propio colaborador, filtrable por mes (lectura de sus propios registros).
         async function cargarHistorialPersonal(mesStr) {
             const lista = document.getElementById('historial-lista');
@@ -4108,41 +4152,44 @@
             resumen.classList.add('hidden');
 
             try {
-                const snap = await getDocs(collection(db, 'empleados', currentUserId, 'registros'));
+                // RENDIMIENTO (29/10): antes se leían TODOS los registros de la persona (desde su primer día) y TODOS los
+                // permisos de la empresa, para mostrar un solo mes. Ahora se pide solo lo que este historial usa, todo al
+                // mismo tiempo: las semanas completas que tocan el mes (para el descanso remunerado y la sanción del
+                // domingo), la semana en curso (para "Esta semana: X de 42 h") si no está dentro, la fecha del primer
+                // registro y solo los permisos de esta persona.
+                const hoyStr = getTodayStr();
+                const [lunesSem, domingoSem] = getRangoSemana(hoyStr);
+                const desde = getRangoSemana(mesStr + '-01')[0];
+                const hasta = getRangoSemana(ultimoDiaDelMes(mesStr))[1];
+                const semanaFuera = lunesSem < desde || domingoSem > hasta;
+                const nombrePropio = (currentUserProfile?.nombre || '').toUpperCase();
+                const [regsRango, regsSemanaActual, primeraFecha, permisosMios] = await Promise.all([
+                    leerRegistrosEntre(desde, hasta),
+                    semanaFuera ? leerRegistrosEntre(lunesSem, domingoSem) : Promise.resolve([]),
+                    primeraFechaColaborador(),
+                    leerPermisosPropios(nombrePropio).catch(e => { console.error('No se pudieron cargar los permisos del historial:', e); return []; })
+                ]);
+                const todosLosRegistros = [...regsRango, ...regsSemanaActual];
                 const registrosPorFecha = {};
-                const todosLosRegistros = [];
-                snap.forEach(d => {
-                    const r = d.data();
-                    if (r.fecha) todosLosRegistros.push(r);
-                    if ((r.fecha || '').startsWith(mesStr)) registrosPorFecha[r.fecha] = r;
-                });
+                regsRango.forEach(r => { if (r.fecha.startsWith(mesStr)) registrosPorFecha[r.fecha] = r; });
 
                 // Permisos del colaborador para este mes: primero por cédula (vínculo confiable);
                 // si un permiso viejo no tiene cédula guardada, se vincula por coincidencia exacta de nombre como respaldo.
                 const permisosPorFecha = {};
-                try {
-                    const permisosSnap = await getDocs(collection(db, 'permisos'));
-                    const nombrePropio = (currentUserProfile?.nombre || '').toUpperCase();
-                    permisosSnap.forEach(d => {
-                        const p = d.data();
-                        if (!(p.fecha || '').startsWith(mesStr)) return;
-                        const esMio = p.trabajador_cedula
-                            ? p.trabajador_cedula === currentUserId
-                            : (p.trabajador || '').toUpperCase() === nombrePropio;
-                        if (!esMio) return;
-                        (permisosPorFecha[p.fecha] = permisosPorFecha[p.fecha] || []).push(p);
-                    });
-                } catch (e) {
-                    console.error('No se pudieron cargar los permisos del historial:', e);
-                }
+                permisosMios.forEach(p => {
+                    if (!(p.fecha || '').startsWith(mesStr)) return;
+                    const esMio = p.trabajador_cedula
+                        ? p.trabajador_cedula === currentUserId
+                        : (p.trabajador || '').toUpperCase() === nombrePropio;
+                    if (!esMio) return;
+                    (permisosPorFecha[p.fecha] = permisosPorFecha[p.fecha] || []).push(p);
+                });
 
                 const fechas = new Set([...Object.keys(registrosPorFecha), ...Object.keys(permisosPorFecha)]);
 
                 // Avance de la semana en curso frente a su meta (42 h, o menos si hay festivo remunerado).
                 try {
                     const caja = document.getElementById('progreso-semanal');
-                    const hoyStr = getTodayStr();
-                    const [lunesSem, domingoSem] = getRangoSemana(hoyStr);
                     const regsSemana = todosLosRegistros.filter(r => r.fecha >= lunesSem && r.fecha <= domingoSem && r.estado === 'completado');
                     const trabajadasSem = regsSemana.reduce((a, r) => a + horasTrabajadasRegistro(r), 0);
                     const metaSem = metaSemanalOrdinaria(hoyStr, regsSemana.filter(r => horasTrabajadasRegistro(r) > 0).map(r => r.fecha));
@@ -4183,7 +4230,6 @@
                 const hoy = getTodayStr();
                 const [anioMes, mesNum] = mesStr.split('-').map(Number);
                 const ultimoDiaMes = new Date(anioMes, mesNum, 0).getDate();
-                const primeraFecha = todosLosRegistros.reduce((min, r) => (!min || r.fecha < min ? r.fecha : min), '');
                 const fechasConPermiso = new Set(Object.keys(permisosPorFecha));
                 const diasDescansoInferido = new Map(); // fecha -> etiqueta
                 const diasSancionDominical = new Set();
@@ -4416,14 +4462,20 @@
             document.querySelectorAll('.money-val').forEach(el => el.classList.add('blur-text'));
             document.querySelector('#btn-toggle-eye i').className = "ph-bold ph-eye-closed text-lg";
 
-            await checkTodayState();
-            await verificarIncapacidadActiva();
-            cargarMisDesprendibles();
-            await calculateMonthlyAccumulated();
+            // RENDIMIENTO (29/10): estas lecturas iban una detrás de otra (5-6 viajes a Firebase). Con la señal de una
+            // obra cada viaje es medio segundo o más, así que ahora salen al mismo tiempo. Solo se respeta el orden
+            // que importa: las extras del mes después del estado de hoy (prellenarObraMT depende de él), y el bloqueo
+            // por incapacidad al final, para que nada vuelva a habilitar el botón de entrar después de bloquearlo.
             const mesActual = getTodayStr().substring(0, 7);
             document.getElementById('historial-mes').value = mesActual;
-            await cargarHistorialPersonal(mesActual);
             escucharRegistrosColaborador(cedula);
+            cargarMisDesprendibles();
+            const incapacidad = buscarIncapacidadActiva();
+            await Promise.all([
+                checkTodayState().then(calculateMonthlyAccumulated),
+                cargarHistorialPersonal(mesActual)
+            ]);
+            aplicarIncapacidadActiva(await incapacidad);
         }
 
         // ---------- Registros del colaborador en vivo ----------
@@ -4435,11 +4487,15 @@
         let refrescoRegistrosTimer = null;
         function escucharRegistrosColaborador(cedula) {
             if (quitarEscuchaRegistros) quitarEscuchaRegistros();
+            registrosRecientesMT = []; registrosMesMT = null; unirRegistrosMiTarjeta(); // nada de otro colaborador de este celular
             let primera = true;
             quitarEscuchaRegistros = onSnapshot(
                 query(collection(db, 'empleados', cedula, 'registros'), orderBy('fecha', 'desc'), fsLimit(62)),
                 (snap) => {
-                    if (primera) { primera = false; return; }
+                    // Los últimos 62 registros también alimentan las obras/supervisores recientes de Mi Tarjeta.
+                    registrosRecientesMT = snap.docs.map(d => d.data()).filter(r => r.fecha);
+                    unirRegistrosMiTarjeta();
+                    if (primera) { primera = false; if (registrosMesMT && estadoMiTarjeta.state === 'entrada') prellenarObraMT(); return; }
                     if (snap.metadata && snap.metadata.hasPendingWrites) return; // es un fichaje de este mismo celular
                     clearTimeout(refrescoRegistrosTimer);
                     refrescoRegistrosTimer = setTimeout(refrescarTarjetaColaborador, 800);
@@ -4456,9 +4512,10 @@
             if (!currentUserId) return;
             if (fichajeEnCurso) { refrescoRegistrosTimer = setTimeout(refrescarTarjetaColaborador, 2000); return; }
             try {
-                await checkTodayState();
-                await calculateMonthlyAccumulated();
-                await cargarHistorialPersonal(document.getElementById('historial-mes').value || getTodayStr().substring(0, 7));
+                await Promise.all([
+                    checkTodayState().then(calculateMonthlyAccumulated),
+                    cargarHistorialPersonal(document.getElementById('historial-mes').value || getTodayStr().substring(0, 7))
+                ]);
             } catch (e) { console.warn('No se pudo refrescar la tarjeta:', e); }
         }
 
@@ -4473,12 +4530,15 @@
                 else localStorage.removeItem(SESION_MANTENIDA_KEY);
             } catch (_) { /* almacenamiento bloqueado */ }
         }
-        async function restaurarSesionMantenida() {
+        async function restaurarSesionMantenida(catalogosListos) {
             let ses = null;
             try { ses = JSON.parse(localStorage.getItem(SESION_MANTENIDA_KEY) || 'null'); } catch (_) { ses = null; }
             // Los enlaces de firma (?permiso=…, ?desprendible=…) abren su propia vista: ahí no se abre la tarjeta.
             if (!ses || !ses.cedula || currentUserId || window.location.search) return;
-            try { if (auth.authStateReady) await auth.authStateReady(); } catch (_) { /* sin red: se usa lo que haya */ }
+            const sesionLista = (async () => {
+                try { if (auth.authStateReady) await auth.authStateReady(); } catch (_) { /* sin red: se usa lo que haya */ }
+            })();
+            await Promise.all([sesionLista, catalogosListos]);
             const user = auth.currentUser;
             if (!user || (user.email || '').toLowerCase() !== cedulaToAuthEmail(ses.cedula).toLowerCase()) return;
             if (currentUserId) return;
@@ -4688,6 +4748,14 @@
 
         async function checkTodayState() {
             const t = getTodayStr();
+            // RENDIMIENTO (29/10): la búsqueda de turnos anteriores sin cerrar (más abajo) sale al mismo tiempo que la
+            // lectura de hoy, en vez de esperar a que esta termine: es la situación normal de cada mañana (aún no hay
+            // registro de hoy) y con mala señal ahorra un viaje completo a Firebase. Sus errores se tratan abajo, igual.
+            const activosPendiente = getDocs(query(
+                collection(db, 'empleados', currentUserId, 'registros'),
+                where('estado', '==', 'activo'),
+                fsLimit(10)
+            )).then(snapActivos => ({ snapActivos }), error => ({ error }));
             const snap = await getDoc(doc(db, 'empleados', currentUserId, 'registros', t));
             const data = (snap.exists() && !esRegistroSoloPermisoParcial(snap.data())) ? snap.data() : null;
 
@@ -4726,11 +4794,8 @@
             // NUNCA que el colaborador no pueda entrar a la app ni marcar. Esa fue exactamente la
             // falla del 18/09: una consulta secundaria tumbando todo el inicio de sesión.
             try {
-                const snapActivos = await getDocs(query(
-                    collection(db, 'empleados', currentUserId, 'registros'),
-                    where('estado', '==', 'activo'),
-                    fsLimit(10)
-                ));
+                const { snapActivos, error } = await activosPendiente;
+                if (error) throw error;
                 const anteriores = snapActivos.docs
                     .filter(d => d.id < t)
                     .sort((a, b) => (a.id < b.id ? 1 : -1));
@@ -5067,7 +5132,7 @@
                     }
                 }
 
-                // BUG CORREGIDO: verificarIncapacidadActiva() solo deshabilitaba el botón en pantalla —
+                // BUG CORREGIDO: aplicarIncapacidadActiva() solo deshabilita el botón en pantalla —
                 // alguien con acceso a las herramientas de desarrollador podía saltarse ese bloqueo visual
                 // y fichar entrada igual mientras está incapacitado. Se revalida aquí, justo antes de
                 // guardar, consultando Firestore directamente (no solo el estado ya cargado en pantalla).
@@ -5085,7 +5150,7 @@
                         }
                     } catch (eIncap) {
                         // Si la consulta de incapacidades falla (ej. sin conexión), no se bloquea el
-                        // fichaje por eso — el aviso visual (verificarIncapacidadActiva) ya cubre el caso
+                        // fichaje por eso — el aviso visual (aplicarIncapacidadActiva) ya cubre el caso
                         // normal con conexión; esto es solo una segunda barrera, no la única.
                         console.error('No se pudo revalidar incapacidad activa antes de fichar:', eIncap);
                     }
@@ -5570,7 +5635,17 @@
         // ===================================== Mi Tarjeta: héroe, obra y extras =====================================
         // Solo pinta: no cambia ningún cálculo ni guarda nada en Firestore (salvo lo que ya guardaba cada botón).
         let estadoMiTarjeta = { state: null, data: null, esTurnoDeAyer: false };
-        let registrosMiTarjeta = [];   // todos los registros del colaborador (los llena calculateMonthlyAccumulated)
+        // RENDIMIENTO (29/10): antes eran TODOS los registros del colaborador (desde su primer día). Ahora son los del
+        // rango que usa el cálculo del mes (calculateMonthlyAccumulated) más los 62 más recientes que ya trae la escucha
+        // en vivo (escucharRegistrosColaborador): de aquí salen las obras, clientes y supervisores recientes.
+        let registrosMiTarjeta = [];
+        let registrosMesMT = null;      // null hasta el primer cálculo del mes
+        let registrosRecientesMT = [];
+        function unirRegistrosMiTarjeta() {
+            const porFecha = new Map();
+            [...(registrosMesMT || []), ...registrosRecientesMT].forEach(r => porFecha.set(r.fecha, r));
+            registrosMiTarjeta = [...porFecha.values()];
+        }
         let extrasMesMT = null;        // detalle de extras del mes para la hoja "Mis extras"
         const DIAS_CORTOS_MT = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
         const MESES_CORTOS_MT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -7401,8 +7476,9 @@
         // Revisa si el colaborador que acaba de entrar a "Mi Tarjeta" tiene una incapacidad activa HOY;
         // si es así, muestra el aviso y bloquea el registro de tiempo (no debería fichar mientras está
         // incapacitado).
-        async function verificarIncapacidadActiva() {
-            const banner = document.getElementById('banner-incapacidad-activa');
+        // Se separa en buscar (la consulta, que sale en paralelo con las demás al entrar) y aplicar (al final).
+        // Devuelve la incapacidad activa hoy, null si no hay, o undefined si no se pudo consultar (no se toca el aviso).
+        async function buscarIncapacidadActiva() {
             try {
                 const hoyStr = getTodayStr();
                 const snap = await getDocs(query(collection(db, 'incapacidades'), where('trabajador_cedula', '==', currentUserId)));
@@ -7411,16 +7487,22 @@
                     const inc = d.data();
                     if (hoyStr >= inc.fecha_inicio && hoyStr <= inc.fecha_fin) activa = inc;
                 });
-                if (activa) {
-                    document.getElementById('banner-incapacidad-texto').textContent =
-                        `Tu incapacidad (${activa.tipo}) va hasta el ${activa.fecha_fin}. No puedes registrar tiempo mientras estés incapacitado. Si ya te recuperaste antes de esa fecha, avisa a RRHH.`;
-                    banner.classList.remove('hidden');
-                    document.getElementById('btn-punch-in').disabled = true;
-                } else {
-                    banner.classList.add('hidden');
-                }
+                return activa;
             } catch (e) {
                 console.error('No se pudo verificar incapacidad activa:', e);
+                return undefined;
+            }
+        }
+        function aplicarIncapacidadActiva(activa) {
+            if (activa === undefined) return;
+            const banner = document.getElementById('banner-incapacidad-activa');
+            if (activa) {
+                document.getElementById('banner-incapacidad-texto').textContent =
+                    `Tu incapacidad (${activa.tipo}) va hasta el ${activa.fecha_fin}. No puedes registrar tiempo mientras estés incapacitado. Si ya te recuperaste antes de esa fecha, avisa a RRHH.`;
+                banner.classList.remove('hidden');
+                document.getElementById('btn-punch-in').disabled = true;
+            } else {
+                banner.classList.add('hidden');
             }
         }
 
