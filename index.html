@@ -4407,6 +4407,43 @@
             const mesActual = getTodayStr().substring(0, 7);
             document.getElementById('historial-mes').value = mesActual;
             await cargarHistorialPersonal(mesActual);
+            escucharRegistrosColaborador(cedula);
+        }
+
+        // ---------- Registros del colaborador en vivo ----------
+        // BUG CORREGIDO (29/10): Mi Tarjeta leía los registros una sola vez al entrar. Si Admin corregía un día (p. ej.
+        // la salida de 17:30 a 17:00 en "Editar registro"), el colaborador seguía viendo lo viejo mientras tuviera la
+        // app abierta (con la sesión mantenida, días). Ahora se escuchan sus registros recientes y, ante un cambio que
+        // no viene de este mismo celular, se vuelven a pintar el turno de hoy, las extras del mes y el historial.
+        let quitarEscuchaRegistros = null;
+        let refrescoRegistrosTimer = null;
+        function escucharRegistrosColaborador(cedula) {
+            if (quitarEscuchaRegistros) quitarEscuchaRegistros();
+            let primera = true;
+            quitarEscuchaRegistros = onSnapshot(
+                query(collection(db, 'empleados', cedula, 'registros'), orderBy('fecha', 'desc'), fsLimit(62)),
+                (snap) => {
+                    if (primera) { primera = false; return; }
+                    if (snap.metadata && snap.metadata.hasPendingWrites) return; // es un fichaje de este mismo celular
+                    clearTimeout(refrescoRegistrosTimer);
+                    refrescoRegistrosTimer = setTimeout(refrescarTarjetaColaborador, 800);
+                },
+                (e) => console.warn('No se pudieron escuchar los registros en vivo:', e)
+            );
+        }
+        function dejarDeEscucharRegistros() {
+            if (quitarEscuchaRegistros) quitarEscuchaRegistros();
+            quitarEscuchaRegistros = null;
+            clearTimeout(refrescoRegistrosTimer);
+        }
+        async function refrescarTarjetaColaborador() {
+            if (!currentUserId) return;
+            if (fichajeEnCurso) { refrescoRegistrosTimer = setTimeout(refrescarTarjetaColaborador, 2000); return; }
+            try {
+                await checkTodayState();
+                await calculateMonthlyAccumulated();
+                await cargarHistorialPersonal(document.getElementById('historial-mes').value || getTodayStr().substring(0, 7));
+            } catch (e) { console.warn('No se pudo refrescar la tarjeta:', e); }
         }
 
         // ---------- Mantener la sesión en este celular ----------
@@ -4562,6 +4599,7 @@
             currentUserId = null; currentUserProfile = null;
             misDesprendiblesCache = [];
             renderNominaColaborador();
+            dejarDeEscucharRegistros();
             guardarSesionMantenida(null, null, false);
             mostrarIngresoRecordado();
         });
