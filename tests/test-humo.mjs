@@ -121,9 +121,8 @@ try {
 
   await page.fill('#login-nombre', 'COLABORADOR DE PRUEBA');
   await page.click('#btn-login');
-  await page.waitForSelector('#pin-input-1', { state: 'visible', timeout: 5000 });
-  await page.fill('#pin-input-1', '123456');
-  await page.click('#btn-pin-confirm');
+  await page.waitForSelector('#pantalla-pin', { state: 'visible', timeout: 5000 });
+  for (const d of '123456') await page.click(`#pantalla-pin [data-d="${d}"]`);
   await page.waitForTimeout(1500);
   ok('3. El colaborador entra con PIN y ve "Registro Diario" con el botón de Entrada',
     await page.isVisible('#view-tarjeta') && await page.isVisible('#state-1-entrada') && await page.isVisible('#btn-punch-in'));
