@@ -239,6 +239,17 @@
         .pin-teclado button:active { background: rgba(255,255,255,.3); }
         .pin-teclado button.pin-txt { background: transparent; border: 0; font-size: 14px; font-weight: 700; }
 
+        /* Nómina del colaborador */
+        #nom-anios.hidden { display: none; }
+        .nom-fila { width: 100%; display: flex; align-items: center; gap: .75rem; padding: .75rem 0; text-align: left; }
+        .nom-fila + .nom-fila { border-top: 1px solid #f1f5f9; }
+        html.dark .nom-fila + .nom-fila { border-color: #334155; }
+        .nom-ic { width: 40px; height: 40px; border-radius: 12px; background: #eef2ff; color: #3730a3; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+        html.dark .nom-ic { background: #312e81; color: #c7d2fe; }
+        .nom-chip { font-size: 11px; font-weight: 800; padding: .2rem .6rem; border-radius: 99px; white-space: nowrap; }
+        .nom-chip.ok { background: #dcfce7; color: #15803d; } .nom-chip.pend { background: #fef3c7; color: #b45309; }
+        html.dark .nom-chip.ok { background: #14532d; color: #86efac; } html.dark .nom-chip.pend { background: #78350f; color: #fcd34d; }
+
         /* ============ Admin (Fase 2): menú lateral + inicio con foto y vidrio (ver #admin-panel-view) ============
            En PC/tablet el menú es una columna fija a la izquierda; en celular es una franja que se desliza de lado
            (abajo ya está la barra de pestañas de la app). El héroe reutiliza .mt-hero y .mt-vidrio de Mi Tarjeta. */
@@ -1394,7 +1405,32 @@
 
             <div class="max-w-2xl mx-auto">
 
-                <div id="desp-login-view" class="max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mt-4 md:mt-10">
+                <!-- Nómina del colaborador (Fase 3): sus desprendibles con el último destacado. El acceso de RRHH queda abajo
+                     (botón "Acceso RRHH"). Lo arma renderNominaColaborador(). -->
+                <div id="nom-mia" class="flex flex-col gap-3 max-w-lg mx-auto mt-2">
+                    <div id="nom-sin-sesion" class="hidden mt-hero in-hero">
+                        <p class="mt-hero-suave text-sm">Nómina</p>
+                        <h2>Tus desprendibles</h2>
+                        <p class="mt-hero-suave text-sm mt-1">Entra a Mi Tarjeta con tu PIN para ver y firmar tus desprendibles de pago.</p>
+                        <button type="button" id="btn-nom-ir-tarjeta" class="btn-touch mt-cta mt-cta-claro" style="color:#1e3a8a"><i class="ph-bold ph-user-circle"></i> Ir a Mi Tarjeta</button>
+                    </div>
+                    <div id="nom-hero" class="hidden mt-hero in-hero" data-estado="completado">
+                        <p class="mt-hero-suave text-sm font-semibold">Último desprendible</p>
+                        <h2 id="nom-ult-periodo" style="font-size:1.6rem"></h2>
+                        <p id="nom-ult-numero" class="mt-hero-suave text-sm"></p>
+                        <div class="grid grid-cols-2 gap-2 mt-4">
+                            <div class="mt-vidrio"><span class="mt-vidrio-t">Estado</span><b id="nom-ult-estado"></b></div>
+                            <div class="mt-vidrio"><span id="nom-ult-total-t" class="mt-vidrio-t">Este año</span><b id="nom-ult-total"></b></div>
+                        </div>
+                        <a id="nom-ult-boton" href="#" class="btn-touch mt-cta mt-cta-claro" style="color:#1e3a8a"></a>
+                    </div>
+                    <div id="nom-vacio" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-5 text-center text-sm text-slate-500">Aún no tienes desprendibles cargados. Cuando RRHH suba uno, aparecerá aquí para que lo revises y lo firmes.</div>
+                    <div id="nom-anios" class="hidden mt-seg"></div>
+                    <div id="nom-lista" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 px-4 py-1"></div>
+                    <button type="button" id="btn-nom-rrhh" class="btn-touch text-xs font-bold text-slate-500 py-3 flex items-center justify-center gap-1.5"><i class="ph-bold ph-lock-key"></i> Acceso RRHH / Administración</button>
+                </div>
+
+                <div id="desp-login-view" class="hidden max-w-sm mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mt-4 md:mt-10">
                     <div class="text-center mb-6">
                         <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="ph-fill ph-lock-key text-3xl text-slate-500"></i>
@@ -4428,6 +4464,8 @@
             document.getElementById('view-tarjeta').classList.remove('flex');
             document.getElementById('login-nombre').value = '';
             currentUserId = null; currentUserProfile = null;
+            misDesprendiblesCache = [];
+            renderNominaColaborador();
             mostrarIngresoRecordado();
         });
 
@@ -11663,6 +11701,7 @@
         // Usa la misma cuenta y la misma colección "admins" que el panel de Admin SSTA — no es una clave
         // aparte, es el mismo inicio de sesión.
         async function mostrarPanelDesprendibles() {
+            document.getElementById('nom-mia').classList.add('hidden');
             document.getElementById('desp-login-view').classList.add('hidden');
             document.getElementById('desp-panel-view').classList.remove('hidden');
             document.getElementById('desp-panel-view').classList.add('flex');
@@ -11671,8 +11710,16 @@
         function mostrarLoginDesprendibles() {
             document.getElementById('desp-panel-view').classList.add('hidden');
             document.getElementById('desp-panel-view').classList.remove('flex');
-            document.getElementById('desp-login-view').classList.remove('hidden');
+            document.getElementById('desp-login-view').classList.add('hidden');
+            document.getElementById('nom-mia').classList.remove('hidden');
+            renderNominaColaborador();
         }
+        document.getElementById('btn-nom-rrhh').addEventListener('click', () => {
+            const login = document.getElementById('desp-login-view');
+            login.classList.toggle('hidden');
+            if (!login.classList.contains('hidden')) login.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        document.getElementById('btn-nom-ir-tarjeta').addEventListener('click', () => UI.switchTab('tab-colaborador'));
 
         document.getElementById('btn-desp-admin-login').addEventListener('click', async () => {
             const email = document.getElementById('desp-admin-email').value.trim();
@@ -11997,6 +12044,7 @@
 
         async function loadFirmaDesprendibleStandalone(despId) {
             ocultarTodasLasVistasDesprendibles();
+            document.getElementById('nom-mia').classList.add('hidden');
             document.getElementById('desp-login-view').classList.add('hidden');
             document.getElementById('desp-panel-view').classList.add('hidden');
             document.getElementById('desp-panel-view').classList.remove('flex');
@@ -12118,6 +12166,57 @@
         }
 
         // ------------------------------- "Mis Desprendibles" dentro de Mi Tarjeta -------------------------------
+        // ---------- Nómina del colaborador (pestaña Nómina) ----------
+        let misDesprendiblesCache = [];
+        let nominaAnioMT = null;
+        const MESES_NOM = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        // "2026-10-01" a "2026-10-15" → "1 – 15 de octubre"; meses distintos → "28 sep – 12 oct".
+        function periodoNomina(ini, fin) {
+            const p = (f) => { const [y, m, d] = String(f || '').split('-').map(Number); return { y, m, d }; };
+            const a = p(ini), b = p(fin);
+            if (!a.m || !b.m) return `${ini || '—'} a ${fin || '—'}`;
+            if (a.m === b.m && a.y === b.y) return `${a.d} – ${b.d} de ${MESES_NOM[b.m - 1]}`;
+            return `${a.d} ${MESES_NOM[a.m - 1].slice(0, 3)} – ${b.d} ${MESES_NOM[b.m - 1].slice(0, 3)}`;
+        }
+        function renderNominaColaborador() {
+            const conSesion = !!currentUserId;
+            const lista = conSesion ? misDesprendiblesCache : [];
+            const ult = lista[0];
+            document.getElementById('nom-sin-sesion').classList.toggle('hidden', conSesion);
+            document.getElementById('nom-hero').classList.toggle('hidden', !ult);
+            document.getElementById('nom-vacio').classList.toggle('hidden', !conSesion || !!ult);
+            document.getElementById('nom-anios').classList.toggle('hidden', !ult);
+            document.getElementById('nom-lista').classList.toggle('hidden', !ult);
+            if (!ult) return;
+            const anioDe = (d) => String(d.periodo_fin || d.periodo_inicio || '').slice(0, 4) || '—';
+            const firmado = (d) => d.estado === 'firmado';
+            document.getElementById('nom-ult-periodo').textContent = periodoNomina(ult.periodo_inicio, ult.periodo_fin);
+            document.getElementById('nom-ult-numero').textContent = ult.nomina_numero ? `Nómina N.º ${ult.nomina_numero}` : 'Desprendible de pago';
+            document.getElementById('nom-ult-estado').textContent = firmado(ult) ? '✔ Firmado' : '⏳ Por firmar';
+            const anios = [...new Set(lista.map(anioDe))].sort().reverse();
+            if (!anios.includes(nominaAnioMT)) nominaAnioMT = anios[0];
+            const enAnio = lista.filter(d => anioDe(d) === anios[0]).length;
+            document.getElementById('nom-ult-total-t').textContent = `En ${anios[0]}`;
+            document.getElementById('nom-ult-total').textContent = `${enAnio} desprendible${enAnio === 1 ? '' : 's'}`;
+            const boton = document.getElementById('nom-ult-boton');
+            boton.href = buildEnlaceDesprendible(ult.id);
+            boton.innerHTML = firmado(ult) ? '<i class="ph-bold ph-file-text"></i> Ver desprendible' : '<i class="ph-bold ph-pen-nib"></i> Revisar y firmar';
+            document.getElementById('nom-anios').innerHTML = anios.map(a => `<button type="button" data-anio="${escapeHtml(a)}" class="${a === nominaAnioMT ? 'on' : ''}">${escapeHtml(a)}</button>`).join('');
+            document.getElementById('nom-lista').innerHTML = lista.filter(d => anioDe(d) === nominaAnioMT).map(d => `
+                <a class="nom-fila" href="${buildEnlaceDesprendible(d.id)}">
+                    <span class="nom-ic"><i class="ph-fill ph-receipt"></i></span>
+                    <span class="min-w-0 flex-1"><b class="block text-sm text-slate-800">${escapeHtml(periodoNomina(d.periodo_inicio, d.periodo_fin))}</b>
+                    <span class="text-xs text-slate-500">${d.nomina_numero ? 'N.º ' + escapeHtml(d.nomina_numero) : 'Desprendible de pago'}</span></span>
+                    <span class="nom-chip ${firmado(d) ? 'ok' : 'pend'}">${firmado(d) ? 'Firmado' : 'Por firmar'}</span>
+                </a>`).join('');
+        }
+        document.getElementById('nom-anios').addEventListener('click', (e) => {
+            const b = e.target.closest('button[data-anio]');
+            if (!b) return;
+            nominaAnioMT = b.dataset.anio;
+            renderNominaColaborador();
+        });
+
         async function cargarMisDesprendibles() {
             const cont = document.getElementById('mis-desprendibles-lista');
             if (!cont) return;
@@ -12126,6 +12225,8 @@
                 const lista = [];
                 snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
                 lista.sort((a, b) => (b.creado_en || '').localeCompare(a.creado_en || ''));
+                misDesprendiblesCache = lista;
+                renderNominaColaborador();
 
                 if (lista.length === 0) {
                     document.getElementById('mis-desprendibles-card').classList.add('hidden');
@@ -12154,6 +12255,7 @@
 
 
         renderFirmantesInputs();
+        renderNominaColaborador();
         (() => {
             const fecha = document.getElementById('permiso-fecha');
             if (fecha) fecha.value = getTodayStr();
