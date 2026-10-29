@@ -205,6 +205,12 @@ try {
   await page.waitForTimeout(800);
   const d20 = await dia20();
   ok('    … y Aplicar guarda las horas nuevas y deja las extras "por aprobar"', d20.horas_extras_diurnas === 0 && d20.extras_estado === 'por_aprobar', JSON.stringify(d20));
+  // Sesión mantenida: el colaborador entró al inicio con la casilla "Mantener mi sesión" (marcada por defecto). Al volver
+  // a abrir la app con su sesión de Firebase todavía activa, entra directo a Mi Tarjeta sin buscar el nombre ni el PIN.
+  await page.addInitScript(() => { window.__AUTH_USER__ = { email: 'emp111@indimon-tiempo.app', uid: 'u1' }; });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1800);
+  ok('12. Con la sesión mantenida, al abrir la app entra directo a Mi Tarjeta', await page.isVisible('#view-tarjeta') && !(await page.isVisible('#view-identidad')));
   ok('11. Ningún error de JavaScript durante todo el recorrido', errores.length === 0, errores.join(' | '));
 } catch (e) {
   ok('La prueba de humo pudo terminar el recorrido', false, e.message.split('\n')[0]);
