@@ -139,6 +139,18 @@ try {
   const detalleDespues = await page.textContent('#mt-detalle');
   ok('3d. Si Admin cambia el horario de la obra, la tarjeta abierta se actualiza sola',
     detalleAntes.includes('Tu jornada') ? detalleDespues.includes('7:00 a. m.') && detalleDespues !== detalleAntes : true, `${detalleAntes} → ${detalleDespues}`);
+  // Admin corrige un día del colaborador (salida 18:30 → 17:00) con la tarjeta abierta: el historial se actualiza solo.
+  const histAntes = await page.textContent('#historial-lista');
+  await page.evaluate(() => {
+    window.__DB__['empleados/111/registros']['2026-10-21'].salida = '17:00';
+    (window.__OYENTES__ || []).forEach(f => f());
+  });
+  await page.waitForTimeout(1800);
+  const histDespues = await page.textContent('#historial-lista');
+  ok('3e. Si Admin corrige un registro, el historial de la tarjeta abierta se actualiza solo',
+    histAntes.includes('6:30 p. m.') ? !histDespues.includes('6:30 p. m.') && histDespues.includes('5:00 p. m.') : true, histDespues.slice(0, 200));
+  await page.evaluate(() => { window.__DB__['empleados/111/registros']['2026-10-21'].salida = '18:30'; (window.__OYENTES__ || []).forEach(f => f()); });
+  await page.waitForTimeout(1800);
   await page.click('#mt-extras');
   await page.waitForTimeout(300);
   ok('3c. Al tocar las extras se abre el detalle del mes', await page.isVisible('#hoja-extras') && /Extra diurna/.test(await page.textContent('#hoja-extras-tipo')));
