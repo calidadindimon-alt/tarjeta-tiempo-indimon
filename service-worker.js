@@ -12,7 +12,10 @@
 
 // IMPORTANTE: sube este número (v2 → v3 → ...) cada vez que cambies ALGO de este archivo.
 // Cambiar el nombre es lo que obliga al navegador a tratar esto como un service worker nuevo.
-const CACHE_NAME = 'indimon-estaticos-v4';
+const CACHE_NAME = 'indimon-estaticos-v5';
+
+// Cuánto se espera a internet para abrir la app antes de usar la copia guardada en el celular (ver 'fetch').
+const ESPERA_RED_MS = 3000;
 
 const HOSTS_A_CACHEAR = [
     'unpkg.com',
@@ -91,15 +94,40 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (req.mode === 'navigate') {
-        // El HTML de la app: "red primero", para que siempre se vea la versión más reciente si hay
-        // señal; si no hay señal, se sirve la última copia guardada.
-        event.respondWith(
-            fetch(req).then((resp) => {
-                const copia = resp.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(req, copia)).catch(() => {});
-                return resp;
-            }).catch(() => caches.match(req).then((r) => r || caches.match('./')))
-        );
+        // El HTML de la app: "red primero", para que siempre se vea la versión más reciente si hay señal.
+        // RENDIMIENTO (29/10): antes se esperaba a internet SIN límite. Con la señal débil de una obra, bajar el
+        // archivo de la app tomaba 5-10 s, y la pantalla quedaba en blanco aunque el celular ya tuviera una copia.
+        // Ahora, si en ESPERA_RED_MS no ha llegado, se abre con la copia guardada; la descarga sigue por detrás,
+        // queda guardada para la próxima vez y, si resultó ser una versión nueva, se le avisa a la página para que
+        // muestre el aviso "hay una versión nueva" (y se recargue sola al pasar a segundo plano).
+        // Sin copia guardada (la primera vez) se espera a internet como antes; sin señal, se usa la copia.
+        let llegoRed = false;
+        let usoCopia = false;
+        const red = fetch(req).then((resp) => {
+            llegoRed = true;
+            if (!resp.ok) return { resp };
+            const paraGuardar = resp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, paraGuardar)).catch(() => {});
+            return { resp, paraComparar: resp.clone() };
+        });
+        const guardada = caches.match(req).then((r) => r || caches.match('./'));
+
+        event.respondWith(guardada.then((copia) => {
+            if (!copia) return red.then((x) => x.resp);
+            const sinSenal = red.then((x) => x.resp, () => copia.clone());
+            const plazo = new Promise((resolve) => setTimeout(() => {
+                if (!llegoRed) { usoCopia = true; resolve(copia.clone()); }
+            }, ESPERA_RED_MS));
+            return Promise.race([sinSenal, plazo]);
+        }));
+
+        event.waitUntil(Promise.all([red, guardada]).then(async ([x, copia]) => {
+            if (!usoCopia || !copia || !x.paraComparar) return;
+            const [nuevo, viejo] = await Promise.all([x.paraComparar.text(), copia.text()]);
+            if (nuevo === viejo) return;
+            const pestana = await self.clients.get(event.resultingClientId || event.clientId);
+            if (pestana) pestana.postMessage({ tipo: 'nueva-version' });
+        }).catch(() => {}));
     }
 });
 
