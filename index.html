@@ -476,7 +476,7 @@
 
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 md:p-6 space-y-5">
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Nombre del Colaborador</label>
+                        <label for="login-nombre" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Nombre del Colaborador</label>
                         <input type="text" id="login-nombre" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-slate-900 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium" placeholder="Ej: CARLOS ANDRES...">
                         <datalist id="lista-empleados"></datalist>
                         <datalist id="lista-clientes"></datalist>
@@ -521,7 +521,7 @@
                         <div id="aviso-turno-ayer" class="hidden mt-olvido">
                             <p class="text-sm font-bold"><span id="salida-olvidada-titulo">No marcaste tu salida.</span></p>
                             <p id="salida-olvidada-detalle" class="text-[13px] mt-1">¿A qué hora saliste?</p>
-                            <label class="block text-[10px] font-bold uppercase tracking-wider mt-3 mb-1 mt-hero-suave">Hora en que saliste</label>
+                            <label for="salida-olvidada-hora" class="block text-[10px] font-bold uppercase tracking-wider mt-3 mb-1 mt-hero-suave">Hora en que saliste</label>
                             <input type="time" id="salida-olvidada-hora" class="mt-input-hora">
                             <p id="salida-olvidada-ayuda" class="text-[11px] mt-1 mt-hero-suave"></p>
                             <button id="btn-guardar-salida-olvidada" class="btn-touch mt-cta mt-cta-claro" style="color:#C91415"><i class="ph-bold ph-check"></i> Guardar salida</button>
@@ -618,7 +618,7 @@
                     <summary class="font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none"><i class="ph-fill ph-calendar-check text-indigo-500"></i> Mi historial</summary>
                     <div class="mt-3">
                     <div class="flex justify-end items-center mb-3">
-                        <input type="month" id="historial-mes" class="border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="month" id="historial-mes" aria-label="Mes del historial" class="border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div id="progreso-semanal" class="hidden mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 font-semibold"></div>
                     <div id="historial-lista" class="space-y-2">
@@ -633,10 +633,10 @@
                     <div class="mt-3">
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
                         <div class="flex justify-between items-center mb-3">
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <label for="input-sueldo" class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                                 <i class="ph-bold ph-wallet"></i> <span id="label-sueldo-tarifa">Tu Salario Base (Mensual)</span>
                             </label>
-                            <button id="btn-toggle-eye" class="text-slate-400 hover:text-blue-600 transition-colors p-1"><i class="ph-bold ph-eye-closed text-lg"></i></button>
+                            <button id="btn-toggle-eye" type="button" aria-label="Mostrar u ocultar los valores en pesos" title="Mostrar u ocultar los valores en pesos" class="text-slate-400 hover:text-blue-600 transition-colors p-1"><i class="ph-bold ph-eye-closed text-lg"></i></button>
                         </div>
 
                         <div class="flex gap-2">
@@ -775,19 +775,19 @@
                     </div>
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-3">
                     <div class="flex-1 min-w-[200px]">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por colaborador</label>
+                        <label for="filtro-colaborador" class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por colaborador</label>
                         <select id="filtro-colaborador" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="">Todos los colaboradores</option>
                         </select>
                     </div>
                     <div class="flex-1 min-w-[160px]">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por obra</label>
+                        <label for="filtro-obra" class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por obra</label>
                         <select id="filtro-obra" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="">Todas las obras</option>
                         </select>
                     </div>
                     <div class="min-w-[160px]">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Mes</label>
+                        <label for="filtro-mes" class="text-[10px] font-bold text-slate-500 uppercase">Mes</label>
                         <input type="month" id="filtro-mes" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <button id="btn-limpiar-filtros" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-lg text-xs font-bold">Limpiar filtros</button>
@@ -853,34 +853,34 @@
 
                     <div id="form-agregar-colaborador" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cédula</label>
+                            <label for="nuevo-colaborador-cedula" class="text-[10px] font-bold text-slate-500 uppercase">Cédula</label>
                             <input type="text" id="nuevo-colaborador-cedula" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Nombre completo</label>
+                            <label for="nuevo-colaborador-nombre" class="text-[10px] font-bold text-slate-500 uppercase">Nombre completo</label>
                             <input type="text" id="nuevo-colaborador-nombre" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: CARLOS ANDRES RIOS">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cargo</label>
+                            <label for="nuevo-colaborador-cargo" class="text-[10px] font-bold text-slate-500 uppercase">Cargo</label>
                             <input type="text" id="nuevo-colaborador-cargo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Ayudante de Obra">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tipo de vinculación</label>
+                            <label for="nuevo-colaborador-tipo" class="text-[10px] font-bold text-slate-500 uppercase">Tipo de vinculación</label>
                             <select id="nuevo-colaborador-tipo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="Planta">Planta (empleado directo)</option>
                                 <option value="Contratista">Contratista (externo)</option>
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Sueldo base mensual (Planta)</label>
+                            <label for="nuevo-colaborador-sueldo" class="text-[10px] font-bold text-slate-500 uppercase">Sueldo base mensual (Planta)</label>
                             <input type="number" id="nuevo-colaborador-sueldo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1750905">
                         </div>
                         <div class="hidden" id="wrap-nuevo-colaborador-tarifa">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tarifa por hora (Contratista)</label>
+                            <label for="nuevo-colaborador-tarifa" class="text-[10px] font-bold text-slate-500 uppercase">Tarifa por hora (Contratista)</label>
                             <input type="number" id="nuevo-colaborador-tarifa" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 12000">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Días de vacaciones disponibles</label>
+                            <label for="nuevo-colaborador-vacaciones" class="text-[10px] font-bold text-slate-500 uppercase">Días de vacaciones disponibles</label>
                             <input type="number" min="0" step="0.5" id="nuevo-colaborador-vacaciones" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 15">
                         </div>
                         <div class="md:col-span-2 flex gap-2">
@@ -910,19 +910,19 @@
 
                     <div id="form-agregar-incapacidad" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
                         <div class="md:col-span-2">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
+                            <label for="incapacidad-trabajador" class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
                             <input type="text" id="incapacidad-trabajador" list="lista-empleados" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Nombre del colaborador">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha de inicio</label>
+                            <label for="incapacidad-fecha-inicio" class="text-[10px] font-bold text-slate-500 uppercase">Fecha de inicio</label>
                             <input type="date" id="incapacidad-fecha-inicio" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha de fin</label>
+                            <label for="incapacidad-fecha-fin" class="text-[10px] font-bold text-slate-500 uppercase">Fecha de fin</label>
                             <input type="date" id="incapacidad-fecha-fin" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tipo</label>
+                            <label for="incapacidad-tipo" class="text-[10px] font-bold text-slate-500 uppercase">Tipo</label>
                             <select id="incapacidad-tipo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
                                 <option value="Enfermedad General">Enfermedad General (EPS)</option>
                                 <option value="Laboral / ARL">Laboral / ARL (accidente o enfermedad de trabajo)</option>
@@ -932,11 +932,11 @@
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Correo del supervisor directo (opcional)</label>
+                            <label for="incapacidad-correo-supervisor" class="text-[10px] font-bold text-slate-500 uppercase">Correo del supervisor directo (opcional)</label>
                             <input type="email" id="incapacidad-correo-supervisor" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="supervisor@indimon.com">
                         </div>
                         <div class="md:col-span-2">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Diagnóstico / Nota (opcional, confidencial)</label>
+                            <label for="incapacidad-diagnostico" class="text-[10px] font-bold text-slate-500 uppercase">Diagnóstico / Nota (opcional, confidencial)</label>
                             <input type="text" id="incapacidad-diagnostico" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Solo si es necesario para el trámite">
                         </div>
                         <div class="md:col-span-2 flex gap-2">
@@ -968,39 +968,39 @@
                     </h3>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha</label>
+                            <label for="manual-fecha" class="text-[10px] font-bold text-slate-500 uppercase">Fecha</label>
                             <input type="date" id="manual-fecha" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
+                            <label for="manual-empleado" class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
                             <select id="manual-empleado" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"></select>
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
+                            <label for="manual-cliente" class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
                             <input type="text" id="manual-cliente" list="lista-clientes" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: INDIMON">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
+                            <label for="manual-obra" class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
                             <input type="text" id="manual-obra" list="lista-obras" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: MYKW">
                         </div>
                         <div class="col-span-2 md:col-span-2">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Autoriza (Modificable)</label>
+                            <label for="manual-autoriza" class="text-[10px] font-bold text-slate-500 uppercase">Autoriza (Modificable)</label>
                             <input type="text" id="manual-autoriza" list="lista-supervisores" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: JLAF">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Entrada (24h)</label>
+                            <label for="manual-entrada" class="text-[10px] font-bold text-slate-500 uppercase">Entrada (24h)</label>
                             <input type="time" id="manual-entrada" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Salida (24h)</label>
+                            <label for="manual-salida" class="text-[10px] font-bold text-slate-500 uppercase">Salida (24h)</label>
                             <input type="time" id="manual-salida" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio (opcional)</label>
+                            <label for="manual-almuerzo-inicio" class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio (opcional)</label>
                             <input type="time" id="manual-almuerzo-inicio" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin (opcional)</label>
+                            <label for="manual-almuerzo-fin" class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin (opcional)</label>
                             <input type="time" id="manual-almuerzo-fin" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                     </div>
@@ -1017,7 +1017,7 @@
 
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 bg-violet-50/50 p-3 rounded-lg border border-violet-100">
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-violet-700 uppercase">Tipo de permiso (opcional)</label>
+                            <label for="manual-tipo-permiso" class="text-[10px] font-bold text-violet-700 uppercase">Tipo de permiso (opcional)</label>
                             <select id="manual-tipo-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none">
                                 <option value="">Ninguno</option>
                                 <option value="Cita médica">Cita médica (urgencia o especialista)</option>
@@ -1031,11 +1031,11 @@
                             </select>
                         </div>
                         <div class="col-span-1">
-                            <label class="text-[10px] font-bold text-violet-700 uppercase">Horas de permiso</label>
+                            <label for="manual-horas-permiso" class="text-[10px] font-bold text-violet-700 uppercase">Horas de permiso</label>
                             <input type="number" step="0.5" min="0" max="12" id="manual-horas-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none" placeholder="Ej: 2">
                         </div>
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-violet-700 uppercase">Nota (opcional)</label>
+                            <label for="manual-nota-permiso" class="text-[10px] font-bold text-violet-700 uppercase">Nota (opcional)</label>
                             <input type="text" id="manual-nota-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none" placeholder="Ej: Cita EPS 2pm">
                         </div>
                     </div>
@@ -1050,11 +1050,11 @@
                     <p class="text-[11px] text-amber-800 mb-3">Vuelve a calcular las horas ordinarias/extra de días ya guardados de una semana completa (útil después de un ajuste en la fórmula). No borra nada, solo actualiza los números.</p>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-amber-700 uppercase">Colaborador</label>
+                            <label for="recalc-empleado" class="text-[10px] font-bold text-amber-700 uppercase">Colaborador</label>
                             <select id="recalc-empleado" class="w-full border border-amber-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 outline-none"></select>
                         </div>
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-amber-700 uppercase">Cualquier fecha de esa semana</label>
+                            <label for="recalc-fecha" class="text-[10px] font-bold text-amber-700 uppercase">Cualquier fecha de esa semana</label>
                             <input type="date" id="recalc-fecha" class="w-full border border-amber-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 outline-none">
                         </div>
                     </div>
@@ -1114,38 +1114,38 @@
                 <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                     <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm"><i class="ph-fill ph-envelope-simple text-blue-500 text-lg"></i> Correos y límites</h3>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alertas de tardanza</label>
+                        <label for="input-email-alertas" class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alertas de tardanza</label>
                         <input type="text" id="input-email-alertas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="admin@indimon.com; otro@indimon.com">
                         <button id="btn-save-email-alertas" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
                     <p class="text-[10px] text-slate-400 -mt-1">Si son varios correos, sepáralos con punto y coma ( ; ).</p>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alerta de ausencia injustificada</label>
+                        <label for="input-email-alerta-ausencia" class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alerta de ausencia injustificada</label>
                         <input type="text" id="input-email-alerta-ausencia" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="analistagh@indimon.com.co; ana.bohorquez@indimon.com.co">
                         <button id="btn-save-email-alerta-ausencia" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
                     <p class="text-[10px] text-slate-400 -mt-1">Se envía cuando se registra una Ausencia injustificada desde "Cargar Días Anteriores". Si son varios correos, sepáralos con punto y coma ( ; ).</p>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo de RRHH (notificación de permisos)</label>
+                        <label for="input-email-rrhh" class="text-[10px] font-bold text-slate-500 uppercase">Correo de RRHH (notificación de permisos)</label>
                         <input type="email" id="input-email-rrhh" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="rrhh@indimon.com">
                     </div>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo Coordinador de Proyectos (notificación de permisos)</label>
+                        <label for="input-email-coordinador" class="text-[10px] font-bold text-slate-500 uppercase">Correo Coordinador de Proyectos (notificación de permisos)</label>
                         <input type="email" id="input-email-coordinador" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="coordinador@indimon.com">
                         <button id="btn-save-emails-permisos" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Días para vencer un permiso pendiente</label>
+                        <label for="input-dias-vencimiento" class="text-[10px] font-bold text-slate-500 uppercase">Días para vencer un permiso pendiente</label>
                         <input type="number" min="1" id="input-dias-vencimiento" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="5">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Límite del mismo tipo de permiso al mes</label>
+                        <label for="input-limite-permisos" class="text-[10px] font-bold text-slate-500 uppercase ml-2">Límite del mismo tipo de permiso al mes</label>
                         <input type="number" min="1" id="input-limite-permisos" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Tardanzas/mes para alertar</label>
+                        <label for="input-limite-tardanzas" class="text-[10px] font-bold text-slate-500 uppercase ml-2">Tardanzas/mes para alertar</label>
                         <input type="number" min="1" id="input-limite-tardanzas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Bloqueos de GPS/mes para alertar</label>
+                        <label for="input-limite-gps-bloqueado" class="text-[10px] font-bold text-slate-500 uppercase ml-2">Bloqueos de GPS/mes para alertar</label>
                         <input type="number" min="1" id="input-limite-gps-bloqueado" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">% de veces que se pide foto al fichar</label>
+                        <label for="input-probabilidad-selfie" class="text-[10px] font-bold text-slate-500 uppercase ml-2">% de veces que se pide foto al fichar</label>
                         <input type="number" min="0" max="100" id="input-probabilidad-selfie" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="33">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Radio de geocerca por defecto (m)</label>
+                        <label for="input-radio-geocerca" class="text-[10px] font-bold text-slate-500 uppercase ml-2">Radio de geocerca por defecto (m)</label>
                         <input type="number" min="1" id="input-radio-geocerca" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="500">
                         <button id="btn-save-config-permisos" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
@@ -1202,11 +1202,11 @@
                         <h3 class="pm-paso"><span>1</span> ¿Para quién es el permiso?</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Trabajador</label>
+                                <label for="permiso-trabajador" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Trabajador</label>
                                 <input type="text" id="permiso-trabajador" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre del colaborador">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre (quien crea esta solicitud)</label>
+                                <label for="permiso-creado-por" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre (quien crea esta solicitud)</label>
                                 <input type="text" id="permiso-creado-por" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Supervisor que la registra">
                             </div>
                         </div>
@@ -1219,7 +1219,7 @@
                         <div id="permiso-tipos" class="space-y-3"></div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                             <div class="hidden">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tipo de Permiso</label>
+                                <label for="permiso-tipo" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tipo de Permiso</label>
                                 <select id="permiso-tipo" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                                     <option value="">Selecciona...</option>
                                     <optgroup label="Remunerados por ley (no se descuentan ni se reponen)">
@@ -1248,11 +1248,11 @@
                                 <p id="permiso-clasif-info" class="text-xs font-semibold rounded-lg p-3 leading-relaxed border"></p>
                                 <p id="permiso-soporte-recordatorio" class="hidden text-xs font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded-lg p-3 leading-relaxed"></p>
                                 <div id="wrap-permiso-compensacion" class="hidden">
-                                    <label id="label-permiso-compensacion" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">¿Cómo se maneja?</label>
+                                    <label for="permiso-compensacion" id="label-permiso-compensacion" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">¿Cómo se maneja?</label>
                                     <select id="permiso-compensacion" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none"></select>
                                 </div>
                                 <div id="wrap-permiso-sustento" class="hidden">
-                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Artículo o numeral del Reglamento Interno de Trabajo <span class="text-rose-500">*</span></label>
+                                    <label for="permiso-sustento" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Artículo o numeral del Reglamento Interno de Trabajo <span class="text-rose-500">*</span></label>
                                     <input type="text" id="permiso-sustento" maxlength="120" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Art. 32, numeral 4">
                                 </div>
                                 <label id="wrap-permiso-acuerdo" class="hidden flex items-start gap-2 bg-slate-50 border border-slate-300 rounded-lg p-3">
@@ -1267,7 +1267,7 @@
                         <h3 class="pm-paso"><span>3</span> ¿Cuándo?</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Fecha del Permiso</label>
+                                <label for="permiso-fecha" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Fecha del Permiso</label>
                                 <input type="date" id="permiso-fecha" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <!-- Hora de salida y de regreso: OBLIGATORIAS en permisos por horas. Con la hora de salida se
@@ -1275,30 +1275,30 @@
                                  se calculan solas las horas del permiso; además las piden los formatos oficiales GH-F-011. -->
                             <div id="wrap-permiso-horario" class="grid grid-cols-2 gap-3 md:col-span-2">
                                 <div>
-                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de salida <span class="text-rose-500">*</span></label>
+                                    <label for="permiso-hora-salida" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de salida <span class="text-rose-500">*</span></label>
                                     <input type="time" id="permiso-hora-salida" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de regreso <span class="text-rose-500">*</span></label>
+                                    <label for="permiso-hora-entrada" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de regreso <span class="text-rose-500">*</span></label>
                                     <input type="time" id="permiso-hora-entrada" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                                 </div>
                                 <p id="permiso-horario-error" class="hidden col-span-2 text-[11px] font-bold text-rose-600"></p>
                             </div>
                             <div id="wrap-permiso-horas">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Horas Solicitadas <span class="text-slate-400 normal-case font-medium">(se calculan solas)</span></label>
+                                <label for="permiso-horas" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Horas Solicitadas <span class="text-slate-400 normal-case font-medium">(se calculan solas)</span></label>
                                 <input type="number" id="permiso-horas" readonly tabindex="-1" class="w-full bg-slate-100 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold outline-none" placeholder="Con la salida y el regreso">
                             </div>
                             <div id="wrap-permiso-dias-vacaciones" class="hidden">
-                                <label id="label-permiso-dias" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Días de Vacaciones Solicitados</label>
+                                <label for="permiso-dias-vacaciones" id="label-permiso-dias" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Días de Vacaciones Solicitados</label>
                                 <input type="number" id="permiso-dias-vacaciones" min="0.5" step="0.5" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 5">
                                 <p id="permiso-saldo-vacaciones-info" class="text-[10px] text-slate-400 mt-1"></p>
                             </div>
                             <div id="wrap-permiso-fecha-fin" class="hidden">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Último día de ausencia <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
+                                <label for="permiso-fecha-fin" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Último día de ausencia <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
                                 <input type="date" id="permiso-fecha-fin" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Motivo / Nota</label>
+                                <label for="permiso-nota" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Motivo / Nota</label>
                                 <textarea id="permiso-nota" rows="2" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Describe brevemente el motivo del permiso"></textarea>
                             </div>
                             <div class="md:col-span-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -1358,7 +1358,7 @@
                                 <p class="text-sm font-bold">Verifica tu identidad para poder firmar</p>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
+                                <label for="firmar-verificacion-input" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
                                 <input type="text" inputmode="numeric" maxlength="15" id="firmar-verificacion-input" class="w-full bg-slate-50 border border-slate-300 text-lg rounded-lg p-2.5 font-mono font-bold tracking-[0.15em] text-center focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
                             </div>
                             <p id="firmar-verificacion-error" class="hidden text-[11px] font-bold text-rose-600">La cédula no coincide. Verifica e inténtalo de nuevo.</p>
@@ -1367,7 +1367,7 @@
 
                         <div id="firmar-pendiente-box" class="hidden bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-sm flex flex-col gap-3">
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
+                                <label for="firmar-nombre-input" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
                                 <input type="text" id="firmar-nombre-input" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden">
@@ -1519,7 +1519,7 @@
                                 <p class="text-sm font-bold">Verifica tu identidad para poder firmar</p>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
+                                <label for="desp-verificacion-input" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
                                 <input type="text" inputmode="numeric" maxlength="15" id="desp-verificacion-input" class="w-full bg-slate-50 border border-slate-300 text-lg rounded-lg p-2.5 font-mono font-bold tracking-[0.15em] text-center focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
                             </div>
                             <p id="desp-verificacion-error" class="hidden text-[11px] font-bold text-rose-600">La cédula no coincide. Verifica e inténtalo de nuevo.</p>
@@ -1534,7 +1534,7 @@
                                 </label>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
+                                <label for="desp-firmar-nombre-input" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
                                 <input type="text" id="desp-firmar-nombre-input" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden">
@@ -1580,24 +1580,24 @@
                         <p class="text-xs text-slate-500 mb-4">El archivo del desprendible (PDF o foto) debe estar subido a Google Drive u otro lugar donde ya lo tengan — aquí solo se pega el enlace para compartirlo, no se sube el archivo directamente.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Colaborador</label>
+                                <label for="desp-trabajador" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Colaborador</label>
                                 <input type="text" id="desp-trabajador" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre del colaborador">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">N° de Nómina (opcional)</label>
+                                <label for="desp-nomina-numero" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">N° de Nómina (opcional)</label>
                                 <input type="text" id="desp-nomina-numero" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 842">
                             </div>
                             <div></div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Desde</label>
+                                <label for="desp-periodo-inicio" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Desde</label>
                                 <input type="date" id="desp-periodo-inicio" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Hasta</label>
+                                <label for="desp-periodo-fin" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Hasta</label>
                                 <input type="date" id="desp-periodo-fin" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Enlace al documento (Google Drive u otro)</label>
+                                <label for="desp-enlace-documento" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Enlace al documento (Google Drive u otro)</label>
                                 <input type="url" id="desp-enlace-documento" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://drive.google.com/...">
                                 <p class="text-[10px] text-slate-400 mt-1">En Google Drive: clic derecho en el archivo → Compartir → \"Cualquiera con el enlace\" → Copiar enlace.</p>
                             </div>
@@ -1833,34 +1833,34 @@
 
             <div class="space-y-3">
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
+                    <label for="editar-registro-obra" class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
                     <input type="text" id="editar-registro-obra" list="lista-obras" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm uppercase focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div class="space-y-3">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
+                        <label for="editar-registro-cliente" class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
                         <input type="text" id="editar-registro-cliente" list="lista-clientes" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm uppercase focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Autoriza</label>
+                        <label for="editar-registro-autoriza" class="text-[10px] font-bold text-slate-500 uppercase">Autoriza</label>
                         <input type="text" id="editar-registro-autoriza" list="lista-supervisores" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm uppercase focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label>
+                    <label for="editar-registro-entrada" class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label>
                     <input type="time" id="editar-registro-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Salida</label>
+                    <label for="editar-registro-salida" class="text-[10px] font-bold text-slate-500 uppercase">Salida</label>
                     <input type="time" id="editar-registro-salida" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio</label>
+                        <label for="editar-registro-almuerzo-inicio" class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio</label>
                         <input type="time" id="editar-registro-almuerzo-inicio" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin</label>
+                        <label for="editar-registro-almuerzo-fin" class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin</label>
                         <input type="time" id="editar-registro-almuerzo-fin" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
@@ -1932,10 +1932,10 @@
                 <p id="autoriza-extras-titulo" class="font-bold">Hoy tienes horas extra.</p>
                 <p class="mt-1">¿Quién autorizó estas horas extra?</p>
             </div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mt-3 mb-1">Autorizó</label>
+            <label for="autoriza-extras-quien" class="block text-[10px] font-bold text-slate-500 uppercase mt-3 mb-1">Autorizó</label>
             <input type="text" id="autoriza-extras-quien" list="lista-supervisores" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: JLAF">
             <p class="text-[11px] text-slate-500 mt-1">Viene con quien autorizó tu turno al entrar. Si fue otra persona, cámbialo.</p>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mt-3 mb-1">Motivo (opcional)</label>
+            <label for="autoriza-extras-motivo" class="block text-[10px] font-bold text-slate-500 uppercase mt-3 mb-1">Motivo (opcional)</label>
             <input type="text" id="autoriza-extras-motivo" maxlength="120" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: terminar montaje de tubería">
             <p class="text-[11px] text-slate-500 mt-2">RRHH revisa y aprueba las horas extra cada semana.</p>
             <button id="btn-autoriza-extras-ok" class="btn-touch w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 rounded-xl shadow-md mt-3">Finalizar jornada</button>
@@ -1975,25 +1975,25 @@
             </div>
             <div id="horarios-obra-vista-form" class="hidden">
                 <h3 class="text-lg font-bold text-slate-800 mb-3">Horario de la obra</h3>
-                <label class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
+                <label for="horario-obra-nombre" class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
                 <select id="horario-obra-nombre" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm mb-3 focus:ring-2 focus:ring-blue-500 outline-none"></select>
                 <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Lunes a viernes</p>
                 <div class="grid grid-cols-3 gap-2 mb-2">
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label><input type="time" id="horario-obra-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salida L–J</label><input type="time" id="horario-obra-salida-lj" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salida viernes</label><input type="time" id="horario-obra-salida-v" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                    <div><label for="horario-obra-entrada" class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label><input type="time" id="horario-obra-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                    <div><label for="horario-obra-salida-lj" class="text-[10px] font-bold text-slate-500 uppercase">Salida L–J</label><input type="time" id="horario-obra-salida-lj" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                    <div><label for="horario-obra-salida-v" class="text-[10px] font-bold text-slate-500 uppercase">Salida viernes</label><input type="time" id="horario-obra-salida-v" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
                 </div>
                 <label class="flex items-center gap-2 text-sm text-slate-700 mb-2"><input type="checkbox" id="horario-obra-almuerzo" class="w-4 h-4 rounded border-slate-300"> Almuerzo de 1 hora (lunes a viernes)</label>
                 <div id="horario-obra-almuerzo-hora-campo" class="mb-3">
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Hora del almuerzo</label>
+                    <label for="horario-obra-almuerzo-hora" class="text-[10px] font-bold text-slate-500 uppercase">Hora del almuerzo</label>
                     <input type="time" id="horario-obra-almuerzo-hora" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     <p class="text-[11px] text-slate-500 mt-1">Solo para el recordatorio al celular: llega antes de esta hora. No cambia el cálculo de horas.</p>
                 </div>
                 <label class="flex items-center gap-2 text-sm text-slate-700 mb-2"><input type="checkbox" id="horario-obra-sabado" class="w-4 h-4 rounded border-slate-300"> Se trabaja el sábado como parte de la jornada</label>
                 <div id="horario-obra-sabado-campos" class="hidden mb-2">
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Entrada sábado</label><input type="time" id="horario-obra-sab-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salida sábado</label><input type="time" id="horario-obra-sab-salida" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                        <div><label for="horario-obra-sab-entrada" class="text-[10px] font-bold text-slate-500 uppercase">Entrada sábado</label><input type="time" id="horario-obra-sab-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                        <div><label for="horario-obra-sab-salida" class="text-[10px] font-bold text-slate-500 uppercase">Salida sábado</label><input type="time" id="horario-obra-sab-salida" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
                     </div>
                     <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" id="horario-obra-sab-almuerzo" class="w-4 h-4 rounded border-slate-300"> Almuerzo de 1 hora el sábado</label>
                 </div>
@@ -2426,7 +2426,11 @@
                 visible.placeholder = 'HH:MM';
                 visible.autocomplete = 'off';
                 visible.className = real.className + ' hora24-texto';
-                visible.setAttribute('aria-label', 'Hora en formato 24 horas, por ejemplo 17:30');
+                // La etiqueta del campo (p. ej. "Entrada") pasa al campo visible: así el lector de pantalla dice qué hora
+                // se pide y tocar la etiqueta pone el cursor en el campo que sí se ve.
+                const etiqueta = real.id ? document.querySelector(`label[for="${real.id}"]`) : null;
+                if (etiqueta) { visible.id = real.id + '-texto'; etiqueta.htmlFor = visible.id; }
+                visible.setAttribute('aria-label', `${etiqueta ? etiqueta.textContent.replace(/\s+/g, ' ').trim() + ': ' : ''}hora en formato 24 horas, por ejemplo 17:30`);
                 visible.value = descValue.get.call(real) || '';
                 real._hora24 = visible; visible._real = real;
                 const envoltura = document.createElement('div');
@@ -8936,7 +8940,7 @@
         // -normalmente Admin revisando fichajes- escalando de cuenta de empleado a sesión de Admin.
         window.verFotoCompleta = (dataUrl) => {
             const w = window.open('', '_blank');
-            if (w) w.document.write(`<title>Foto de verificación</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${escHtml(dataUrl)}" style="max-width:100%;max-height:100vh"></body>`);
+            if (w) w.document.write(`<title>Foto de verificación</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${escHtml(dataUrl)}" alt="Foto de verificación" style="max-width:100%;max-height:100vh"></body>`);
         };
 
         // BUG CORREGIDO: fotoBtn() interpolaba el data:URL de la foto directo dentro de un atributo
@@ -9042,7 +9046,7 @@
                     if (!foto) return '';
                     const fotoId = `${idBase}-${sufijo}`;
                     fotosPorFila.set(fotoId, foto);
-                    return `<img src="${escHtml(foto)}" data-foto-id="${escHtml(fotoId)}" class="w-6 h-6 rounded-full object-cover border border-slate-300 cursor-pointer flex-shrink-0" title="Ver foto de verificación en tamaño completo">`;
+                    return `<img src="${escHtml(foto)}" alt="Foto de verificación" data-foto-id="${escHtml(fotoId)}" class="w-6 h-6 rounded-full object-cover border border-slate-300 cursor-pointer flex-shrink-0" title="Ver foto de verificación en tamaño completo">`;
                 };
                 // MEJORA (14/10, sugerida por el usuario): la fila era muy alta -cliente/obra/auth
                 // apilados en 3 líneas, horario y liquidación con varias insignias cada una en bloques
@@ -9055,7 +9059,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-2 border-b border-slate-100">
-                        <input type="checkbox" data-clave="${escHtml(claveFila)}" class="chk-fila-registro w-4 h-4 rounded border-slate-300 cursor-pointer" ${seleccionRegistros.has(claveFila) ? 'checked' : ''}>
+                        <input type="checkbox" data-clave="${escHtml(claveFila)}" aria-label="Seleccionar el registro de ${escHtml(r.empleado_nombre || r.cedula)} del ${escHtml(r.fecha)}" class="chk-fila-registro w-4 h-4 rounded border-slate-300 cursor-pointer" ${seleccionRegistros.has(claveFila) ? 'checked' : ''}>
                     </td>
                     <td class="p-2 border-b border-slate-100">
                         <div class="font-mono font-bold text-slate-700 text-xs">${escHtml(r.fecha)} ${r.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
@@ -11507,7 +11511,7 @@
                                     <p class="text-[9px] font-bold text-slate-500 uppercase">${s.label}</p>
                                     <p class="text-[10px] font-semibold text-slate-700 mb-1 truncate">${escapeHtml(f?.nombre) || '—'}</p>
                                     ${f?.firmado
-                                        ? `<img src="${escapeHtml(f.firma)}" class="w-full h-12 object-contain firma-img rounded border border-slate-200">`
+                                        ? `<img src="${escapeHtml(f.firma)}" alt="Firma de ${escapeHtml(f.nombre) || escapeHtml(s.label)}" class="w-full h-12 object-contain firma-img rounded border border-slate-200">`
                                         : `<div class="flex gap-1">
                                              <button class="btn-copy-link-hist btn-touch flex-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar</button>
                                              <a href="https://wa.me/?text=${waTexto}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="btn-touch flex-1 text-center text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded py-1.5"><i class="ph-bold ph-whatsapp-logo"></i> Recordar</a>
@@ -12262,7 +12266,7 @@
                     <div id="detalle-desp-${escHtml(d.id)}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
                         <a href="${escapeHtml(sanitizeUrl(d.enlace_documento))}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 underline flex items-center gap-1"><i class="ph-bold ph-file-text"></i> Ver documento original</a>
                         ${firmado
-                            ? `<img src="${escapeHtml(d.firma)}" class="w-full h-16 object-contain firma-img rounded border border-slate-200 mt-1">
+                            ? `<img src="${escapeHtml(d.firma)}" alt="Firma de ${escapeHtml(d.firmado_por || d.trabajador)}" class="w-full h-16 object-contain firma-img rounded border border-slate-200 mt-1">
                                <p class="text-[10px] text-slate-500">Firmado por ${escapeHtml(d.firmado_por) || escapeHtml(d.trabajador)} el ${d.firmado_en ? new Date(d.firmado_en).toLocaleString('es-CO') : ''}</p>`
                             : `<button class="btn-copy-link-desp-hist btn-touch w-full text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar enlace de firma</button>`
                         }
