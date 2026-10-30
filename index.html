@@ -11198,9 +11198,19 @@
         // se cargaban en el <head> para todos, bloqueando la pantalla de inicio — en un celular sencillo con mala señal
         // eran varios segundos de espera por algo que el colaborador casi nunca usa. jsDelivr sirve directo desde npm y
         // nunca borra versiones publicadas (cdnjs sí retiró una vez el archivo de Chart.js y rompió "Informe PDF").
-        const URL_JSPDF = 'https://cdn.jsdelivr.net/npm/jspdf@2/dist/jspdf.umd.min.js';
-        const URL_CHARTJS = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+        const URL_JSPDF = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+        const URL_CHARTJS = 'https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js';
         const URL_SHEETJS = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        // SEGURIDAD (auditoría 30/10): versión exacta + huella SRI de cada archivo (sacada del paquete oficial de npm).
+        // Si el archivo del CDN llegara alterado, el navegador no lo ejecuta y el botón muestra el error de siempre
+        // ("no se pudo descargar…"). Para actualizar una librería: cambia la versión en la URL y vuelve a calcular su
+        // huella:  openssl dgst -sha384 -binary archivo.min.js | openssl base64 -A
+        const INTEGRIDAD_LIBRERIAS = {
+            [URL_EXCELJS]: 'sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz',
+            [URL_JSPDF]: 'sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/',
+            [URL_CHARTJS]: 'sha384-Emf5ZVIUiarAdhkgtqK+5/Z5qIvM6QoVrS+qAVtfyZVuD5lIHrac0me485+Antp0',
+            [URL_SHEETJS]: 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw'
+        };
         const librerias = {};
         function cargarLibreria(url, nombreGlobal, nombreVisible) {
             if (window[nombreGlobal]) return Promise.resolve(window[nombreGlobal]);
@@ -11209,6 +11219,7 @@
                     const s = document.createElement('script');
                     s.src = url;
                     s.async = true;
+                    if (INTEGRIDAD_LIBRERIAS[url]) { s.integrity = INTEGRIDAD_LIBRERIAS[url]; s.crossOrigin = 'anonymous'; }
                     s.onload = () => (window[nombreGlobal] ? resolve(window[nombreGlobal]) : reject(new Error(`${nombreVisible} no quedó disponible`)));
                     s.onerror = () => reject(new Error(`No se pudo descargar ${nombreVisible} (revisa la conexión)`));
                     document.head.appendChild(s);
