@@ -2,6 +2,13 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <!-- SEGURIDAD (auditoría 30/10): GitHub Pages no deja configurar encabezados, así que la política de seguridad
+         va aquí. Por ahora solo lo que no puede romper nada: sin plugins incrustados (object), nadie cambia la dirección
+         base de los enlaces (base), los formularios solo envían a la propia app y todo se pide por HTTPS.
+         TODO (auditoría): una política completa (script-src/connect-src con la lista exacta de Firebase, reCAPTCHA,
+         EmailJS, jsDelivr y Google Fonts) bloquearía scripts de terceros, pero hay que probarla en producción antes. -->
+    <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SSTA - Tarjeta de Tiempo Digital</title>
     <meta name="description" content="Tarjeta de tiempo de INDIMON S.A.S.: los colaboradores marcan entrada, almuerzo y salida desde el celular, y piden permisos.">
