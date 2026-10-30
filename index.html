@@ -9403,6 +9403,15 @@
             if ((almuerzoInicio && !almuerzoFin) || (!almuerzoInicio && almuerzoFin)) {
                 return UI.showAlert("Almuerzo incompleto", "Si pones hora de inicio de almuerzo, también pon la de fin (o deja las dos vacías).", "error");
             }
+            // Misma regla que el Registro manual (más arriba): se mide la duración real del almuerzo, también si cruza la
+            // medianoche en un turno de noche, y solo se rechaza lo que no tiene sentido (cero o más de 4 horas).
+            if (almuerzoInicio && almuerzoFin) {
+                let durAlmMin = (timeStrToFloat(almuerzoFin) - timeStrToFloat(almuerzoInicio)) * 60;
+                if (durAlmMin < 0) durAlmMin += 24 * 60;
+                if (durAlmMin <= 0 || durAlmMin > 4 * 60) {
+                    return UI.showAlert("Horario de almuerzo inválido", `Con inicio ${almuerzoInicio} y fin ${almuerzoFin}, el almuerzo duraría ${(durAlmMin / 60).toFixed(1)} horas. Revisa que el fin sea posterior al inicio y que no pase de 4 horas.`, "error");
+                }
+            }
 
             const btn = document.getElementById('btn-editar-registro-guardar');
             const originalHTML = btn.innerHTML;
