@@ -2,8 +2,28 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <!-- SEGURIDAD (auditoría 30/10): GitHub Pages no deja configurar encabezados, así que la política de seguridad
+         va aquí. Por ahora solo lo que no puede romper nada: sin plugins incrustados (object), nadie cambia la dirección
+         base de los enlaces (base), los formularios solo envían a la propia app y todo se pide por HTTPS.
+         TODO (auditoría): una política completa (script-src/connect-src con la lista exacta de Firebase, reCAPTCHA,
+         EmailJS, jsDelivr y Google Fonts) bloquearía scripts de terceros, pero hay que probarla en producción antes. -->
+    <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SSTA - Tarjeta de Tiempo Digital</title>
+    <meta name="description" content="Tarjeta de tiempo de INDIMON S.A.S.: los colaboradores marcan entrada, almuerzo y salida desde el celular, y piden permisos.">
+    <!-- App interna de la empresa: que Google no la muestre en sus resultados (el enlace se comparte directo). -->
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="https://calidadindimon-alt.github.io/tarjeta-tiempo-indimon/">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png?v=2">
+    <!-- Vista previa al compartir el enlace (WhatsApp, correo…). La imagen va con dirección completa porque así lo exigen. -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="INDIMON S.A.S.">
+    <meta property="og:title" content="Tarjeta de Tiempo INDIMON">
+    <meta property="og:description" content="Marca tu entrada, almuerzo y salida, y pide permisos desde el celular.">
+    <meta property="og:url" content="https://calidadindimon-alt.github.io/tarjeta-tiempo-indimon/">
+    <meta property="og:image" content="https://calidadindimon-alt.github.io/tarjeta-tiempo-indimon/icon-512.png">
+    <meta property="og:locale" content="es_CO">
 
     <!-- PWA: permite instalar la app en la pantalla de inicio del celular (Android e iPhone), con
          ícono propio y sin la barra de direcciones del navegador (display: standalone). El
@@ -26,7 +46,7 @@
          IMPORTANTE: si agregas o cambias clases de Tailwind en el HTML/JS (p. ej. "bg-teal-50"), hay que
          regenerar este bloque con:   node scripts/regenerar-tailwind.mjs
          (una prueba en GitHub Actions avisa si se olvida: node scripts/regenerar-tailwind.mjs --check) -->
-    <style id="tailwind-compiled">*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.visible{visibility:visible}.invisible{visibility:hidden}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0}.bottom-0{bottom:0}.left-0{left:0}.left-2{left:.5rem}.left-3{left:.75rem}.right-2{right:.5rem}.top-0{top:0}.top-1\/2{top:50%}.z-40{z-index:40}.z-50{z-index:50}.col-span-1{grid-column:span 1/span 1}.col-span-2{grid-column:span 2/span 2}.mx-1{margin-left:.25rem;margin-right:.25rem}.mx-auto{margin-left:auto;margin-right:auto}.my-2{margin-top:.5rem;margin-bottom:.5rem}.my-3{margin-top:.75rem;margin-bottom:.75rem}.-mt-1{margin-top:-.25rem}.-mt-6{margin-top:-1.5rem}.mb-1{margin-bottom:.25rem}.mb-1\.5{margin-bottom:.375rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.ml-1{margin-left:.25rem}.ml-2{margin-left:.5rem}.ml-auto{margin-left:auto}.mr-1{margin-right:.25rem}.mr-auto{margin-right:auto}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-1\.5{margin-top:.375rem}.mt-2{margin-top:.5rem}.mt-2\.5{margin-top:.625rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.block{display:block}.inline-block{display:inline-block}.inline{display:inline}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.contents{display:contents}.hidden{display:none}.aspect-square{aspect-ratio:1/1}.h-1\.5{height:.375rem}.h-10{height:2.5rem}.h-12{height:3rem}.h-14{height:3.5rem}.h-16{height:4rem}.h-2{height:.5rem}.h-4{height:1rem}.h-5{height:1.25rem}.h-6{height:1.5rem}.h-7{height:1.75rem}.h-9{height:2.25rem}.h-full{height:100%}.max-h-80{max-height:20rem}.max-h-96{max-height:24rem}.max-h-\[90vh\]{max-height:90vh}.max-h-\[92vh\]{max-height:92vh}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-14{width:3.5rem}.w-16{width:4rem}.w-2{width:.5rem}.w-20{width:5rem}.w-4{width:1rem}.w-5{width:1.25rem}.w-6{width:1.5rem}.w-7{width:1.75rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-fit{width:-moz-fit-content;width:fit-content}.w-full{width:100%}.min-w-0{min-width:0}.min-w-\[140px\]{min-width:140px}.min-w-\[160px\]{min-width:160px}.min-w-\[200px\]{min-width:200px}.min-w-\[900px\]{min-width:900px}.max-w-2xl{max-width:42rem}.max-w-4xl{max-width:56rem}.max-w-5xl{max-width:64rem}.max-w-lg{max-width:32rem}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.flex-shrink{flex-shrink:1}.flex-shrink-0{flex-shrink:0}.border-collapse{border-collapse:collapse}.-translate-y-1\/2{--tw-translate-y:-50%}.-translate-y-1\/2,.scale-95{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.scale-95{--tw-scale-x:.95;--tw-scale-y:.95}.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}@keyframes spin{to{transform:rotate(1turn)}}.animate-spin{animation:spin 1s linear infinite}.cursor-pointer{cursor:pointer}.select-none{-webkit-user-select:none;-moz-user-select:none;user-select:none}.resize-none{resize:none}.resize{resize:both}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.justify-around{justify-content:space-around}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-2\.5{gap:.625rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem*var(--tw-space-y-reverse))}.space-y-1\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.375rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.375rem*var(--tw-space-y-reverse))}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem*var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem*var(--tw-space-y-reverse))}.divide-y>:not([hidden])~:not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px*(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px*var(--tw-divide-y-reverse))}.divide-slate-100>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(241 245 249/var(--tw-divide-opacity,1))}.self-center{align-self:center}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.whitespace-pre-line{white-space:pre-line}.rounded{border-radius:.25rem}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-b-2{border-bottom-width:2px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-amber-100{--tw-border-opacity:1;border-color:rgb(254 243 199/var(--tw-border-opacity,1))}.border-amber-200{--tw-border-opacity:1;border-color:rgb(253 230 138/var(--tw-border-opacity,1))}.border-amber-300{--tw-border-opacity:1;border-color:rgb(252 211 77/var(--tw-border-opacity,1))}.border-amber-800{--tw-border-opacity:1;border-color:rgb(146 64 14/var(--tw-border-opacity,1))}.border-blue-100{--tw-border-opacity:1;border-color:rgb(219 234 254/var(--tw-border-opacity,1))}.border-blue-200{--tw-border-opacity:1;border-color:rgb(191 219 254/var(--tw-border-opacity,1))}.border-blue-300{--tw-border-opacity:1;border-color:rgb(147 197 253/var(--tw-border-opacity,1))}.border-blue-600{--tw-border-opacity:1;border-color:rgb(37 99 235/var(--tw-border-opacity,1))}.border-emerald-100{--tw-border-opacity:1;border-color:rgb(209 250 229/var(--tw-border-opacity,1))}.border-emerald-200{--tw-border-opacity:1;border-color:rgb(167 243 208/var(--tw-border-opacity,1))}.border-emerald-800{--tw-border-opacity:1;border-color:rgb(6 95 70/var(--tw-border-opacity,1))}.border-indigo-100{--tw-border-opacity:1;border-color:rgb(224 231 255/var(--tw-border-opacity,1))}.border-indigo-200{--tw-border-opacity:1;border-color:rgb(199 210 254/var(--tw-border-opacity,1))}.border-rose-100{--tw-border-opacity:1;border-color:rgb(255 228 230/var(--tw-border-opacity,1))}.border-rose-200{--tw-border-opacity:1;border-color:rgb(254 205 211/var(--tw-border-opacity,1))}.border-rose-500{--tw-border-opacity:1;border-color:rgb(244 63 94/var(--tw-border-opacity,1))}.border-rose-800{--tw-border-opacity:1;border-color:rgb(159 18 57/var(--tw-border-opacity,1))}.border-slate-100{--tw-border-opacity:1;border-color:rgb(241 245 249/var(--tw-border-opacity,1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240/var(--tw-border-opacity,1))}.border-slate-300{--tw-border-opacity:1;border-color:rgb(203 213 225/var(--tw-border-opacity,1))}.border-violet-100{--tw-border-opacity:1;border-color:rgb(237 233 254/var(--tw-border-opacity,1))}.border-violet-200{--tw-border-opacity:1;border-color:rgb(221 214 254/var(--tw-border-opacity,1))}.border-violet-300{--tw-border-opacity:1;border-color:rgb(196 181 253/var(--tw-border-opacity,1))}.bg-amber-100{--tw-bg-opacity:1;background-color:rgb(254 243 199/var(--tw-bg-opacity,1))}.bg-amber-50{--tw-bg-opacity:1;background-color:rgb(255 251 235/var(--tw-bg-opacity,1))}.bg-amber-50\/50{background-color:rgba(255,251,235,.5)}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.bg-amber-600{--tw-bg-opacity:1;background-color:rgb(217 119 6/var(--tw-bg-opacity,1))}.bg-amber-900\/50{background-color:rgba(120,53,15,.5)}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.bg-blue-50\/50{background-color:rgba(239,246,255,.5)}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.bg-emerald-100{--tw-bg-opacity:1;background-color:rgb(209 250 229/var(--tw-bg-opacity,1))}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgb(236 253 245/var(--tw-bg-opacity,1))}.bg-emerald-50\/50{background-color:rgba(236,253,245,.5)}.bg-emerald-50\/60{background-color:rgba(236,253,245,.6)}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129/var(--tw-bg-opacity,1))}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.bg-emerald-900\/50{background-color:rgba(6,78,59,.5)}.bg-indigo-50{--tw-bg-opacity:1;background-color:rgb(238 242 255/var(--tw-bg-opacity,1))}.bg-indigo-50\/60{background-color:rgba(238,242,255,.6)}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229/var(--tw-bg-opacity,1))}.bg-rose-100{--tw-bg-opacity:1;background-color:rgb(255 228 230/var(--tw-bg-opacity,1))}.bg-rose-50{--tw-bg-opacity:1;background-color:rgb(255 241 242/var(--tw-bg-opacity,1))}.bg-rose-500{--tw-bg-opacity:1;background-color:rgb(244 63 94/var(--tw-bg-opacity,1))}.bg-rose-600{--tw-bg-opacity:1;background-color:rgb(225 29 72/var(--tw-bg-opacity,1))}.bg-rose-900\/50{background-color:rgba(136,19,55,.5)}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.bg-slate-200{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.bg-slate-900\/60{background-color:rgba(15,23,42,.6)}.bg-slate-900\/80{background-color:rgba(15,23,42,.8)}.bg-teal-50{--tw-bg-opacity:1;background-color:rgb(240 253 250/var(--tw-bg-opacity,1))}.bg-transparent{background-color:transparent}.bg-violet-50{--tw-bg-opacity:1;background-color:rgb(245 243 255/var(--tw-bg-opacity,1))}.bg-violet-50\/50{background-color:rgba(245,243,255,.5)}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.object-contain{-o-object-fit:contain;object-fit:contain}.object-cover{-o-object-fit:cover;object-fit:cover}.p-1{padding:.25rem}.p-1\.5{padding:.375rem}.p-2{padding:.5rem}.p-2\.5{padding:.625rem}.p-3{padding:.75rem}.p-3\.5{padding:.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-1\.5{padding-left:.375rem;padding-right:.375rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-2\.5{padding-left:.625rem;padding-right:.625rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-3\.5{padding-left:.875rem;padding-right:.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.py-10{padding-top:2.5rem;padding-bottom:2.5rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-3\.5{padding-top:.875rem;padding-bottom:.875rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.pb-24{padding-bottom:6rem}.pb-3{padding-bottom:.75rem}.pl-7{padding-left:1.75rem}.pr-3{padding-right:.75rem}.pt-2{padding-top:.5rem}.pt-3{padding-top:.75rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-5xl{font-size:3rem;line-height:1}.text-\[10\.5px\]{font-size:10.5px}.text-\[10px\]{font-size:10px}.text-\[11\.5px\]{font-size:11.5px}.text-\[11px\]{font-size:11px}.text-\[12px\]{font-size:12px}.text-\[13px\]{font-size:13px}.text-\[9px\]{font-size:9px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-normal{font-weight:400}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.normal-case{text-transform:none}.italic{font-style:italic}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.leading-tight{line-height:1.25}.tracking-\[0\.15em\]{letter-spacing:.15em}.tracking-normal{letter-spacing:0}.tracking-wide{letter-spacing:.025em}.tracking-wider{letter-spacing:.05em}.tracking-widest{letter-spacing:.1em}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36/var(--tw-text-opacity,1))}.text-amber-50{--tw-text-opacity:1;color:rgb(255 251 235/var(--tw-text-opacity,1))}.text-amber-500{--tw-text-opacity:1;color:rgb(245 158 11/var(--tw-text-opacity,1))}.text-amber-600{--tw-text-opacity:1;color:rgb(217 119 6/var(--tw-text-opacity,1))}.text-amber-700{--tw-text-opacity:1;color:rgb(180 83 9/var(--tw-text-opacity,1))}.text-amber-800{--tw-text-opacity:1;color:rgb(146 64 14/var(--tw-text-opacity,1))}.text-amber-900{--tw-text-opacity:1;color:rgb(120 53 15/var(--tw-text-opacity,1))}.text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.text-blue-800{--tw-text-opacity:1;color:rgb(30 64 175/var(--tw-text-opacity,1))}.text-blue-900{--tw-text-opacity:1;color:rgb(30 58 138/var(--tw-text-opacity,1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153/var(--tw-text-opacity,1))}.text-emerald-500{--tw-text-opacity:1;color:rgb(16 185 129/var(--tw-text-opacity,1))}.text-emerald-600{--tw-text-opacity:1;color:rgb(5 150 105/var(--tw-text-opacity,1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87/var(--tw-text-opacity,1))}.text-emerald-800{--tw-text-opacity:1;color:rgb(6 95 70/var(--tw-text-opacity,1))}.text-emerald-800\/80{color:rgba(6,95,70,.8)}.text-emerald-900{--tw-text-opacity:1;color:rgb(6 78 59/var(--tw-text-opacity,1))}.text-indigo-500{--tw-text-opacity:1;color:rgb(99 102 241/var(--tw-text-opacity,1))}.text-indigo-600{--tw-text-opacity:1;color:rgb(79 70 229/var(--tw-text-opacity,1))}.text-indigo-700{--tw-text-opacity:1;color:rgb(67 56 202/var(--tw-text-opacity,1))}.text-indigo-800{--tw-text-opacity:1;color:rgb(55 48 163/var(--tw-text-opacity,1))}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133/var(--tw-text-opacity,1))}.text-rose-500{--tw-text-opacity:1;color:rgb(244 63 94/var(--tw-text-opacity,1))}.text-rose-600{--tw-text-opacity:1;color:rgb(225 29 72/var(--tw-text-opacity,1))}.text-rose-700{--tw-text-opacity:1;color:rgb(190 18 60/var(--tw-text-opacity,1))}.text-rose-800{--tw-text-opacity:1;color:rgb(159 18 57/var(--tw-text-opacity,1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240/var(--tw-text-opacity,1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225/var(--tw-text-opacity,1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85/var(--tw-text-opacity,1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59/var(--tw-text-opacity,1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42/var(--tw-text-opacity,1))}.text-violet-600{--tw-text-opacity:1;color:rgb(124 58 237/var(--tw-text-opacity,1))}.text-violet-700{--tw-text-opacity:1;color:rgb(109 40 217/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.underline{text-decoration-line:underline}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.accent-amber-600{accent-color:#d97706}.accent-blue-500{accent-color:#3b82f6}.accent-blue-600{accent-color:#2563eb}.opacity-0{opacity:0}.opacity-85{opacity:.85}.opacity-90{opacity:.9}.opacity-95{opacity:.95}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color)}.shadow-2xl,.shadow-\[0_-10px_20px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_-10px_20px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{--tw-shadow:0 -10px 20px rgba(0,0,0,.03);--tw-shadow-colored:0 -10px 20px var(--tw-shadow-color)}.shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\]{--tw-shadow:0 0 8px rgba(16,185,129,.8);--tw-shadow-colored:0 0 8px var(--tw-shadow-color)}.shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\],.shadow-md{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-blue-500\/20{--tw-shadow-color:rgba(59,130,246,.2);--tw-shadow:var(--tw-shadow-colored)}.outline-none{outline:2px solid transparent;outline-offset:2px}.blur{--tw-blur:blur(8px)}.blur,.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px)}.backdrop-blur-sm,.backdrop-filter{-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.duration-200{transition-duration:.2s}.\[transform\:scaleX\(-1\)\]{transform:scaleX(-1)}.first\:border-0:first-child{border-width:0}.hover\:bg-amber-100:hover{--tw-bg-opacity:1;background-color:rgb(254 243 199/var(--tw-bg-opacity,1))}.hover\:bg-amber-500:hover{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.hover\:bg-amber-600:hover{--tw-bg-opacity:1;background-color:rgb(217 119 6/var(--tw-bg-opacity,1))}.hover\:bg-amber-700:hover{--tw-bg-opacity:1;background-color:rgb(180 83 9/var(--tw-bg-opacity,1))}.hover\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity,1))}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity,1))}.hover\:bg-emerald-100:hover{--tw-bg-opacity:1;background-color:rgb(209 250 229/var(--tw-bg-opacity,1))}.hover\:bg-emerald-200:hover{--tw-bg-opacity:1;background-color:rgb(167 243 208/var(--tw-bg-opacity,1))}.hover\:bg-emerald-600:hover{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.hover\:bg-emerald-700:hover{--tw-bg-opacity:1;background-color:rgb(4 120 87/var(--tw-bg-opacity,1))}.hover\:bg-indigo-100:hover{--tw-bg-opacity:1;background-color:rgb(224 231 255/var(--tw-bg-opacity,1))}.hover\:bg-indigo-700:hover{--tw-bg-opacity:1;background-color:rgb(67 56 202/var(--tw-bg-opacity,1))}.hover\:bg-rose-100:hover{--tw-bg-opacity:1;background-color:rgb(255 228 230/var(--tw-bg-opacity,1))}.hover\:bg-rose-500:hover{--tw-bg-opacity:1;background-color:rgb(244 63 94/var(--tw-bg-opacity,1))}.hover\:bg-rose-600:hover{--tw-bg-opacity:1;background-color:rgb(225 29 72/var(--tw-bg-opacity,1))}.hover\:bg-rose-700:hover{--tw-bg-opacity:1;background-color:rgb(190 18 60/var(--tw-bg-opacity,1))}.hover\:bg-slate-100:hover{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.hover\:bg-slate-200:hover{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.hover\:bg-slate-50:hover{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.hover\:bg-slate-900:hover{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.hover\:text-blue-600:hover{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.hover\:text-blue-700:hover{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.hover\:text-rose-700:hover{--tw-text-opacity:1;color:rgb(190 18 60/var(--tw-text-opacity,1))}.hover\:text-slate-600:hover{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.focus\:border-blue-500:focus{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.focus\:ring-amber-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(245 158 11/var(--tw-ring-opacity,1))}.focus\:ring-blue-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(59 130 246/var(--tw-ring-opacity,1))}.focus\:ring-emerald-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(16 185 129/var(--tw-ring-opacity,1))}.focus\:ring-rose-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(244 63 94/var(--tw-ring-opacity,1))}.focus\:ring-slate-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(100 116 139/var(--tw-ring-opacity,1))}.focus\:ring-violet-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(139 92 246/var(--tw-ring-opacity,1))}.disabled\:cursor-not-allowed:disabled{cursor:not-allowed}.disabled\:bg-slate-200:disabled{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.disabled\:bg-slate-300:disabled{--tw-bg-opacity:1;background-color:rgb(203 213 225/var(--tw-bg-opacity,1))}.disabled\:text-slate-400:disabled{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.disabled\:text-slate-500:disabled{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.disabled\:opacity-60:disabled{opacity:.6}@media (min-width:768px){.md\:sticky{position:sticky}.md\:top-24{top:6rem}.md\:col-span-1{grid-column:span 1/span 1}.md\:col-span-2{grid-column:span 2/span 2}.md\:mt-10{margin-top:2.5rem}.md\:mt-8{margin-top:2rem}.md\:flex{display:flex}.md\:grid{display:grid}.md\:hidden{display:none}.md\:w-auto{width:auto}.md\:max-w-5xl{max-width:64rem}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.md\:grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}.md\:items-start{align-items:flex-start}.md\:gap-6{gap:1.5rem}.md\:p-5{padding:1.25rem}.md\:p-6{padding:1.5rem}.md\:pb-8{padding-bottom:2rem}.md\:text-base{font-size:1rem;line-height:1.5rem}}</style>
+    <style id="tailwind-compiled">*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.visible{visibility:visible}.invisible{visibility:hidden}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0}.bottom-0{bottom:0}.left-0{left:0}.left-2{left:.5rem}.left-3{left:.75rem}.right-2{right:.5rem}.top-0{top:0}.top-1\/2{top:50%}.z-40{z-index:40}.z-50{z-index:50}.col-span-1{grid-column:span 1/span 1}.col-span-2{grid-column:span 2/span 2}.mx-1{margin-left:.25rem;margin-right:.25rem}.mx-auto{margin-left:auto;margin-right:auto}.my-2{margin-top:.5rem;margin-bottom:.5rem}.my-3{margin-top:.75rem;margin-bottom:.75rem}.-mt-1{margin-top:-.25rem}.-mt-6{margin-top:-1.5rem}.mb-1{margin-bottom:.25rem}.mb-1\.5{margin-bottom:.375rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.ml-1{margin-left:.25rem}.ml-2{margin-left:.5rem}.ml-auto{margin-left:auto}.mr-1{margin-right:.25rem}.mr-auto{margin-right:auto}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-1\.5{margin-top:.375rem}.mt-2{margin-top:.5rem}.mt-2\.5{margin-top:.625rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-6{margin-top:1.5rem}.block{display:block}.inline-block{display:inline-block}.inline{display:inline}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.contents{display:contents}.hidden{display:none}.aspect-square{aspect-ratio:1/1}.h-1\.5{height:.375rem}.h-10{height:2.5rem}.h-12{height:3rem}.h-14{height:3.5rem}.h-16{height:4rem}.h-2{height:.5rem}.h-4{height:1rem}.h-5{height:1.25rem}.h-6{height:1.5rem}.h-7{height:1.75rem}.h-9{height:2.25rem}.h-full{height:100%}.max-h-80{max-height:20rem}.max-h-96{max-height:24rem}.max-h-\[90vh\]{max-height:90vh}.max-h-\[92vh\]{max-height:92vh}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-14{width:3.5rem}.w-16{width:4rem}.w-2{width:.5rem}.w-20{width:5rem}.w-4{width:1rem}.w-5{width:1.25rem}.w-6{width:1.5rem}.w-7{width:1.75rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-fit{width:-moz-fit-content;width:fit-content}.w-full{width:100%}.min-w-0{min-width:0}.min-w-\[140px\]{min-width:140px}.min-w-\[160px\]{min-width:160px}.min-w-\[200px\]{min-width:200px}.min-w-\[900px\]{min-width:900px}.max-w-2xl{max-width:42rem}.max-w-4xl{max-width:56rem}.max-w-5xl{max-width:64rem}.max-w-lg{max-width:32rem}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.flex-shrink{flex-shrink:1}.flex-shrink-0{flex-shrink:0}.border-collapse{border-collapse:collapse}.-translate-y-1\/2{--tw-translate-y:-50%}.-translate-y-1\/2,.scale-95{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.scale-95{--tw-scale-x:.95;--tw-scale-y:.95}.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}@keyframes spin{to{transform:rotate(1turn)}}.animate-spin{animation:spin 1s linear infinite}.cursor-pointer{cursor:pointer}.select-none{-webkit-user-select:none;-moz-user-select:none;user-select:none}.resize-none{resize:none}.resize{resize:both}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.justify-around{justify-content:space-around}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-2\.5{gap:.625rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem*var(--tw-space-y-reverse))}.space-y-1\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.375rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.375rem*var(--tw-space-y-reverse))}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem*var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem*var(--tw-space-y-reverse))}.divide-y>:not([hidden])~:not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px*(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px*var(--tw-divide-y-reverse))}.divide-slate-100>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(241 245 249/var(--tw-divide-opacity,1))}.self-center{align-self:center}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.whitespace-pre-line{white-space:pre-line}.rounded{border-radius:.25rem}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-b-2{border-bottom-width:2px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-amber-100{--tw-border-opacity:1;border-color:rgb(254 243 199/var(--tw-border-opacity,1))}.border-amber-200{--tw-border-opacity:1;border-color:rgb(253 230 138/var(--tw-border-opacity,1))}.border-amber-300{--tw-border-opacity:1;border-color:rgb(252 211 77/var(--tw-border-opacity,1))}.border-amber-800{--tw-border-opacity:1;border-color:rgb(146 64 14/var(--tw-border-opacity,1))}.border-blue-100{--tw-border-opacity:1;border-color:rgb(219 234 254/var(--tw-border-opacity,1))}.border-blue-200{--tw-border-opacity:1;border-color:rgb(191 219 254/var(--tw-border-opacity,1))}.border-blue-300{--tw-border-opacity:1;border-color:rgb(147 197 253/var(--tw-border-opacity,1))}.border-blue-600{--tw-border-opacity:1;border-color:rgb(37 99 235/var(--tw-border-opacity,1))}.border-emerald-100{--tw-border-opacity:1;border-color:rgb(209 250 229/var(--tw-border-opacity,1))}.border-emerald-200{--tw-border-opacity:1;border-color:rgb(167 243 208/var(--tw-border-opacity,1))}.border-emerald-800{--tw-border-opacity:1;border-color:rgb(6 95 70/var(--tw-border-opacity,1))}.border-indigo-100{--tw-border-opacity:1;border-color:rgb(224 231 255/var(--tw-border-opacity,1))}.border-indigo-200{--tw-border-opacity:1;border-color:rgb(199 210 254/var(--tw-border-opacity,1))}.border-rose-100{--tw-border-opacity:1;border-color:rgb(255 228 230/var(--tw-border-opacity,1))}.border-rose-200{--tw-border-opacity:1;border-color:rgb(254 205 211/var(--tw-border-opacity,1))}.border-rose-500{--tw-border-opacity:1;border-color:rgb(244 63 94/var(--tw-border-opacity,1))}.border-rose-800{--tw-border-opacity:1;border-color:rgb(159 18 57/var(--tw-border-opacity,1))}.border-slate-100{--tw-border-opacity:1;border-color:rgb(241 245 249/var(--tw-border-opacity,1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240/var(--tw-border-opacity,1))}.border-slate-300{--tw-border-opacity:1;border-color:rgb(203 213 225/var(--tw-border-opacity,1))}.border-violet-100{--tw-border-opacity:1;border-color:rgb(237 233 254/var(--tw-border-opacity,1))}.border-violet-200{--tw-border-opacity:1;border-color:rgb(221 214 254/var(--tw-border-opacity,1))}.border-violet-300{--tw-border-opacity:1;border-color:rgb(196 181 253/var(--tw-border-opacity,1))}.bg-amber-100{--tw-bg-opacity:1;background-color:rgb(254 243 199/var(--tw-bg-opacity,1))}.bg-amber-50{--tw-bg-opacity:1;background-color:rgb(255 251 235/var(--tw-bg-opacity,1))}.bg-amber-50\/50{background-color:rgba(255,251,235,.5)}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.bg-amber-600{--tw-bg-opacity:1;background-color:rgb(217 119 6/var(--tw-bg-opacity,1))}.bg-amber-700{--tw-bg-opacity:1;background-color:rgb(180 83 9/var(--tw-bg-opacity,1))}.bg-amber-900\/50{background-color:rgba(120,53,15,.5)}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.bg-blue-50\/50{background-color:rgba(239,246,255,.5)}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.bg-emerald-100{--tw-bg-opacity:1;background-color:rgb(209 250 229/var(--tw-bg-opacity,1))}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgb(236 253 245/var(--tw-bg-opacity,1))}.bg-emerald-50\/50{background-color:rgba(236,253,245,.5)}.bg-emerald-50\/60{background-color:rgba(236,253,245,.6)}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129/var(--tw-bg-opacity,1))}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.bg-emerald-900\/50{background-color:rgba(6,78,59,.5)}.bg-indigo-50{--tw-bg-opacity:1;background-color:rgb(238 242 255/var(--tw-bg-opacity,1))}.bg-indigo-50\/60{background-color:rgba(238,242,255,.6)}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229/var(--tw-bg-opacity,1))}.bg-rose-100{--tw-bg-opacity:1;background-color:rgb(255 228 230/var(--tw-bg-opacity,1))}.bg-rose-50{--tw-bg-opacity:1;background-color:rgb(255 241 242/var(--tw-bg-opacity,1))}.bg-rose-500{--tw-bg-opacity:1;background-color:rgb(244 63 94/var(--tw-bg-opacity,1))}.bg-rose-600{--tw-bg-opacity:1;background-color:rgb(225 29 72/var(--tw-bg-opacity,1))}.bg-rose-900\/50{background-color:rgba(136,19,55,.5)}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.bg-slate-200{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.bg-slate-900\/60{background-color:rgba(15,23,42,.6)}.bg-slate-900\/80{background-color:rgba(15,23,42,.8)}.bg-teal-50{--tw-bg-opacity:1;background-color:rgb(240 253 250/var(--tw-bg-opacity,1))}.bg-transparent{background-color:transparent}.bg-violet-50{--tw-bg-opacity:1;background-color:rgb(245 243 255/var(--tw-bg-opacity,1))}.bg-violet-50\/50{background-color:rgba(245,243,255,.5)}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.object-contain{-o-object-fit:contain;object-fit:contain}.object-cover{-o-object-fit:cover;object-fit:cover}.p-1{padding:.25rem}.p-1\.5{padding:.375rem}.p-2{padding:.5rem}.p-2\.5{padding:.625rem}.p-3{padding:.75rem}.p-3\.5{padding:.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-1\.5{padding-left:.375rem;padding-right:.375rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-2\.5{padding-left:.625rem;padding-right:.625rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-3\.5{padding-left:.875rem;padding-right:.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.py-10{padding-top:2.5rem;padding-bottom:2.5rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-3\.5{padding-top:.875rem;padding-bottom:.875rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.pb-24{padding-bottom:6rem}.pb-3{padding-bottom:.75rem}.pl-7{padding-left:1.75rem}.pr-3{padding-right:.75rem}.pt-2{padding-top:.5rem}.pt-3{padding-top:.75rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-5xl{font-size:3rem;line-height:1}.text-\[10\.5px\]{font-size:10.5px}.text-\[10px\]{font-size:10px}.text-\[11\.5px\]{font-size:11.5px}.text-\[11px\]{font-size:11px}.text-\[12px\]{font-size:12px}.text-\[13px\]{font-size:13px}.text-\[9px\]{font-size:9px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-normal{font-weight:400}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.normal-case{text-transform:none}.italic{font-style:italic}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.leading-tight{line-height:1.25}.tracking-\[0\.15em\]{letter-spacing:.15em}.tracking-normal{letter-spacing:0}.tracking-wide{letter-spacing:.025em}.tracking-wider{letter-spacing:.05em}.tracking-widest{letter-spacing:.1em}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36/var(--tw-text-opacity,1))}.text-amber-50{--tw-text-opacity:1;color:rgb(255 251 235/var(--tw-text-opacity,1))}.text-amber-500{--tw-text-opacity:1;color:rgb(245 158 11/var(--tw-text-opacity,1))}.text-amber-600{--tw-text-opacity:1;color:rgb(217 119 6/var(--tw-text-opacity,1))}.text-amber-700{--tw-text-opacity:1;color:rgb(180 83 9/var(--tw-text-opacity,1))}.text-amber-800{--tw-text-opacity:1;color:rgb(146 64 14/var(--tw-text-opacity,1))}.text-amber-900{--tw-text-opacity:1;color:rgb(120 53 15/var(--tw-text-opacity,1))}.text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.text-blue-800{--tw-text-opacity:1;color:rgb(30 64 175/var(--tw-text-opacity,1))}.text-blue-900{--tw-text-opacity:1;color:rgb(30 58 138/var(--tw-text-opacity,1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153/var(--tw-text-opacity,1))}.text-emerald-500{--tw-text-opacity:1;color:rgb(16 185 129/var(--tw-text-opacity,1))}.text-emerald-600{--tw-text-opacity:1;color:rgb(5 150 105/var(--tw-text-opacity,1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87/var(--tw-text-opacity,1))}.text-emerald-800{--tw-text-opacity:1;color:rgb(6 95 70/var(--tw-text-opacity,1))}.text-emerald-800\/80{color:rgba(6,95,70,.8)}.text-emerald-900{--tw-text-opacity:1;color:rgb(6 78 59/var(--tw-text-opacity,1))}.text-indigo-500{--tw-text-opacity:1;color:rgb(99 102 241/var(--tw-text-opacity,1))}.text-indigo-600{--tw-text-opacity:1;color:rgb(79 70 229/var(--tw-text-opacity,1))}.text-indigo-700{--tw-text-opacity:1;color:rgb(67 56 202/var(--tw-text-opacity,1))}.text-indigo-800{--tw-text-opacity:1;color:rgb(55 48 163/var(--tw-text-opacity,1))}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133/var(--tw-text-opacity,1))}.text-rose-500{--tw-text-opacity:1;color:rgb(244 63 94/var(--tw-text-opacity,1))}.text-rose-600{--tw-text-opacity:1;color:rgb(225 29 72/var(--tw-text-opacity,1))}.text-rose-700{--tw-text-opacity:1;color:rgb(190 18 60/var(--tw-text-opacity,1))}.text-rose-800{--tw-text-opacity:1;color:rgb(159 18 57/var(--tw-text-opacity,1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240/var(--tw-text-opacity,1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225/var(--tw-text-opacity,1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85/var(--tw-text-opacity,1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59/var(--tw-text-opacity,1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42/var(--tw-text-opacity,1))}.text-violet-600{--tw-text-opacity:1;color:rgb(124 58 237/var(--tw-text-opacity,1))}.text-violet-700{--tw-text-opacity:1;color:rgb(109 40 217/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.underline{text-decoration-line:underline}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.accent-amber-600{accent-color:#d97706}.accent-blue-500{accent-color:#3b82f6}.accent-blue-600{accent-color:#2563eb}.opacity-0{opacity:0}.opacity-85{opacity:.85}.opacity-90{opacity:.9}.opacity-95{opacity:.95}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color)}.shadow-2xl,.shadow-\[0_-10px_20px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_-10px_20px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{--tw-shadow:0 -10px 20px rgba(0,0,0,.03);--tw-shadow-colored:0 -10px 20px var(--tw-shadow-color)}.shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\]{--tw-shadow:0 0 8px rgba(16,185,129,.8);--tw-shadow-colored:0 0 8px var(--tw-shadow-color)}.shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\],.shadow-md{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-blue-500\/20{--tw-shadow-color:rgba(59,130,246,.2);--tw-shadow:var(--tw-shadow-colored)}.outline-none{outline:2px solid transparent;outline-offset:2px}.blur{--tw-blur:blur(8px)}.blur,.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px)}.backdrop-blur-sm,.backdrop-filter{-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.duration-200{transition-duration:.2s}.\[transform\:scaleX\(-1\)\]{transform:scaleX(-1)}.first\:border-0:first-child{border-width:0}.hover\:bg-amber-100:hover{--tw-bg-opacity:1;background-color:rgb(254 243 199/var(--tw-bg-opacity,1))}.hover\:bg-amber-500:hover{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.hover\:bg-amber-600:hover{--tw-bg-opacity:1;background-color:rgb(217 119 6/var(--tw-bg-opacity,1))}.hover\:bg-amber-700:hover{--tw-bg-opacity:1;background-color:rgb(180 83 9/var(--tw-bg-opacity,1))}.hover\:bg-amber-800:hover{--tw-bg-opacity:1;background-color:rgb(146 64 14/var(--tw-bg-opacity,1))}.hover\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity,1))}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity,1))}.hover\:bg-emerald-100:hover{--tw-bg-opacity:1;background-color:rgb(209 250 229/var(--tw-bg-opacity,1))}.hover\:bg-emerald-200:hover{--tw-bg-opacity:1;background-color:rgb(167 243 208/var(--tw-bg-opacity,1))}.hover\:bg-emerald-600:hover{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.hover\:bg-emerald-700:hover{--tw-bg-opacity:1;background-color:rgb(4 120 87/var(--tw-bg-opacity,1))}.hover\:bg-indigo-100:hover{--tw-bg-opacity:1;background-color:rgb(224 231 255/var(--tw-bg-opacity,1))}.hover\:bg-indigo-700:hover{--tw-bg-opacity:1;background-color:rgb(67 56 202/var(--tw-bg-opacity,1))}.hover\:bg-rose-100:hover{--tw-bg-opacity:1;background-color:rgb(255 228 230/var(--tw-bg-opacity,1))}.hover\:bg-rose-500:hover{--tw-bg-opacity:1;background-color:rgb(244 63 94/var(--tw-bg-opacity,1))}.hover\:bg-rose-600:hover{--tw-bg-opacity:1;background-color:rgb(225 29 72/var(--tw-bg-opacity,1))}.hover\:bg-rose-700:hover{--tw-bg-opacity:1;background-color:rgb(190 18 60/var(--tw-bg-opacity,1))}.hover\:bg-slate-100:hover{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.hover\:bg-slate-200:hover{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.hover\:bg-slate-50:hover{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.hover\:bg-slate-900:hover{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.hover\:text-blue-600:hover{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.hover\:text-blue-700:hover{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.hover\:text-rose-700:hover{--tw-text-opacity:1;color:rgb(190 18 60/var(--tw-text-opacity,1))}.hover\:text-slate-600:hover{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.focus\:border-blue-500:focus{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.focus\:ring-amber-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(245 158 11/var(--tw-ring-opacity,1))}.focus\:ring-blue-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(59 130 246/var(--tw-ring-opacity,1))}.focus\:ring-emerald-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(16 185 129/var(--tw-ring-opacity,1))}.focus\:ring-rose-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(244 63 94/var(--tw-ring-opacity,1))}.focus\:ring-slate-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(100 116 139/var(--tw-ring-opacity,1))}.focus\:ring-violet-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(139 92 246/var(--tw-ring-opacity,1))}.disabled\:cursor-not-allowed:disabled{cursor:not-allowed}.disabled\:bg-slate-200:disabled{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.disabled\:bg-slate-300:disabled{--tw-bg-opacity:1;background-color:rgb(203 213 225/var(--tw-bg-opacity,1))}.disabled\:text-slate-400:disabled{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.disabled\:text-slate-500:disabled{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.disabled\:opacity-60:disabled{opacity:.6}@media (min-width:768px){.md\:sticky{position:sticky}.md\:top-24{top:6rem}.md\:col-span-1{grid-column:span 1/span 1}.md\:col-span-2{grid-column:span 2/span 2}.md\:mt-10{margin-top:2.5rem}.md\:mt-8{margin-top:2rem}.md\:flex{display:flex}.md\:grid{display:grid}.md\:hidden{display:none}.md\:w-auto{width:auto}.md\:max-w-5xl{max-width:64rem}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.md\:grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}.md\:items-start{align-items:flex-start}.md\:gap-6{gap:1.5rem}.md\:p-5{padding:1.25rem}.md\:p-6{padding:1.5rem}.md\:pb-8{padding-bottom:2rem}.md\:text-base{font-size:1rem;line-height:1.5rem}}</style>
     <!-- Phosphor Icons. RENDIMIENTO (29/10): antes se cargaba su script, que bloqueaba la página y además pedía las 6
          variantes de íconos (~500 KB de estilos); la app solo usa "bold" y "fill". Ahora se piden solo esas dos, sin
          bloquear (media="print" + onload): la pantalla aparece enseguida y los íconos llegan un instante después. -->
@@ -115,6 +135,20 @@
         html.dark .hover\:bg-rose-100:hover { background-color: rgba(244,63,94,.25); }
         html.dark .hover\:text-slate-600:hover { color: #e2e8f0; }
         html.dark .hover\:text-blue-600:hover, html.dark .hover\:text-blue-700:hover { color: #93c5fd; }
+
+        /* CONTRASTE (auditoría 30/10, norma WCAG AA: texto con al menos 4,5 veces más luz que su fondo). Los grises y
+           colores más claros de Tailwind no llegaban en textos pequeños (p. ej. gris #94a3b8 sobre blanco = 2,56). Se
+           oscurecen un paso solo en modo claro; el modo oscuro ya tiene sus propios colores arriba. */
+        html:not(.dark) .text-slate-400 { color: #64748b; }
+        html:not(.dark) .text-slate-500 { color: #57657a; }
+        /* …pero no dentro de fondos oscuros (encabezado, avisos en gris oscuro), donde el gris claro sí contrasta. */
+        html:not(.dark) :is(.bg-slate-800, .bg-slate-900) .text-slate-400 { color: #94a3b8; }
+        html:not(.dark) .text-amber-600 { color: #b45309; }
+        html:not(.dark) .text-emerald-600 { color: #047857; }
+        html:not(.dark) .text-rose-500 { color: #e11d48; }
+        html.dark .text-rose-500 { color: #fb7185; }
+        html.dark .mt-cambiar, html.dark .ad-link { color: #60a5fa; }
+        html.dark .pm-grupo { color: #94a3b8; }
         html.dark .text-blue-800 { color: #bfdbfe; }
         html.dark .border-blue-300 { border-color: rgba(59,130,246,.5); }
         /* Botón 🕐 y selector de hora de 24 h: se crean con estilos en línea claros. */
@@ -463,7 +497,7 @@
 
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 md:p-6 space-y-5">
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Nombre del Colaborador</label>
+                        <label for="login-nombre" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Nombre del Colaborador</label>
                         <input type="text" id="login-nombre" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-slate-900 rounded-xl p-3.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium" placeholder="Ej: CARLOS ANDRES...">
                         <datalist id="lista-empleados"></datalist>
                         <datalist id="lista-clientes"></datalist>
@@ -508,7 +542,7 @@
                         <div id="aviso-turno-ayer" class="hidden mt-olvido">
                             <p class="text-sm font-bold"><span id="salida-olvidada-titulo">No marcaste tu salida.</span></p>
                             <p id="salida-olvidada-detalle" class="text-[13px] mt-1">¿A qué hora saliste?</p>
-                            <label class="block text-[10px] font-bold uppercase tracking-wider mt-3 mb-1 mt-hero-suave">Hora en que saliste</label>
+                            <label for="salida-olvidada-hora" class="block text-[10px] font-bold uppercase tracking-wider mt-3 mb-1 mt-hero-suave">Hora en que saliste</label>
                             <input type="time" id="salida-olvidada-hora" class="mt-input-hora">
                             <p id="salida-olvidada-ayuda" class="text-[11px] mt-1 mt-hero-suave"></p>
                             <button id="btn-guardar-salida-olvidada" class="btn-touch mt-cta mt-cta-claro" style="color:#C91415"><i class="ph-bold ph-check"></i> Guardar salida</button>
@@ -605,7 +639,7 @@
                     <summary class="font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none"><i class="ph-fill ph-calendar-check text-indigo-500"></i> Mi historial</summary>
                     <div class="mt-3">
                     <div class="flex justify-end items-center mb-3">
-                        <input type="month" id="historial-mes" class="border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="month" id="historial-mes" aria-label="Mes del historial" class="border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div id="progreso-semanal" class="hidden mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 font-semibold"></div>
                     <div id="historial-lista" class="space-y-2">
@@ -620,10 +654,10 @@
                     <div class="mt-3">
                     <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
                         <div class="flex justify-between items-center mb-3">
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <label for="input-sueldo" class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                                 <i class="ph-bold ph-wallet"></i> <span id="label-sueldo-tarifa">Tu Salario Base (Mensual)</span>
                             </label>
-                            <button id="btn-toggle-eye" class="text-slate-400 hover:text-blue-600 transition-colors p-1"><i class="ph-bold ph-eye-closed text-lg"></i></button>
+                            <button id="btn-toggle-eye" type="button" aria-label="Mostrar u ocultar los valores en pesos" title="Mostrar u ocultar los valores en pesos" class="text-slate-400 hover:text-blue-600 transition-colors p-1"><i class="ph-bold ph-eye-closed text-lg"></i></button>
                         </div>
 
                         <div class="flex gap-2">
@@ -723,7 +757,7 @@
                     <button id="btn-aviso-por-revisar" type="button" class="hidden btn-touch w-full text-left bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-2xl shadow-sm text-sm font-bold flex items-center gap-2">
                         <i class="ph-fill ph-warning text-amber-400 text-lg"></i> <span id="aviso-por-revisar-texto"></span> <span class="ml-auto text-xs text-slate-300">Revisar →</span>
                     </button>
-                    <button id="btn-aviso-extras" type="button" class="hidden btn-touch w-full text-left bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-2xl shadow-sm text-sm font-bold flex items-center gap-2">
+                    <button id="btn-aviso-extras" type="button" class="hidden btn-touch w-full text-left bg-amber-700 hover:bg-amber-800 text-white p-3 rounded-2xl shadow-sm text-sm font-bold flex items-center gap-2">
                         <i class="ph-fill ph-clock-countdown text-lg"></i> <span id="aviso-extras-texto"></span> <span class="ml-auto text-xs text-amber-50">Aprobar →</span>
                     </button>
                     <div class="ad-grid2">
@@ -762,19 +796,19 @@
                     </div>
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-3">
                     <div class="flex-1 min-w-[200px]">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por colaborador</label>
+                        <label for="filtro-colaborador" class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por colaborador</label>
                         <select id="filtro-colaborador" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="">Todos los colaboradores</option>
                         </select>
                     </div>
                     <div class="flex-1 min-w-[160px]">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por obra</label>
+                        <label for="filtro-obra" class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por obra</label>
                         <select id="filtro-obra" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="">Todas las obras</option>
                         </select>
                     </div>
                     <div class="min-w-[160px]">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Mes</label>
+                        <label for="filtro-mes" class="text-[10px] font-bold text-slate-500 uppercase">Mes</label>
                         <input type="month" id="filtro-mes" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <button id="btn-limpiar-filtros" class="btn-touch bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-lg text-xs font-bold">Limpiar filtros</button>
@@ -840,34 +874,34 @@
 
                     <div id="form-agregar-colaborador" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cédula</label>
+                            <label for="nuevo-colaborador-cedula" class="text-[10px] font-bold text-slate-500 uppercase">Cédula</label>
                             <input type="text" id="nuevo-colaborador-cedula" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Nombre completo</label>
+                            <label for="nuevo-colaborador-nombre" class="text-[10px] font-bold text-slate-500 uppercase">Nombre completo</label>
                             <input type="text" id="nuevo-colaborador-nombre" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: CARLOS ANDRES RIOS">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cargo</label>
+                            <label for="nuevo-colaborador-cargo" class="text-[10px] font-bold text-slate-500 uppercase">Cargo</label>
                             <input type="text" id="nuevo-colaborador-cargo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Ayudante de Obra">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tipo de vinculación</label>
+                            <label for="nuevo-colaborador-tipo" class="text-[10px] font-bold text-slate-500 uppercase">Tipo de vinculación</label>
                             <select id="nuevo-colaborador-tipo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="Planta">Planta (empleado directo)</option>
                                 <option value="Contratista">Contratista (externo)</option>
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Sueldo base mensual (Planta)</label>
+                            <label for="nuevo-colaborador-sueldo" class="text-[10px] font-bold text-slate-500 uppercase">Sueldo base mensual (Planta)</label>
                             <input type="number" id="nuevo-colaborador-sueldo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1750905">
                         </div>
                         <div class="hidden" id="wrap-nuevo-colaborador-tarifa">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tarifa por hora (Contratista)</label>
+                            <label for="nuevo-colaborador-tarifa" class="text-[10px] font-bold text-slate-500 uppercase">Tarifa por hora (Contratista)</label>
                             <input type="number" id="nuevo-colaborador-tarifa" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 12000">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Días de vacaciones disponibles</label>
+                            <label for="nuevo-colaborador-vacaciones" class="text-[10px] font-bold text-slate-500 uppercase">Días de vacaciones disponibles</label>
                             <input type="number" min="0" step="0.5" id="nuevo-colaborador-vacaciones" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 15">
                         </div>
                         <div class="md:col-span-2 flex gap-2">
@@ -897,19 +931,19 @@
 
                     <div id="form-agregar-incapacidad" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
                         <div class="md:col-span-2">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
+                            <label for="incapacidad-trabajador" class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
                             <input type="text" id="incapacidad-trabajador" list="lista-empleados" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Nombre del colaborador">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha de inicio</label>
+                            <label for="incapacidad-fecha-inicio" class="text-[10px] font-bold text-slate-500 uppercase">Fecha de inicio</label>
                             <input type="date" id="incapacidad-fecha-inicio" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha de fin</label>
+                            <label for="incapacidad-fecha-fin" class="text-[10px] font-bold text-slate-500 uppercase">Fecha de fin</label>
                             <input type="date" id="incapacidad-fecha-fin" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Tipo</label>
+                            <label for="incapacidad-tipo" class="text-[10px] font-bold text-slate-500 uppercase">Tipo</label>
                             <select id="incapacidad-tipo" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none">
                                 <option value="Enfermedad General">Enfermedad General (EPS)</option>
                                 <option value="Laboral / ARL">Laboral / ARL (accidente o enfermedad de trabajo)</option>
@@ -919,11 +953,11 @@
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Correo del supervisor directo (opcional)</label>
+                            <label for="incapacidad-correo-supervisor" class="text-[10px] font-bold text-slate-500 uppercase">Correo del supervisor directo (opcional)</label>
                             <input type="email" id="incapacidad-correo-supervisor" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="supervisor@indimon.com">
                         </div>
                         <div class="md:col-span-2">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Diagnóstico / Nota (opcional, confidencial)</label>
+                            <label for="incapacidad-diagnostico" class="text-[10px] font-bold text-slate-500 uppercase">Diagnóstico / Nota (opcional, confidencial)</label>
                             <input type="text" id="incapacidad-diagnostico" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Solo si es necesario para el trámite">
                         </div>
                         <div class="md:col-span-2 flex gap-2">
@@ -955,39 +989,39 @@
                     </h3>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Fecha</label>
+                            <label for="manual-fecha" class="text-[10px] font-bold text-slate-500 uppercase">Fecha</label>
                             <input type="date" id="manual-fecha" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
+                            <label for="manual-empleado" class="text-[10px] font-bold text-slate-500 uppercase">Colaborador</label>
                             <select id="manual-empleado" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"></select>
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
+                            <label for="manual-cliente" class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
                             <input type="text" id="manual-cliente" list="lista-clientes" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: INDIMON">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
+                            <label for="manual-obra" class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
                             <input type="text" id="manual-obra" list="lista-obras" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: MYKW">
                         </div>
                         <div class="col-span-2 md:col-span-2">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Autoriza (Modificable)</label>
+                            <label for="manual-autoriza" class="text-[10px] font-bold text-slate-500 uppercase">Autoriza (Modificable)</label>
                             <input type="text" id="manual-autoriza" list="lista-supervisores" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: JLAF">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Entrada (24h)</label>
+                            <label for="manual-entrada" class="text-[10px] font-bold text-slate-500 uppercase">Entrada (24h)</label>
                             <input type="time" id="manual-entrada" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Salida (24h)</label>
+                            <label for="manual-salida" class="text-[10px] font-bold text-slate-500 uppercase">Salida (24h)</label>
                             <input type="time" id="manual-salida" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio (opcional)</label>
+                            <label for="manual-almuerzo-inicio" class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio (opcional)</label>
                             <input type="time" id="manual-almuerzo-inicio" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                         <div class="col-span-1 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin (opcional)</label>
+                            <label for="manual-almuerzo-fin" class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin (opcional)</label>
                             <input type="time" id="manual-almuerzo-fin" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
                     </div>
@@ -1004,7 +1038,7 @@
 
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 bg-violet-50/50 p-3 rounded-lg border border-violet-100">
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-violet-700 uppercase">Tipo de permiso (opcional)</label>
+                            <label for="manual-tipo-permiso" class="text-[10px] font-bold text-violet-700 uppercase">Tipo de permiso (opcional)</label>
                             <select id="manual-tipo-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none">
                                 <option value="">Ninguno</option>
                                 <option value="Cita médica">Cita médica (urgencia o especialista)</option>
@@ -1018,11 +1052,11 @@
                             </select>
                         </div>
                         <div class="col-span-1">
-                            <label class="text-[10px] font-bold text-violet-700 uppercase">Horas de permiso</label>
+                            <label for="manual-horas-permiso" class="text-[10px] font-bold text-violet-700 uppercase">Horas de permiso</label>
                             <input type="number" step="0.5" min="0" max="12" id="manual-horas-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none" placeholder="Ej: 2">
                         </div>
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-violet-700 uppercase">Nota (opcional)</label>
+                            <label for="manual-nota-permiso" class="text-[10px] font-bold text-violet-700 uppercase">Nota (opcional)</label>
                             <input type="text" id="manual-nota-permiso" class="w-full border border-violet-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-violet-500 outline-none" placeholder="Ej: Cita EPS 2pm">
                         </div>
                     </div>
@@ -1037,11 +1071,11 @@
                     <p class="text-[11px] text-amber-800 mb-3">Vuelve a calcular las horas ordinarias/extra de días ya guardados de una semana completa (útil después de un ajuste en la fórmula). No borra nada, solo actualiza los números.</p>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-amber-700 uppercase">Colaborador</label>
+                            <label for="recalc-empleado" class="text-[10px] font-bold text-amber-700 uppercase">Colaborador</label>
                             <select id="recalc-empleado" class="w-full border border-amber-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 outline-none"></select>
                         </div>
                         <div class="col-span-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-amber-700 uppercase">Cualquier fecha de esa semana</label>
+                            <label for="recalc-fecha" class="text-[10px] font-bold text-amber-700 uppercase">Cualquier fecha de esa semana</label>
                             <input type="date" id="recalc-fecha" class="w-full border border-amber-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 outline-none">
                         </div>
                     </div>
@@ -1101,38 +1135,38 @@
                 <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                     <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm"><i class="ph-fill ph-envelope-simple text-blue-500 text-lg"></i> Correos y límites</h3>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alertas de tardanza</label>
+                        <label for="input-email-alertas" class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alertas de tardanza</label>
                         <input type="text" id="input-email-alertas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="admin@indimon.com; otro@indimon.com">
                         <button id="btn-save-email-alertas" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
                     <p class="text-[10px] text-slate-400 -mt-1">Si son varios correos, sepáralos con punto y coma ( ; ).</p>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alerta de ausencia injustificada</label>
+                        <label for="input-email-alerta-ausencia" class="text-[10px] font-bold text-slate-500 uppercase">Correo(s) para alerta de ausencia injustificada</label>
                         <input type="text" id="input-email-alerta-ausencia" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="analistagh@indimon.com.co; ana.bohorquez@indimon.com.co">
                         <button id="btn-save-email-alerta-ausencia" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
                     <p class="text-[10px] text-slate-400 -mt-1">Se envía cuando se registra una Ausencia injustificada desde "Cargar Días Anteriores". Si son varios correos, sepáralos con punto y coma ( ; ).</p>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo de RRHH (notificación de permisos)</label>
+                        <label for="input-email-rrhh" class="text-[10px] font-bold text-slate-500 uppercase">Correo de RRHH (notificación de permisos)</label>
                         <input type="email" id="input-email-rrhh" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="rrhh@indimon.com">
                     </div>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Correo Coordinador de Proyectos (notificación de permisos)</label>
+                        <label for="input-email-coordinador" class="text-[10px] font-bold text-slate-500 uppercase">Correo Coordinador de Proyectos (notificación de permisos)</label>
                         <input type="email" id="input-email-coordinador" class="border border-slate-300 rounded-lg p-2 text-xs bg-white flex-1 min-w-[200px] focus:ring-2 focus:ring-blue-500 outline-none" placeholder="coordinador@indimon.com">
                         <button id="btn-save-emails-permisos" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
                     <div class="mt-3 pt-3 border-t border-blue-100 flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Días para vencer un permiso pendiente</label>
+                        <label for="input-dias-vencimiento" class="text-[10px] font-bold text-slate-500 uppercase">Días para vencer un permiso pendiente</label>
                         <input type="number" min="1" id="input-dias-vencimiento" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="5">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Límite del mismo tipo de permiso al mes</label>
+                        <label for="input-limite-permisos" class="text-[10px] font-bold text-slate-500 uppercase ml-2">Límite del mismo tipo de permiso al mes</label>
                         <input type="number" min="1" id="input-limite-permisos" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Tardanzas/mes para alertar</label>
+                        <label for="input-limite-tardanzas" class="text-[10px] font-bold text-slate-500 uppercase ml-2">Tardanzas/mes para alertar</label>
                         <input type="number" min="1" id="input-limite-tardanzas" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Bloqueos de GPS/mes para alertar</label>
+                        <label for="input-limite-gps-bloqueado" class="text-[10px] font-bold text-slate-500 uppercase ml-2">Bloqueos de GPS/mes para alertar</label>
                         <input type="number" min="1" id="input-limite-gps-bloqueado" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="3">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">% de veces que se pide foto al fichar</label>
+                        <label for="input-probabilidad-selfie" class="text-[10px] font-bold text-slate-500 uppercase ml-2">% de veces que se pide foto al fichar</label>
                         <input type="number" min="0" max="100" id="input-probabilidad-selfie" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="33">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-2">Radio de geocerca por defecto (m)</label>
+                        <label for="input-radio-geocerca" class="text-[10px] font-bold text-slate-500 uppercase ml-2">Radio de geocerca por defecto (m)</label>
                         <input type="number" min="1" id="input-radio-geocerca" class="border border-slate-300 rounded-lg p-2 text-xs bg-white w-20 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="500">
                         <button id="btn-save-config-permisos" class="btn-touch bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-bold">Guardar</button>
                     </div>
@@ -1189,11 +1223,11 @@
                         <h3 class="pm-paso"><span>1</span> ¿Para quién es el permiso?</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Trabajador</label>
+                                <label for="permiso-trabajador" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Trabajador</label>
                                 <input type="text" id="permiso-trabajador" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre del colaborador">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre (quien crea esta solicitud)</label>
+                                <label for="permiso-creado-por" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre (quien crea esta solicitud)</label>
                                 <input type="text" id="permiso-creado-por" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Supervisor que la registra">
                             </div>
                         </div>
@@ -1206,7 +1240,7 @@
                         <div id="permiso-tipos" class="space-y-3"></div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                             <div class="hidden">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tipo de Permiso</label>
+                                <label for="permiso-tipo" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tipo de Permiso</label>
                                 <select id="permiso-tipo" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                                     <option value="">Selecciona...</option>
                                     <optgroup label="Remunerados por ley (no se descuentan ni se reponen)">
@@ -1235,11 +1269,11 @@
                                 <p id="permiso-clasif-info" class="text-xs font-semibold rounded-lg p-3 leading-relaxed border"></p>
                                 <p id="permiso-soporte-recordatorio" class="hidden text-xs font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded-lg p-3 leading-relaxed"></p>
                                 <div id="wrap-permiso-compensacion" class="hidden">
-                                    <label id="label-permiso-compensacion" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">¿Cómo se maneja?</label>
+                                    <label for="permiso-compensacion" id="label-permiso-compensacion" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">¿Cómo se maneja?</label>
                                     <select id="permiso-compensacion" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none"></select>
                                 </div>
                                 <div id="wrap-permiso-sustento" class="hidden">
-                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Artículo o numeral del Reglamento Interno de Trabajo <span class="text-rose-500">*</span></label>
+                                    <label for="permiso-sustento" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Artículo o numeral del Reglamento Interno de Trabajo <span class="text-rose-500">*</span></label>
                                     <input type="text" id="permiso-sustento" maxlength="120" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: Art. 32, numeral 4">
                                 </div>
                                 <label id="wrap-permiso-acuerdo" class="hidden flex items-start gap-2 bg-slate-50 border border-slate-300 rounded-lg p-3">
@@ -1254,7 +1288,7 @@
                         <h3 class="pm-paso"><span>3</span> ¿Cuándo?</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Fecha del Permiso</label>
+                                <label for="permiso-fecha" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Fecha del Permiso</label>
                                 <input type="date" id="permiso-fecha" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <!-- Hora de salida y de regreso: OBLIGATORIAS en permisos por horas. Con la hora de salida se
@@ -1262,30 +1296,30 @@
                                  se calculan solas las horas del permiso; además las piden los formatos oficiales GH-F-011. -->
                             <div id="wrap-permiso-horario" class="grid grid-cols-2 gap-3 md:col-span-2">
                                 <div>
-                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de salida <span class="text-rose-500">*</span></label>
+                                    <label for="permiso-hora-salida" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de salida <span class="text-rose-500">*</span></label>
                                     <input type="time" id="permiso-hora-salida" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de regreso <span class="text-rose-500">*</span></label>
+                                    <label for="permiso-hora-entrada" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Hora de regreso <span class="text-rose-500">*</span></label>
                                     <input type="time" id="permiso-hora-entrada" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                                 </div>
                                 <p id="permiso-horario-error" class="hidden col-span-2 text-[11px] font-bold text-rose-600"></p>
                             </div>
                             <div id="wrap-permiso-horas">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Horas Solicitadas <span class="text-slate-400 normal-case font-medium">(se calculan solas)</span></label>
+                                <label for="permiso-horas" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Horas Solicitadas <span class="text-slate-400 normal-case font-medium">(se calculan solas)</span></label>
                                 <input type="number" id="permiso-horas" readonly tabindex="-1" class="w-full bg-slate-100 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold outline-none" placeholder="Con la salida y el regreso">
                             </div>
                             <div id="wrap-permiso-dias-vacaciones" class="hidden">
-                                <label id="label-permiso-dias" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Días de Vacaciones Solicitados</label>
+                                <label for="permiso-dias-vacaciones" id="label-permiso-dias" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Días de Vacaciones Solicitados</label>
                                 <input type="number" id="permiso-dias-vacaciones" min="0.5" step="0.5" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 5">
                                 <p id="permiso-saldo-vacaciones-info" class="text-[10px] text-slate-400 mt-1"></p>
                             </div>
                             <div id="wrap-permiso-fecha-fin" class="hidden">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Último día de ausencia <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
+                                <label for="permiso-fecha-fin" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Último día de ausencia <span class="text-slate-400 normal-case font-medium">(opcional)</span></label>
                                 <input type="date" id="permiso-fecha-fin" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Motivo / Nota</label>
+                                <label for="permiso-nota" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Motivo / Nota</label>
                                 <textarea id="permiso-nota" rows="2" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Describe brevemente el motivo del permiso"></textarea>
                             </div>
                             <div class="md:col-span-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -1345,7 +1379,7 @@
                                 <p class="text-sm font-bold">Verifica tu identidad para poder firmar</p>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
+                                <label for="firmar-verificacion-input" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
                                 <input type="text" inputmode="numeric" maxlength="15" id="firmar-verificacion-input" class="w-full bg-slate-50 border border-slate-300 text-lg rounded-lg p-2.5 font-mono font-bold tracking-[0.15em] text-center focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
                             </div>
                             <p id="firmar-verificacion-error" class="hidden text-[11px] font-bold text-rose-600">La cédula no coincide. Verifica e inténtalo de nuevo.</p>
@@ -1354,7 +1388,7 @@
 
                         <div id="firmar-pendiente-box" class="hidden bg-white rounded-2xl p-5 border-2 border-slate-200 shadow-sm flex flex-col gap-3">
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
+                                <label for="firmar-nombre-input" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
                                 <input type="text" id="firmar-nombre-input" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden">
@@ -1506,7 +1540,7 @@
                                 <p class="text-sm font-bold">Verifica tu identidad para poder firmar</p>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
+                                <label for="desp-verificacion-input" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu cédula completa</label>
                                 <input type="text" inputmode="numeric" maxlength="15" id="desp-verificacion-input" class="w-full bg-slate-50 border border-slate-300 text-lg rounded-lg p-2.5 font-mono font-bold tracking-[0.15em] text-center focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 1006123456">
                             </div>
                             <p id="desp-verificacion-error" class="hidden text-[11px] font-bold text-rose-600">La cédula no coincide. Verifica e inténtalo de nuevo.</p>
@@ -1521,7 +1555,7 @@
                                 </label>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
+                                <label for="desp-firmar-nombre-input" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Tu nombre</label>
                                 <input type="text" id="desp-firmar-nombre-input" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden">
@@ -1567,24 +1601,24 @@
                         <p class="text-xs text-slate-500 mb-4">El archivo del desprendible (PDF o foto) debe estar subido a Google Drive u otro lugar donde ya lo tengan — aquí solo se pega el enlace para compartirlo, no se sube el archivo directamente.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Colaborador</label>
+                                <label for="desp-trabajador" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Colaborador</label>
                                 <input type="text" id="desp-trabajador" list="lista-empleados" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre del colaborador">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">N° de Nómina (opcional)</label>
+                                <label for="desp-nomina-numero" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">N° de Nómina (opcional)</label>
                                 <input type="text" id="desp-nomina-numero" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: 842">
                             </div>
                             <div></div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Desde</label>
+                                <label for="desp-periodo-inicio" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Desde</label>
                                 <input type="date" id="desp-periodo-inicio" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Hasta</label>
+                                <label for="desp-periodo-fin" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Período - Hasta</label>
                                 <input type="date" id="desp-periodo-fin" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Enlace al documento (Google Drive u otro)</label>
+                                <label for="desp-enlace-documento" class="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Enlace al documento (Google Drive u otro)</label>
                                 <input type="url" id="desp-enlace-documento" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://drive.google.com/...">
                                 <p class="text-[10px] text-slate-400 mt-1">En Google Drive: clic derecho en el archivo → Compartir → \"Cualquiera con el enlace\" → Copiar enlace.</p>
                             </div>
@@ -1820,34 +1854,34 @@
 
             <div class="space-y-3">
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
+                    <label for="editar-registro-obra" class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
                     <input type="text" id="editar-registro-obra" list="lista-obras" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm uppercase focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div class="space-y-3">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
+                        <label for="editar-registro-cliente" class="text-[10px] font-bold text-slate-500 uppercase">Cliente</label>
                         <input type="text" id="editar-registro-cliente" list="lista-clientes" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm uppercase focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Autoriza</label>
+                        <label for="editar-registro-autoriza" class="text-[10px] font-bold text-slate-500 uppercase">Autoriza</label>
                         <input type="text" id="editar-registro-autoriza" list="lista-supervisores" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm uppercase focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label>
+                    <label for="editar-registro-entrada" class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label>
                     <input type="time" id="editar-registro-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Salida</label>
+                    <label for="editar-registro-salida" class="text-[10px] font-bold text-slate-500 uppercase">Salida</label>
                     <input type="time" id="editar-registro-salida" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio</label>
+                        <label for="editar-registro-almuerzo-inicio" class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo inicio</label>
                         <input type="time" id="editar-registro-almuerzo-inicio" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin</label>
+                        <label for="editar-registro-almuerzo-fin" class="text-[10px] font-bold text-slate-500 uppercase">Almuerzo fin</label>
                         <input type="time" id="editar-registro-almuerzo-fin" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
@@ -1919,10 +1953,10 @@
                 <p id="autoriza-extras-titulo" class="font-bold">Hoy tienes horas extra.</p>
                 <p class="mt-1">¿Quién autorizó estas horas extra?</p>
             </div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mt-3 mb-1">Autorizó</label>
+            <label for="autoriza-extras-quien" class="block text-[10px] font-bold text-slate-500 uppercase mt-3 mb-1">Autorizó</label>
             <input type="text" id="autoriza-extras-quien" list="lista-supervisores" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: JLAF">
             <p class="text-[11px] text-slate-500 mt-1">Viene con quien autorizó tu turno al entrar. Si fue otra persona, cámbialo.</p>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mt-3 mb-1">Motivo (opcional)</label>
+            <label for="autoriza-extras-motivo" class="block text-[10px] font-bold text-slate-500 uppercase mt-3 mb-1">Motivo (opcional)</label>
             <input type="text" id="autoriza-extras-motivo" maxlength="120" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej: terminar montaje de tubería">
             <p class="text-[11px] text-slate-500 mt-2">RRHH revisa y aprueba las horas extra cada semana.</p>
             <button id="btn-autoriza-extras-ok" class="btn-touch w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 rounded-xl shadow-md mt-3">Finalizar jornada</button>
@@ -1962,25 +1996,25 @@
             </div>
             <div id="horarios-obra-vista-form" class="hidden">
                 <h3 class="text-lg font-bold text-slate-800 mb-3">Horario de la obra</h3>
-                <label class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
+                <label for="horario-obra-nombre" class="text-[10px] font-bold text-slate-500 uppercase">Obra</label>
                 <select id="horario-obra-nombre" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm mb-3 focus:ring-2 focus:ring-blue-500 outline-none"></select>
                 <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Lunes a viernes</p>
                 <div class="grid grid-cols-3 gap-2 mb-2">
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label><input type="time" id="horario-obra-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salida L–J</label><input type="time" id="horario-obra-salida-lj" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salida viernes</label><input type="time" id="horario-obra-salida-v" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                    <div><label for="horario-obra-entrada" class="text-[10px] font-bold text-slate-500 uppercase">Entrada</label><input type="time" id="horario-obra-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                    <div><label for="horario-obra-salida-lj" class="text-[10px] font-bold text-slate-500 uppercase">Salida L–J</label><input type="time" id="horario-obra-salida-lj" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                    <div><label for="horario-obra-salida-v" class="text-[10px] font-bold text-slate-500 uppercase">Salida viernes</label><input type="time" id="horario-obra-salida-v" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
                 </div>
                 <label class="flex items-center gap-2 text-sm text-slate-700 mb-2"><input type="checkbox" id="horario-obra-almuerzo" class="w-4 h-4 rounded border-slate-300"> Almuerzo de 1 hora (lunes a viernes)</label>
                 <div id="horario-obra-almuerzo-hora-campo" class="mb-3">
-                    <label class="text-[10px] font-bold text-slate-500 uppercase">Hora del almuerzo</label>
+                    <label for="horario-obra-almuerzo-hora" class="text-[10px] font-bold text-slate-500 uppercase">Hora del almuerzo</label>
                     <input type="time" id="horario-obra-almuerzo-hora" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     <p class="text-[11px] text-slate-500 mt-1">Solo para el recordatorio al celular: llega antes de esta hora. No cambia el cálculo de horas.</p>
                 </div>
                 <label class="flex items-center gap-2 text-sm text-slate-700 mb-2"><input type="checkbox" id="horario-obra-sabado" class="w-4 h-4 rounded border-slate-300"> Se trabaja el sábado como parte de la jornada</label>
                 <div id="horario-obra-sabado-campos" class="hidden mb-2">
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Entrada sábado</label><input type="time" id="horario-obra-sab-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Salida sábado</label><input type="time" id="horario-obra-sab-salida" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                        <div><label for="horario-obra-sab-entrada" class="text-[10px] font-bold text-slate-500 uppercase">Entrada sábado</label><input type="time" id="horario-obra-sab-entrada" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
+                        <div><label for="horario-obra-sab-salida" class="text-[10px] font-bold text-slate-500 uppercase">Salida sábado</label><input type="time" id="horario-obra-sab-salida" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
                     </div>
                     <label class="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" id="horario-obra-sab-almuerzo" class="w-4 h-4 rounded border-slate-300"> Almuerzo de 1 hora el sábado</label>
                 </div>
@@ -2413,7 +2447,11 @@
                 visible.placeholder = 'HH:MM';
                 visible.autocomplete = 'off';
                 visible.className = real.className + ' hora24-texto';
-                visible.setAttribute('aria-label', 'Hora en formato 24 horas, por ejemplo 17:30');
+                // La etiqueta del campo (p. ej. "Entrada") pasa al campo visible: así el lector de pantalla dice qué hora
+                // se pide y tocar la etiqueta pone el cursor en el campo que sí se ve.
+                const etiqueta = real.id ? document.querySelector(`label[for="${real.id}"]`) : null;
+                if (etiqueta) { visible.id = real.id + '-texto'; etiqueta.htmlFor = visible.id; }
+                visible.setAttribute('aria-label', `${etiqueta ? etiqueta.textContent.replace(/\s+/g, ' ').trim() + ': ' : ''}hora en formato 24 horas, por ejemplo 17:30`);
                 visible.value = descValue.get.call(real) || '';
                 real._hora24 = visible; visible._real = real;
                 const envoltura = document.createElement('div');
@@ -8472,7 +8510,7 @@
                 const motivos = [];
                 if ((r.minutos_tarde || 0) >= TOLERANCIA_TARDANZA_MIN) {
                     if (r.tardanza_justificada) p.tardanzasJustificadas++;
-                    else { p.tardanzas++; p.minutosTarde += r.minutos_tarde; motivos.push(`Tardanza de ${r.minutos_tarde} min`); }
+                    else { p.tardanzas++; p.minutosTarde += r.minutos_tarde; motivos.push(`Tardanza de ${Number(r.minutos_tarde) || 0} min`); }
                 }
                 const sinGps = ['entrada', 'salida'].filter(k => r[`gps_motivo_${k}`] === 'permiso_denegado');
                 if (sinGps.length) { p.sinGps += sinGps.length; motivos.push(`Sin GPS (permiso de ubicación bloqueado) en la ${sinGps.join(' y la ')}`); }
@@ -8662,7 +8700,7 @@
                 const tarde = (r.minutos_tarde || 0) >= TOLERANCIA_TARDANZA_MIN && !r.tardanza_justificada;
                 const [clase, texto] = deAyer ? ['gris', 'Turno sin cerrar']
                     : (r.almuerzo_inicio && !r.almuerzo_fin) ? ['ambar', 'Almuerzo']
-                    : tarde ? ['rojo', `Tarde ${r.minutos_tarde} min`] : ['verde', 'Trabajando'];
+                    : tarde ? ['rojo', `Tarde ${Number(r.minutos_tarde) || 0} min`] : ['verde', 'Trabajando'];
                 return `<div class="ad-persona"><div class="ad-av">${escapeHtml(inicialesAdmin(nombreCortoAdmin(r.empleado_nombre) || r.empleado_nombre))}</div>
                     <div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-800 truncate">${escapeHtml(nombreCortoAdmin(r.empleado_nombre) || r.empleado_nombre || '')}</p>
                     <p class="text-xs text-slate-500 truncate">${escapeHtml(r.obra || '—')} · entró ${escapeHtml(r.entrada)}${deAyer ? ` (${escapeHtml(diaCortoEs(fechaReg))})` : ''}</p></div>
@@ -8923,7 +8961,7 @@
         // -normalmente Admin revisando fichajes- escalando de cuenta de empleado a sesión de Admin.
         window.verFotoCompleta = (dataUrl) => {
             const w = window.open('', '_blank');
-            if (w) w.document.write(`<title>Foto de verificación</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${escHtml(dataUrl)}" style="max-width:100%;max-height:100vh"></body>`);
+            if (w) w.document.write(`<title>Foto de verificación</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${escHtml(dataUrl)}" alt="Foto de verificación" style="max-width:100%;max-height:100vh"></body>`);
         };
 
         // BUG CORREGIDO: fotoBtn() interpolaba el data:URL de la foto directo dentro de un atributo
@@ -9004,9 +9042,9 @@
                         const tituloAviso = loc.precision === 'baja'
                             ? 'Ubicación aproximada por red (sin señal GPS clara), puede tener varios cientos de metros de margen de error'
                             : 'Margen de error aproximado de esta lectura GPS';
-                        avisoExactitud = ` <span class="${colorClase} font-mono" title="${tituloAviso}">±${loc.exactitud_m}m</span>`;
+                        avisoExactitud = ` <span class="${colorClase} font-mono" title="${tituloAviso}">±${Number(loc.exactitud_m) || 0}m</span>`;
                     }
-                    return `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoExactitud}`;
+                    return `<a href="https://www.google.com/maps?q=${Number(loc.lat)},${Number(loc.lng)}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoExactitud}`;
                 };
                 // MEJORA: compara la hora que reportó el dispositivo contra la hora real en que la
                 // escritura llegó al servidor. Si el fichaje ocurrió offline, esa diferencia se explica
@@ -9029,7 +9067,7 @@
                     if (!foto) return '';
                     const fotoId = `${idBase}-${sufijo}`;
                     fotosPorFila.set(fotoId, foto);
-                    return `<img src="${escHtml(foto)}" data-foto-id="${escHtml(fotoId)}" class="w-6 h-6 rounded-full object-cover border border-slate-300 cursor-pointer flex-shrink-0" title="Ver foto de verificación en tamaño completo">`;
+                    return `<img src="${escHtml(foto)}" alt="Foto de verificación" data-foto-id="${escHtml(fotoId)}" class="w-6 h-6 rounded-full object-cover border border-slate-300 cursor-pointer flex-shrink-0" title="Ver foto de verificación en tamaño completo">`;
                 };
                 // MEJORA (14/10, sugerida por el usuario): la fila era muy alta -cliente/obra/auth
                 // apilados en 3 líneas, horario y liquidación con varias insignias cada una en bloques
@@ -9042,7 +9080,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="p-2 border-b border-slate-100">
-                        <input type="checkbox" data-clave="${escHtml(claveFila)}" class="chk-fila-registro w-4 h-4 rounded border-slate-300 cursor-pointer" ${seleccionRegistros.has(claveFila) ? 'checked' : ''}>
+                        <input type="checkbox" data-clave="${escHtml(claveFila)}" aria-label="Seleccionar el registro de ${escHtml(r.empleado_nombre || r.cedula)} del ${escHtml(r.fecha)}" class="chk-fila-registro w-4 h-4 rounded border-slate-300 cursor-pointer" ${seleccionRegistros.has(claveFila) ? 'checked' : ''}>
                     </td>
                     <td class="p-2 border-b border-slate-100">
                         <div class="font-mono font-bold text-slate-700 text-xs">${escHtml(r.fecha)} ${r.es_dominical_festivo ? '<span class="text-[9px] bg-rose-50 text-rose-600 px-1 py-0.5 rounded ml-1">DOM/FEST</span>' : ''}</div>
@@ -9065,8 +9103,8 @@
                         <div class="flex flex-wrap items-center justify-center gap-1 mt-0.5">
                             ${r.llegada_tarde ? (
                                 r.tardanza_justificada
-                                    ? `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-quitar-justificacion text-[9px] text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-indigo-100 transition-colors" title="${escHtml(r.motivo_justificacion || 'Sin motivo registrado')} — clic para quitar la justificación">🔵 Tarde (${r.minutos_tarde}min)</button>`
-                                    : `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-justificar-tardanza text-[9px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-rose-100 transition-colors" title="Clic para justificar por fuerza mayor (varada, calamidad, lluvia, etc.)">🔴 Tarde (${r.minutos_tarde}min)</button>`
+                                    ? `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-quitar-justificacion text-[9px] text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-indigo-100 transition-colors" title="${escHtml(r.motivo_justificacion || 'Sin motivo registrado')} — clic para quitar la justificación">🔵 Tarde (${Number(r.minutos_tarde) || 0}min)</button>`
+                                    : `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-justificar-tardanza text-[9px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-rose-100 transition-colors" title="Clic para justificar por fuerza mayor (varada, calamidad, lluvia, etc.)">🔴 Tarde (${Number(r.minutos_tarde) || 0}min)</button>`
                             ) : ''}
                             ${avisoRelojSospechoso(r, 'entrada')}
                             ${avisoRelojSospechoso(r, 'salida')}
@@ -9077,10 +9115,10 @@
                     </td>
                     <td class="p-2 border-b border-slate-100 text-center text-xs">
                         ${r.estado === 'completado' ?
-                            `<span class="font-bold text-slate-700">${r.horas_ordinarias || 0}h Ord.</span>
-                             <span class="text-[10px] text-amber-700">+${r.horas_extras_diurnas || 0}ED</span>
-                             <span class="text-[10px] text-indigo-700">+${r.horas_extras_nocturnas || 0}EN</span>
-                             <span class="text-[10px] text-violet-700">+${r.horas_recargo_nocturno || 0}RN</span>
+                            `<span class="font-bold text-slate-700">${Number(r.horas_ordinarias) || 0}h Ord.</span>
+                             <span class="text-[10px] text-amber-700">+${Number(r.horas_extras_diurnas) || 0}ED</span>
+                             <span class="text-[10px] text-indigo-700">+${Number(r.horas_extras_nocturnas) || 0}EN</span>
+                             <span class="text-[10px] text-violet-700">+${Number(r.horas_recargo_nocturno) || 0}RN</span>
                              ${estadoExtras(r) === 'por_aprobar' ? `<span class="block text-[9px] font-bold text-amber-700" title="Autorizó: ${escHtml(r.extras_autoriza || '—')}">⏳ Extras por aprobar</span>`
                                : estadoExtras(r) === 'no_autorizada' ? `<span class="block text-[9px] font-bold text-rose-700">✖ Extras no autorizadas</span>`
                                : estadoExtras(r) === 'aprobada' ? `<span class="block text-[9px] font-bold text-emerald-700" title="Aprobó: ${escHtml(r.extras_revisada_por || '')}">✔ Extras aprobadas</span>` : ''}`
@@ -9364,6 +9402,15 @@
             }
             if ((almuerzoInicio && !almuerzoFin) || (!almuerzoInicio && almuerzoFin)) {
                 return UI.showAlert("Almuerzo incompleto", "Si pones hora de inicio de almuerzo, también pon la de fin (o deja las dos vacías).", "error");
+            }
+            // Misma regla que el Registro manual (más arriba): se mide la duración real del almuerzo, también si cruza la
+            // medianoche en un turno de noche, y solo se rechaza lo que no tiene sentido (cero o más de 4 horas).
+            if (almuerzoInicio && almuerzoFin) {
+                let durAlmMin = (timeStrToFloat(almuerzoFin) - timeStrToFloat(almuerzoInicio)) * 60;
+                if (durAlmMin < 0) durAlmMin += 24 * 60;
+                if (durAlmMin <= 0 || durAlmMin > 4 * 60) {
+                    return UI.showAlert("Horario de almuerzo inválido", `Con inicio ${almuerzoInicio} y fin ${almuerzoFin}, el almuerzo duraría ${(durAlmMin / 60).toFixed(1)} horas. Revisa que el fin sea posterior al inicio y que no pase de 4 horas.`, "error");
+                }
             }
 
             const btn = document.getElementById('btn-editar-registro-guardar');
@@ -11160,9 +11207,19 @@
         // se cargaban en el <head> para todos, bloqueando la pantalla de inicio — en un celular sencillo con mala señal
         // eran varios segundos de espera por algo que el colaborador casi nunca usa. jsDelivr sirve directo desde npm y
         // nunca borra versiones publicadas (cdnjs sí retiró una vez el archivo de Chart.js y rompió "Informe PDF").
-        const URL_JSPDF = 'https://cdn.jsdelivr.net/npm/jspdf@2/dist/jspdf.umd.min.js';
-        const URL_CHARTJS = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+        const URL_JSPDF = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+        const URL_CHARTJS = 'https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js';
         const URL_SHEETJS = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        // SEGURIDAD (auditoría 30/10): versión exacta + huella SRI de cada archivo (sacada del paquete oficial de npm).
+        // Si el archivo del CDN llegara alterado, el navegador no lo ejecuta y el botón muestra el error de siempre
+        // ("no se pudo descargar…"). Para actualizar una librería: cambia la versión en la URL y vuelve a calcular su
+        // huella:  openssl dgst -sha384 -binary archivo.min.js | openssl base64 -A
+        const INTEGRIDAD_LIBRERIAS = {
+            [URL_EXCELJS]: 'sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz',
+            [URL_JSPDF]: 'sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/',
+            [URL_CHARTJS]: 'sha384-Emf5ZVIUiarAdhkgtqK+5/Z5qIvM6QoVrS+qAVtfyZVuD5lIHrac0me485+Antp0',
+            [URL_SHEETJS]: 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw'
+        };
         const librerias = {};
         function cargarLibreria(url, nombreGlobal, nombreVisible) {
             if (window[nombreGlobal]) return Promise.resolve(window[nombreGlobal]);
@@ -11171,6 +11228,7 @@
                     const s = document.createElement('script');
                     s.src = url;
                     s.async = true;
+                    if (INTEGRIDAD_LIBRERIAS[url]) { s.integrity = INTEGRIDAD_LIBRERIAS[url]; s.crossOrigin = 'anonymous'; }
                     s.onload = () => (window[nombreGlobal] ? resolve(window[nombreGlobal]) : reject(new Error(`${nombreVisible} no quedó disponible`)));
                     s.onerror = () => reject(new Error(`No se pudo descargar ${nombreVisible} (revisa la conexión)`));
                     document.head.appendChild(s);
@@ -11462,18 +11520,18 @@
 
                 return `
                 <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.togglePermisoDetalle('${p.id}')">
+                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.togglePermisoDetalle(${escHtml(JSON.stringify(String(p.id)))})">
                         <span class="text-2xl flex-shrink-0">${iconoTipoPermiso(p.tipo)}</span>
                         <div class="min-w-0 flex-1">
                             <div class="text-sm font-bold text-slate-800 truncate flex items-center gap-1.5">
                                 ${escapeHtml(p.trabajador) || '—'}
                                 ${p.es_emergencia ? '<span class="text-[9px] font-bold uppercase bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded flex-shrink-0">Emergencia</span>' : ''}
                             </div>
-                            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(p.tipo) || ''} · ${escapeHtml(p.fecha) || ''}${p.horas ? ' · ' + escapeHtml(p.horas) + 'h' : ''}${p.dias_vacaciones ? ' · ' + p.dias_vacaciones + ' día(s)' : ''}</div>
+                            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(p.tipo) || ''} · ${escapeHtml(p.fecha) || ''}${p.horas ? ' · ' + escapeHtml(p.horas) + 'h' : ''}${p.dias_vacaciones ? ' · ' + escHtml(p.dias_vacaciones) + ' día(s)' : ''}</div>
                         </div>
                         ${badge}
                     </div>
-                    <div id="detalle-permiso-${p.id}" class="hidden mt-3 pt-3 border-t border-slate-100">
+                    <div id="detalle-permiso-${escHtml(p.id)}" class="hidden mt-3 pt-3 border-t border-slate-100">
                         ${textoRemuneracionPermiso(p) ? `<p class="text-[10px] text-slate-600 mb-1"><span class="font-bold">Pago:</span> ${escapeHtml(textoRemuneracionPermiso(p))}</p>` : ''}
                         ${p.creado_por ? `<p class="text-[10px] text-slate-500 mb-2"><span class="font-bold">Creado por:</span> ${escapeHtml(p.creado_por)}</p>` : ''}
                         ${p.nota ? `<p class="text-xs text-slate-600 mb-3"><span class="font-bold">Nota:</span> ${escapeHtml(p.nota)}</p>` : ''}
@@ -11494,7 +11552,7 @@
                                     <p class="text-[9px] font-bold text-slate-500 uppercase">${s.label}</p>
                                     <p class="text-[10px] font-semibold text-slate-700 mb-1 truncate">${escapeHtml(f?.nombre) || '—'}</p>
                                     ${f?.firmado
-                                        ? `<img src="${escapeHtml(f.firma)}" class="w-full h-12 object-contain firma-img rounded border border-slate-200">`
+                                        ? `<img src="${escapeHtml(f.firma)}" alt="Firma de ${escapeHtml(f.nombre) || escapeHtml(s.label)}" class="w-full h-12 object-contain firma-img rounded border border-slate-200">`
                                         : `<div class="flex gap-1">
                                              <button class="btn-copy-link-hist btn-touch flex-1 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar</button>
                                              <a href="https://wa.me/?text=${waTexto}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="btn-touch flex-1 text-center text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded py-1.5"><i class="ph-bold ph-whatsapp-logo"></i> Recordar</a>
@@ -11505,18 +11563,18 @@
                         </div>
                         ${aprobado ? `
                         <div class="flex gap-2 mt-3">
-                            <button class="btn-pdf-permiso btn-touch flex-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}">
+                            <button class="btn-pdf-permiso btn-touch flex-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(p.id)}">
                                 <i class="ph-bold ph-file-pdf"></i> Descargar PDF
                             </button>
-                            <button class="btn-reenviar-permiso btn-touch flex-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}">
+                            <button class="btn-reenviar-permiso btn-touch flex-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(p.id)}">
                                 <i class="ph-bold ph-envelope-simple"></i> Enviar por correo
                             </button>
                         </div>` : ''}
                         ${!esTipoVariosDias(p.tipo) ? `
-                        <button class="btn-corregir-horario-permiso btn-touch w-full mt-3 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}">
+                        <button class="btn-corregir-horario-permiso btn-touch w-full mt-3 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(p.id)}">
                             <i class="ph-bold ph-clock-clockwise"></i> Corregir hora de salida y regreso (Admin)
                         </button>` : ''}
-                        <button class="btn-eliminar-permiso btn-touch w-full mt-3 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}" data-trabajador="${escapeHtml(p.trabajador)}">
+                        <button class="btn-eliminar-permiso btn-touch w-full mt-3 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(p.id)}" data-trabajador="${escapeHtml(p.trabajador)}">
                             <i class="ph-bold ph-trash"></i> Eliminar esta solicitud (creada por error)
                         </button>
                     </div>
@@ -11571,7 +11629,7 @@
                     btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Enviando...';
                     try {
                         const enviados = await enviarNotificacionPermiso(p, p.id);
-                        registrarAuditoria('Reenviar constancia de permiso', `${p.trabajador} (ID ${p.id}) · ${enviados}/${destinos.length} correo(s)`);
+                        registrarAuditoria('Reenviar constancia de permiso', `${p.trabajador} (ID ${escHtml(p.id)}) · ${enviados}/${destinos.length} correo(s)`);
                         UI.showAlert(enviados > 0 ? "Correo enviado" : "No se pudo enviar", enviados > 0
                             ? `Se envió el aviso con el enlace al PDF a ${destinos.join(' y ')}.`
                             : "EmailJS no aceptó el envío. Revisa la configuración de correo e inténtalo de nuevo.", enviados > 0 ? "success" : "error");
@@ -12239,21 +12297,21 @@
                 // src="..." más abajo.
                 return `
                 <div class="bg-white border border-slate-200 rounded-xl p-3">
-                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.toggleDesprendibleDetalle('${d.id}')">
+                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.toggleDesprendibleDetalle(${escHtml(JSON.stringify(String(d.id)))})">
                         <div class="min-w-0">
                             <div class="text-sm font-bold text-slate-800 truncate">${escapeHtml(d.trabajador) || '—'}</div>
                             <div class="text-[10px] text-slate-500 truncate">${escapeHtml(d.periodo_inicio)} a ${escapeHtml(d.periodo_fin)}${d.nomina_numero ? ' · N° ' + escapeHtml(d.nomina_numero) : ''}</div>
                         </div>
                         ${badge}
                     </div>
-                    <div id="detalle-desp-${d.id}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
+                    <div id="detalle-desp-${escHtml(d.id)}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
                         <a href="${escapeHtml(sanitizeUrl(d.enlace_documento))}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 underline flex items-center gap-1"><i class="ph-bold ph-file-text"></i> Ver documento original</a>
                         ${firmado
-                            ? `<img src="${escapeHtml(d.firma)}" class="w-full h-16 object-contain firma-img rounded border border-slate-200 mt-1">
+                            ? `<img src="${escapeHtml(d.firma)}" alt="Firma de ${escapeHtml(d.firmado_por || d.trabajador)}" class="w-full h-16 object-contain firma-img rounded border border-slate-200 mt-1">
                                <p class="text-[10px] text-slate-500">Firmado por ${escapeHtml(d.firmado_por) || escapeHtml(d.trabajador)} el ${d.firmado_en ? new Date(d.firmado_en).toLocaleString('es-CO') : ''}</p>`
                             : `<button class="btn-copy-link-desp-hist btn-touch w-full text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar enlace de firma</button>`
                         }
-                        <button class="btn-eliminar-desprendible btn-touch w-full mt-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${d.id}" data-trabajador="${escapeHtml(d.trabajador)}">
+                        <button class="btn-eliminar-desprendible btn-touch w-full mt-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(d.id)}" data-trabajador="${escapeHtml(d.trabajador)}">
                             <i class="ph-bold ph-trash"></i> Eliminar este desprendible
                         </button>
                     </div>

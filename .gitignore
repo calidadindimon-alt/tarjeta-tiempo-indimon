@@ -12,3 +12,14 @@ tests/_humo-fallo.png
 tests/_extraido-extras.cjs
 tests/_extraido-alertas.cjs
 backups/
+
+# Secretos: nunca se suben al repositorio (es público). Las claves reales viven en los
+# "Secrets" de GitHub Actions (Settings → Secrets and variables → Actions).
+.env
+.env.*
+*.pem
+*.key
+*service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+rclone.conf
