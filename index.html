@@ -8472,7 +8472,7 @@
                 const motivos = [];
                 if ((r.minutos_tarde || 0) >= TOLERANCIA_TARDANZA_MIN) {
                     if (r.tardanza_justificada) p.tardanzasJustificadas++;
-                    else { p.tardanzas++; p.minutosTarde += r.minutos_tarde; motivos.push(`Tardanza de ${r.minutos_tarde} min`); }
+                    else { p.tardanzas++; p.minutosTarde += r.minutos_tarde; motivos.push(`Tardanza de ${Number(r.minutos_tarde) || 0} min`); }
                 }
                 const sinGps = ['entrada', 'salida'].filter(k => r[`gps_motivo_${k}`] === 'permiso_denegado');
                 if (sinGps.length) { p.sinGps += sinGps.length; motivos.push(`Sin GPS (permiso de ubicación bloqueado) en la ${sinGps.join(' y la ')}`); }
@@ -8662,7 +8662,7 @@
                 const tarde = (r.minutos_tarde || 0) >= TOLERANCIA_TARDANZA_MIN && !r.tardanza_justificada;
                 const [clase, texto] = deAyer ? ['gris', 'Turno sin cerrar']
                     : (r.almuerzo_inicio && !r.almuerzo_fin) ? ['ambar', 'Almuerzo']
-                    : tarde ? ['rojo', `Tarde ${r.minutos_tarde} min`] : ['verde', 'Trabajando'];
+                    : tarde ? ['rojo', `Tarde ${Number(r.minutos_tarde) || 0} min`] : ['verde', 'Trabajando'];
                 return `<div class="ad-persona"><div class="ad-av">${escapeHtml(inicialesAdmin(nombreCortoAdmin(r.empleado_nombre) || r.empleado_nombre))}</div>
                     <div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-800 truncate">${escapeHtml(nombreCortoAdmin(r.empleado_nombre) || r.empleado_nombre || '')}</p>
                     <p class="text-xs text-slate-500 truncate">${escapeHtml(r.obra || '—')} · entró ${escapeHtml(r.entrada)}${deAyer ? ` (${escapeHtml(diaCortoEs(fechaReg))})` : ''}</p></div>
@@ -9004,9 +9004,9 @@
                         const tituloAviso = loc.precision === 'baja'
                             ? 'Ubicación aproximada por red (sin señal GPS clara), puede tener varios cientos de metros de margen de error'
                             : 'Margen de error aproximado de esta lectura GPS';
-                        avisoExactitud = ` <span class="${colorClase} font-mono" title="${tituloAviso}">±${loc.exactitud_m}m</span>`;
+                        avisoExactitud = ` <span class="${colorClase} font-mono" title="${tituloAviso}">±${Number(loc.exactitud_m) || 0}m</span>`;
                     }
-                    return `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoExactitud}`;
+                    return `<a href="https://www.google.com/maps?q=${Number(loc.lat)},${Number(loc.lng)}" target="_blank" rel="noopener" class="text-blue-500 hover:text-blue-700 underline font-semibold flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> GPS</a>${avisoExactitud}`;
                 };
                 // MEJORA: compara la hora que reportó el dispositivo contra la hora real en que la
                 // escritura llegó al servidor. Si el fichaje ocurrió offline, esa diferencia se explica
@@ -9065,8 +9065,8 @@
                         <div class="flex flex-wrap items-center justify-center gap-1 mt-0.5">
                             ${r.llegada_tarde ? (
                                 r.tardanza_justificada
-                                    ? `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-quitar-justificacion text-[9px] text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-indigo-100 transition-colors" title="${escHtml(r.motivo_justificacion || 'Sin motivo registrado')} — clic para quitar la justificación">🔵 Tarde (${r.minutos_tarde}min)</button>`
-                                    : `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-justificar-tardanza text-[9px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-rose-100 transition-colors" title="Clic para justificar por fuerza mayor (varada, calamidad, lluvia, etc.)">🔴 Tarde (${r.minutos_tarde}min)</button>`
+                                    ? `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-quitar-justificacion text-[9px] text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-indigo-100 transition-colors" title="${escHtml(r.motivo_justificacion || 'Sin motivo registrado')} — clic para quitar la justificación">🔵 Tarde (${Number(r.minutos_tarde) || 0}min)</button>`
+                                    : `<button data-cedula="${escHtml(r.cedula)}" data-fecha="${escHtml(r.fecha)}" class="btn-justificar-tardanza text-[9px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-flex items-center gap-1 font-bold hover:bg-rose-100 transition-colors" title="Clic para justificar por fuerza mayor (varada, calamidad, lluvia, etc.)">🔴 Tarde (${Number(r.minutos_tarde) || 0}min)</button>`
                             ) : ''}
                             ${avisoRelojSospechoso(r, 'entrada')}
                             ${avisoRelojSospechoso(r, 'salida')}
@@ -9077,10 +9077,10 @@
                     </td>
                     <td class="p-2 border-b border-slate-100 text-center text-xs">
                         ${r.estado === 'completado' ?
-                            `<span class="font-bold text-slate-700">${r.horas_ordinarias || 0}h Ord.</span>
-                             <span class="text-[10px] text-amber-700">+${r.horas_extras_diurnas || 0}ED</span>
-                             <span class="text-[10px] text-indigo-700">+${r.horas_extras_nocturnas || 0}EN</span>
-                             <span class="text-[10px] text-violet-700">+${r.horas_recargo_nocturno || 0}RN</span>
+                            `<span class="font-bold text-slate-700">${Number(r.horas_ordinarias) || 0}h Ord.</span>
+                             <span class="text-[10px] text-amber-700">+${Number(r.horas_extras_diurnas) || 0}ED</span>
+                             <span class="text-[10px] text-indigo-700">+${Number(r.horas_extras_nocturnas) || 0}EN</span>
+                             <span class="text-[10px] text-violet-700">+${Number(r.horas_recargo_nocturno) || 0}RN</span>
                              ${estadoExtras(r) === 'por_aprobar' ? `<span class="block text-[9px] font-bold text-amber-700" title="Autorizó: ${escHtml(r.extras_autoriza || '—')}">⏳ Extras por aprobar</span>`
                                : estadoExtras(r) === 'no_autorizada' ? `<span class="block text-[9px] font-bold text-rose-700">✖ Extras no autorizadas</span>`
                                : estadoExtras(r) === 'aprobada' ? `<span class="block text-[9px] font-bold text-emerald-700" title="Aprobó: ${escHtml(r.extras_revisada_por || '')}">✔ Extras aprobadas</span>` : ''}`
@@ -11462,18 +11462,18 @@
 
                 return `
                 <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.togglePermisoDetalle('${p.id}')">
+                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.togglePermisoDetalle(${escHtml(JSON.stringify(String(p.id)))})">
                         <span class="text-2xl flex-shrink-0">${iconoTipoPermiso(p.tipo)}</span>
                         <div class="min-w-0 flex-1">
                             <div class="text-sm font-bold text-slate-800 truncate flex items-center gap-1.5">
                                 ${escapeHtml(p.trabajador) || '—'}
                                 ${p.es_emergencia ? '<span class="text-[9px] font-bold uppercase bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded flex-shrink-0">Emergencia</span>' : ''}
                             </div>
-                            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(p.tipo) || ''} · ${escapeHtml(p.fecha) || ''}${p.horas ? ' · ' + escapeHtml(p.horas) + 'h' : ''}${p.dias_vacaciones ? ' · ' + p.dias_vacaciones + ' día(s)' : ''}</div>
+                            <div class="text-[10px] text-slate-500 truncate">${escapeHtml(p.tipo) || ''} · ${escapeHtml(p.fecha) || ''}${p.horas ? ' · ' + escapeHtml(p.horas) + 'h' : ''}${p.dias_vacaciones ? ' · ' + escHtml(p.dias_vacaciones) + ' día(s)' : ''}</div>
                         </div>
                         ${badge}
                     </div>
-                    <div id="detalle-permiso-${p.id}" class="hidden mt-3 pt-3 border-t border-slate-100">
+                    <div id="detalle-permiso-${escHtml(p.id)}" class="hidden mt-3 pt-3 border-t border-slate-100">
                         ${textoRemuneracionPermiso(p) ? `<p class="text-[10px] text-slate-600 mb-1"><span class="font-bold">Pago:</span> ${escapeHtml(textoRemuneracionPermiso(p))}</p>` : ''}
                         ${p.creado_por ? `<p class="text-[10px] text-slate-500 mb-2"><span class="font-bold">Creado por:</span> ${escapeHtml(p.creado_por)}</p>` : ''}
                         ${p.nota ? `<p class="text-xs text-slate-600 mb-3"><span class="font-bold">Nota:</span> ${escapeHtml(p.nota)}</p>` : ''}
@@ -11505,18 +11505,18 @@
                         </div>
                         ${aprobado ? `
                         <div class="flex gap-2 mt-3">
-                            <button class="btn-pdf-permiso btn-touch flex-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}">
+                            <button class="btn-pdf-permiso btn-touch flex-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(p.id)}">
                                 <i class="ph-bold ph-file-pdf"></i> Descargar PDF
                             </button>
-                            <button class="btn-reenviar-permiso btn-touch flex-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}">
+                            <button class="btn-reenviar-permiso btn-touch flex-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(p.id)}">
                                 <i class="ph-bold ph-envelope-simple"></i> Enviar por correo
                             </button>
                         </div>` : ''}
                         ${!esTipoVariosDias(p.tipo) ? `
-                        <button class="btn-corregir-horario-permiso btn-touch w-full mt-3 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}">
+                        <button class="btn-corregir-horario-permiso btn-touch w-full mt-3 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(p.id)}">
                             <i class="ph-bold ph-clock-clockwise"></i> Corregir hora de salida y regreso (Admin)
                         </button>` : ''}
-                        <button class="btn-eliminar-permiso btn-touch w-full mt-3 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${p.id}" data-trabajador="${escapeHtml(p.trabajador)}">
+                        <button class="btn-eliminar-permiso btn-touch w-full mt-3 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(p.id)}" data-trabajador="${escapeHtml(p.trabajador)}">
                             <i class="ph-bold ph-trash"></i> Eliminar esta solicitud (creada por error)
                         </button>
                     </div>
@@ -11571,7 +11571,7 @@
                     btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Enviando...';
                     try {
                         const enviados = await enviarNotificacionPermiso(p, p.id);
-                        registrarAuditoria('Reenviar constancia de permiso', `${p.trabajador} (ID ${p.id}) · ${enviados}/${destinos.length} correo(s)`);
+                        registrarAuditoria('Reenviar constancia de permiso', `${p.trabajador} (ID ${escHtml(p.id)}) · ${enviados}/${destinos.length} correo(s)`);
                         UI.showAlert(enviados > 0 ? "Correo enviado" : "No se pudo enviar", enviados > 0
                             ? `Se envió el aviso con el enlace al PDF a ${destinos.join(' y ')}.`
                             : "EmailJS no aceptó el envío. Revisa la configuración de correo e inténtalo de nuevo.", enviados > 0 ? "success" : "error");
@@ -12239,21 +12239,21 @@
                 // src="..." más abajo.
                 return `
                 <div class="bg-white border border-slate-200 rounded-xl p-3">
-                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.toggleDesprendibleDetalle('${d.id}')">
+                    <div class="flex items-center justify-between cursor-pointer gap-2" onclick="window.toggleDesprendibleDetalle(${escHtml(JSON.stringify(String(d.id)))})">
                         <div class="min-w-0">
                             <div class="text-sm font-bold text-slate-800 truncate">${escapeHtml(d.trabajador) || '—'}</div>
                             <div class="text-[10px] text-slate-500 truncate">${escapeHtml(d.periodo_inicio)} a ${escapeHtml(d.periodo_fin)}${d.nomina_numero ? ' · N° ' + escapeHtml(d.nomina_numero) : ''}</div>
                         </div>
                         ${badge}
                     </div>
-                    <div id="detalle-desp-${d.id}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
+                    <div id="detalle-desp-${escHtml(d.id)}" class="hidden mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
                         <a href="${escapeHtml(sanitizeUrl(d.enlace_documento))}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 underline flex items-center gap-1"><i class="ph-bold ph-file-text"></i> Ver documento original</a>
                         ${firmado
                             ? `<img src="${escapeHtml(d.firma)}" class="w-full h-16 object-contain firma-img rounded border border-slate-200 mt-1">
                                <p class="text-[10px] text-slate-500">Firmado por ${escapeHtml(d.firmado_por) || escapeHtml(d.trabajador)} el ${d.firmado_en ? new Date(d.firmado_en).toLocaleString('es-CO') : ''}</p>`
                             : `<button class="btn-copy-link-desp-hist btn-touch w-full text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded py-1.5" data-link="${escapeHtml(link)}"><i class="ph-bold ph-copy"></i> Copiar enlace de firma</button>`
                         }
-                        <button class="btn-eliminar-desprendible btn-touch w-full mt-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${d.id}" data-trabajador="${escapeHtml(d.trabajador)}">
+                        <button class="btn-eliminar-desprendible btn-touch w-full mt-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg py-2 flex items-center justify-center gap-1.5" data-id="${escHtml(d.id)}" data-trabajador="${escapeHtml(d.trabajador)}">
                             <i class="ph-bold ph-trash"></i> Eliminar este desprendible
                         </button>
                     </div>
