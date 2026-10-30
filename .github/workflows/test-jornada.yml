@@ -11,6 +11,7 @@ on:
       - 'scripts/regenerar-tailwind.mjs'
       - 'scripts/recordatorios-*.mjs'
       - 'service-worker.js'
+      - 'firestore.rules'
   pull_request:
     paths:
       - 'index.html'
@@ -19,6 +20,7 @@ on:
       - 'scripts/regenerar-tailwind.mjs'
       - 'scripts/recordatorios-*.mjs'
       - 'service-worker.js'
+      - 'firestore.rules'
   workflow_dispatch: {}
 
 jobs:
@@ -104,3 +106,27 @@ jobs:
           name: captura-prueba-de-humo
           path: tests/_humo-fallo.png
           if-no-files-found: ignore
+
+  # Reglas de seguridad de Firestore en el emulador (sin tocar la base real): quién puede leer y escribir qué.
+  reglas:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Preparar Java (lo necesita el emulador de Firestore)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar el emulador y las librerías de prueba
+        run: npm install --no-save firebase-tools@13.29.1 @firebase/rules-unit-testing@3.0.4 firebase@10.13.0
+
+      - name: Probar las reglas de privacidad y que la app siga funcionando
+        run: npx firebase emulators:exec --only firestore --project demo-indimon "node tests/test-reglas-firestore.mjs"

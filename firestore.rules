@@ -66,6 +66,15 @@ service cloud.firestore {
       return estadoOk && firmaOk;
     }
 
+    // PRIVACIDAD (30/10): ¿quien pregunta es el colaborador dueño de esta cédula? Igual que en las escrituras, se
+    // compara el usuario de Firebase con el authUid guardado en su ficha (no basta con el correo emp{cédula}@…, porque
+    // cualquiera podría crear esa cuenta para alguien que todavía no tiene PIN). Una cédula vacía o inexistente es "no".
+    function esDuenoDe(cedula) {
+      return request.auth != null && cedula is string && cedula != '' &&
+             exists(/databases/$(database)/documents/empleados/$(cedula)) &&
+             get(/databases/$(database)/documents/empleados/$(cedula)).data.get('authUid', null) == request.auth.uid;
+    }
+
     function esColaboradorActivoAutenticado(cedula) {
       let emp = get(/databases/$(database)/documents/empleados/$(cedula)).data;
       return request.auth != null &&
@@ -126,8 +135,10 @@ service cloud.firestore {
     // era una puerta de escritura sin ningún control que nadie usaba mal
     // aposta, pero tampoco hacía falta dejar abierta.
     // -------------------------------------------------------------------------
+    // PRIVACIDAD (30/10): esta consulta trae los registros de TODOS (horas, GPS, selfies): solo Admin. Mi Tarjeta lee
+    // los suyos por la ruta normal (más abajo), nunca con esta consulta.
     match /{path=**}/registros/{fecha} {
-      allow read: if true;
+      allow read: if esAdmin();
       allow write: if false;
     }
 
@@ -157,8 +168,11 @@ service cloud.firestore {
     // documento (resource.data, el que YA existe en el servidor) coincida con quien está autenticado
     // — igual que en 'registros'.
     // -------------------------------------------------------------------------
+    // PRIVACIDAD (30/10): la ficha completa trae el sueldo/tarifa: solo Admin o el propio colaborador. El cargo y el saldo
+    // de vacaciones, que sí necesitan el formulario de permisos y la constancia sin sesión, se copian a empleados_publico.
     match /empleados/{cedula} {
-      allow read: if true;
+      allow read: if esAdmin() ||
+        (request.auth != null && resource.data.get('authUid', null) == request.auth.uid);
       allow create, delete: if esAdmin();
       // ENDURECIDO (ronda 4): se agrega "resource.data.get('activo', true) != false" — si Admin ya
       // marcó a este colaborador como inactivo (eliminado), ya no puede tocar ni su propio sueldo,
@@ -188,7 +202,8 @@ service cloud.firestore {
            .hasOnly(['sueldo_base', 'tarifa_hora']));
 
       match /registros/{fecha} {
-        allow read: if true;
+        // PRIVACIDAD (30/10): horas, ubicación GPS y selfies: solo Admin o el dueño.
+        allow read: if esAdmin() || esDuenoDe(cedula);
 
         // ENDURECIDO (auditoría 20/09, H1): esto era "allow write: if true" — con las credenciales
         // públicas de Firebase, cualquiera podía escribir horas fabricadas (extras, dominicales, etc.)
@@ -304,13 +319,18 @@ service cloud.firestore {
     // Firestore — pero sí evita que alguien reescriba los datos base del
     // permiso (trabajador, cédula, tipo, fechas) sin ser Admin.
     // -------------------------------------------------------------------------
+    // PRIVACIDAD (30/10): abrir UN permiso por su id sigue abierto, porque así funcionan los enlaces de firma y la
+    // constancia (el id son 20 caracteres al azar: no se puede adivinar). LISTAR permisos: solo Admin, o el colaborador
+    // los suyos (la consulta debe filtrar por su cédula).
     match /permisos/{id} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if esAdmin() || esDuenoDe(resource.data.get('trabajador_cedula', null));
       // ENDURECIDO (ronda 5, parte 2): un permiso nace SIEMPRE en un estado distinto de 'aprobado'
       // (típicamente 'pendiente') — nadie puede crear uno que ya llegue "pre-aprobado".
       allow create: if request.resource.data.estado != 'aprobado';
       allow update: if esAdmin() ||
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firmantes', 'estado']) &&
+        // aprobado_en: lo marca la última firma, para que Admin pase el permiso a nómina si quien firmó no tenía sesión.
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firmantes', 'estado', 'aprobado_en']) &&
          (request.resource.data.estado != 'aprobado' || permisoTieneLas4Firmas()));
       // ENDURECIDO: borrar una solicitud exige Admin. Antes era "if true": cualquier colaborador (o cualquiera con las
       // credenciales públicas de Firebase) podía borrar solicitudes de permiso de los demás desde el Historial.
@@ -340,8 +360,12 @@ service cloud.firestore {
     // solo se permite si los campos que cambian son EXACTAMENTE los que pone la firma remota
     // (firmado_por, firma, estado, firmado_en) — así no se puede reescribir el monto, el período,
     // la cédula del trabajador ni el enlace al documento sin iniciar sesión de Admin.
+    // PRIVACIDAD (30/10): igual que permisos: uno por su enlace sí; listar, solo Admin o el propio colaborador. Crear
+    // desprendibles es tarea de Admin (antes cualquiera podía crear uno).
     match /desprendibles/{id} {
-      allow read, create: if true;
+      allow get: if true;
+      allow list: if esAdmin() || esDuenoDe(resource.data.get('trabajador_cedula', null));
+      allow create: if esAdmin();
       allow update: if esAdmin() ||
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['firmado_por', 'firma', 'estado', 'firmado_en']);
@@ -358,8 +382,9 @@ service cloud.firestore {
     // de un colaborador) y necesita poder marcar 'alerta_ultimo_dia_enviada' en
     // true; por eso, sin ser admin, solo se permite tocar ese único campo.
     // -------------------------------------------------------------------------
+    // PRIVACIDAD (30/10): tipo y diagnóstico médico: solo Admin o el colaborador al que pertenece.
     match /incapacidades/{id} {
-      allow read: if true;
+      allow read: if esAdmin() || esDuenoDe(resource.data.get('trabajador_cedula', null));
       allow create, delete: if esAdmin();
       allow update: if esAdmin() ||
         request.resource.data.diff(resource.data).affectedKeys()
