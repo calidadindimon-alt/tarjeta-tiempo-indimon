@@ -3305,6 +3305,17 @@
             return { extD: 0, extN: 0, horasDom: Math.max(0, horasDom - extD - extN), pendientes: estado === 'por_aprobar' ? extD + extN : 0 };
         }
 
+        // NORMA LEGAL (03/11, art. 179 CST mod. Ley 2466 de 2025): el salario mensual ya paga el domingo y el festivo como
+        // DESCANSO remunerado; si la persona TRABAJA ese día, ese trabajo se paga aparte: el valor de la hora al 100 % más el
+        // recargo dominical/festivo (90 % entre jul-2026 y jun-2027). Antes la app, para salario mensual, solo sumaba el
+        // recargo, como si el sueldo ya pagara ese trabajo. Las horas EXTRA del domingo/festivo ya llevaban su 100 % (dentro
+        // del ×1,25 / ×1,75) y el contratista ya cobra cada hora ordinaria a su tarifa: a ellos no les falta nada. Esta
+        // función da las horas ORDINARIAS trabajadas en domingo/festivo, que son las que deben sumar ese 100 %.
+        function horasOrdinariasEnDescanso(r) {
+            const dom = r.horas_dominicales != null ? r.horas_dominicales : (r.es_dominical_festivo ? (r.horas_ordinarias || 0) : 0);
+            return Math.max(0, Math.min(r.horas_ordinarias || 0, dom || 0));
+        }
+
         // Etiqueta del día de descanso remunerado (festivo entre semana, sábado o domingo).
         function etiquetaDescansoRemunerado(fecha, registrosSemana, segundaPersona) {
             const meta = metaSemanalOrdinaria(fecha, registrosSemana.filter(r => horasTrabajadasRegistro(r) > 0).map(r => r.fecha));
@@ -4098,7 +4109,7 @@
             }
 
             let totalOrd = 0, totalExtD = 0, totalExtN = 0, totalRecNoct = 0, totalDomHoras = 0, totalExtrasPorAprobar = 0;
-            let totalNoAutorizadas = 0, totalDomHorasFisicas = 0;
+            let totalNoAutorizadas = 0, totalDomHorasFisicas = 0, totalOrdDescanso = 0;
             const diasConExtras = [];
             const todosLosRegistros = [];
 
@@ -4131,6 +4142,7 @@
                     const recargoDeEseDia = recargoDominicalFestivoPorFecha(reg.fecha);
                     totalDomHoras += pag.horasDom * recargoDeEseDia;
                     totalDomHorasFisicas += pag.horasDom;
+                    totalOrdDescanso += horasOrdinariasEnDescanso(reg);
                     // Para la tarjeta "Mis extras": cada día con extras, con su estado y lo que paga.
                     const estadoEx = estadoExtras(reg);
                     const extDia = (reg.horas_extras_diurnas || 0) + (reg.horas_extras_nocturnas || 0);
@@ -4172,7 +4184,8 @@
                 document.getElementById('ui-deducciones').textContent = `${totalOrd.toFixed(1)}h ordinarias × ${UI.formatCOP(tarifaHora)}`;
                 document.getElementById('ui-total-neto').textContent = UI.formatCOP(totalBruto);
             } else {
-                const pagoExtras = calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras);
+                // + el 100 % de las horas ordinarias trabajadas en domingo/festivo (ver horasOrdinariasEnDescanso).
+                const pagoExtras = calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras) + totalOrdDescanso * ((base || 0) / LEY.FACTOR_MENSUAL);
                 // BUG CORREGIDO (M3): las deducciones se calculaban solo sobre el sueldo base, dejando
                 // por fuera los recargos. En Colombia los aportes se liquidan sobre el ingreso salarial
                 // total, así que el "neto estimado" salía más alto de lo que la persona iba a recibir
@@ -4198,7 +4211,8 @@
                 pagoExtN: totalExtN * vh * (1 + LEY.RECARGO_EXTRA_NOCTURNA),
                 pagoRecNoct: totalRecNoct * vh * LEY.RECARGO_NOCTURNO_ORDINARIO,
                 pagoDom: totalDomHoras * vh,
-                total: calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras, esContratista ? tarifaHora : null),
+                total: calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras, esContratista ? tarifaHora : null) + (esContratista ? 0 : totalOrdDescanso * vh),
+                ordDescanso: esContratista ? 0 : totalOrdDescanso, pagoOrdDescanso: esContratista ? 0 : totalOrdDescanso * vh,
                 sinValor: faltaValorBase, esContratista,
                 dias: diasConExtras.sort((a, b) => b.fecha.localeCompare(a.fecha)).map(d => ({ ...d, valor: d.extD * vh * (1 + LEY.RECARGO_EXTRA_DIURNA) + d.extN * vh * (1 + LEY.RECARGO_EXTRA_NOCTURNA) }))
             };
@@ -5699,7 +5713,7 @@
                 elDom.classList.toggle('hidden', !data.es_dominical_festivo);
                 if (data.es_dominical_festivo) {
                     const pctDia = Math.round(recargoDominicalFestivoPorFecha(data.fecha) * 100);
-                    elDom.innerHTML = `<i class="ph-bold ph-star"></i> Día Dominical / Festivo (+${pctDia}% recargo)`;
+                    elDom.innerHTML = `<i class="ph-bold ph-star"></i> Día Dominical / Festivo (horas al 100 % + ${pctDia}% de recargo)`;
                 }
             }
             // Con el turno de HOY abierto la obra se puede cambiar (queda anotado, ver confirmarCambioTurnoMT).
@@ -6170,7 +6184,8 @@
                 linea('☀️', `Extra diurna · ${numeroMT(x.extD)} h`, `×${numeroMT(1 + LEY.RECARGO_EXTRA_DIURNA)}`, x.pagoExtD) +
                 linea('🌙', `Extra nocturna · ${numeroMT(x.extN)} h`, `×${numeroMT(1 + LEY.RECARGO_EXTRA_NOCTURNA)}`, x.pagoExtN) +
                 linea('🌃', `Recargo nocturno · ${numeroMT(x.recNoct)} h`, `+${Math.round(LEY.RECARGO_NOCTURNO_ORDINARIO * 100)}%`, x.pagoRecNoct) +
-                linea('📅', `Dominical / festivo · ${numeroMT(x.domHoras)} h`, '', x.pagoDom) +
+                linea('📅', `Recargo dominical / festivo · ${numeroMT(x.domHoras)} h`, '', x.pagoDom) +
+                (x.ordDescanso ? linea('🗓️', `Horas trabajadas en domingo / festivo · ${numeroMT(x.ordDescanso)} h`, '×1', x.pagoOrdDescanso) : '') +
                 `<div class="mt-linea text-amber-700"><span>⏳ Por aprobar · ${numeroMT(x.pendientes)} h</span><b>RRHH</b></div>` +
                 `<div class="mt-linea text-slate-400"><span>✖ No autorizadas · ${numeroMT(x.noAutorizadas)} h</span><b>no suman</b></div>`;
             const estadoTxt = { aprobada: ['✔ aprobadas', 'text-emerald-700'], anterior: ['✔', 'text-emerald-700'], por_aprobar: ['⏳ por aprobar', 'text-amber-700'], no_autorizada: ['✖ no autorizadas', 'text-slate-400'] };
@@ -8785,7 +8800,7 @@
             const porColaborador = new Map(); // cedula -> { totalOrd, totalExtD, totalExtN, totalRecNoct, totalDomPond }
             regs.forEach(r => {
                 if (!r.cedula) return;
-                const acc = porColaborador.get(r.cedula) || { totalOrd: 0, totalExtD: 0, totalExtN: 0, totalRecNoct: 0, totalDomPond: 0 };
+                const acc = porColaborador.get(r.cedula) || { totalOrd: 0, totalExtD: 0, totalExtN: 0, totalRecNoct: 0, totalDomPond: 0, totalOrdDescanso: 0 };
                 // Las horas extra solo cuentan si RRHH ya las aprobó (ver extrasPagables).
                 const pag = extrasPagables(r);
                 acc.totalOrd += (r.horas_ordinarias || 0);
@@ -8795,6 +8810,7 @@
                 // Mismo escalonamiento de Ley 2466 (80/90/100%) que usa calculateMonthlyAccumulated —
                 // ver recargoDominicalFestivoPorFecha más arriba en este archivo.
                 acc.totalDomPond += pag.horasDom * recargoDominicalFestivoPorFecha(r.fecha);
+                acc.totalOrdDescanso += horasOrdinariasEnDescanso(r);
                 porColaborador.set(r.cedula, acc);
             });
 
@@ -8827,6 +8843,7 @@
                 } else {
                     if (incluirBase) total += base;
                     total += calcularPagoExtras(base, acc.totalExtD, acc.totalExtN, acc.totalRecNoct, acc.totalDomPond);
+                    total += acc.totalOrdDescanso * (base / LEY.FACTOR_MENSUAL); // 100 % de las horas ordinarias en domingo/festivo
                 }
             });
 
