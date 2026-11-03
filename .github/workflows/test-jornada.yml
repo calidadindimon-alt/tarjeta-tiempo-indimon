@@ -68,6 +68,9 @@ jobs:
       - name: Probar la regla de 24 horas y el horario obligatorio de los permisos
         run: node tests/test-permisos-anticipacion.mjs
 
+      - name: Probar el pago del trabajo en domingo o festivo (horas al 100 % + recargo, Ley 2466)
+        run: node tests/test-festivo-trabajado.mjs
+
       - name: Instalar librerías para probar el Excel y el PDF de permisos
         run: npm install --no-save exceljs@4.4.0 jspdf@2.5.2
 
