@@ -70,7 +70,7 @@ export const updateDoc = async (r, data) => aplicar(r, data, true);
 export const deleteDoc = async () => {};
 export const onSnapshot = (q, cb) => { const run = () => { try { cb(q.isCollection || q.cons ? resolver(q) : snapDoc(q.path)); } catch (e) { console.error(e); } }; (window.__OYENTES__ = window.__OYENTES__ || []).push(run); run(); return () => {}; };
 export const writeBatch = () => { const ops = []; return { set(r, d) { ops.push(() => aplicar(r, d, false)); }, update(r, d) { ops.push(() => aplicar(r, d, true)); }, delete() {}, commit: async () => ops.forEach(f => f()) }; };
-export const arrayUnion = (...a) => a; export const serverTimestamp = () => new Date().toISOString(); export const increment = (n) => n;
+export const arrayUnion = (...a) => a; export const deleteField = () => null; export const serverTimestamp = () => new Date().toISOString(); export const increment = (n) => n;
 export const runTransaction = async (db, fn) => fn({ get: async (r) => snapDoc(r.path), update() {}, set() {} });`;
 const STUB_EMAILJS = `export default { init() {}, send: async () => ({ status: 200 }) };`;
 const STUB_APPCHECK = `export const initializeAppCheck = () => ({}); export class ReCaptchaEnterpriseProvider { constructor() {} }`;

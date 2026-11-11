@@ -88,6 +88,11 @@ await caso(C, 'NO lista permisos de otro', NO, () => getDocs(query(collection(an
 await caso(C, 'sí lista SUS desprendibles (Mi nómina)', SI, () => getDocs(query(collection(ana, 'desprendibles'), where('trabajador_cedula', '==', '111'))));
 await caso(C, 'sí marca su entrada (escribe su registro de hoy)', SI, () => setDoc(doc(ana, 'empleados/111/registros/2026-10-30'), { fecha: '2026-10-30', entrada: '07:30', estado: 'activo', horas_ordinarias: 0 }));
 
+await caso(C, 'sí sale a una cita y vuelve (salidas_permiso en su registro de hoy)', SI, () => updateDoc(doc(ana, 'empleados/111/registros/2026-10-30'), { salidas_permiso: [{ motivo: 'Cita médica', sale: '10:00', vuelve: '12:00' }] }));
+await caso(C, 'sí marca "Entendido" en la decisión de RRHH (decisiones_vistas)', SI, () => updateDoc(doc(ana, 'empleados/111/registros/2026-10-30'), { decisiones_vistas: ['0:descuenta'] }));
+await caso(C, 'NO cambia la decisión de RRHH sobre su permiso', NO, () => updateDoc(doc(ana, 'empleados/111/registros/2026-10-30'), { 'decisiones_permiso.0': { decision: 'no_descuenta' } }));
+await caso(C, 'NO crea un registro ya con una decisión de RRHH', NO, () => setDoc(doc(ana, 'empleados/111/registros/2026-10-31'), { fecha: '2026-10-31', entrada: '07:00', estado: 'activo', horas_ordinarias: 0, decisiones_permiso: { 0: { decision: 'no_descuenta' } } }));
+
 // ---------- Intruso: creó la cuenta emp333 (Cami aún no tenía PIN) ----------
 const I = 'Intruso con cédula ajena';
 await caso(I, 'NO lee la ficha de Cami', NO, () => getDoc(doc(intruso, 'empleados/333')));
@@ -102,7 +107,11 @@ await caso(A, 'sí lista permisos (también los sin cédula)', SI, () => getDocs
 await caso(A, 'sí crea desprendibles', SI, () => setDoc(doc(admin, 'desprendibles/d2'), { trabajador_cedula: '222', estado: 'pendiente' }));
 await caso(A, 'sí pasa un permiso a nómina (marca)', SI, () => updateDoc(doc(admin, 'permisos/p1'), { nomina_sincronizada: true }));
 await caso(A, 'sí vincula un permiso sin cédula', SI, () => updateDoc(doc(admin, 'permisos/p3'), { trabajador_cedula: '111' }));
+await caso(A, 'sí decide sobre el permiso personal de un colaborador', SI, () => updateDoc(doc(admin, 'empleados/111/registros/2026-10-30'), { 'decisiones_permiso.0': { decision: 'descuenta', horas: 2 } }));
 await caso(A, 'sí copia cargo y saldo a la ficha pública', SI, () => setDoc(doc(admin, 'empleados_publico/111'), { cargo: 'AUXILIAR', dias_vacaciones_disponibles: 10 }, { merge: true }));
+
+// Después de la decisión de RRHH, el colaborador sigue pudiendo guardar su día (sin tocar la decisión).
+await caso(C, 'sí marca "Entendido" y sigue fichando con la decisión de RRHH ya guardada', SI, () => updateDoc(doc(ana, 'empleados/111/registros/2026-10-30'), { decisiones_vistas: ['0:descuenta'], salida: '17:00' }));
 
 await env.cleanup();
 const ok = resultados.filter(Boolean).length;
