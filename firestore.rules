@@ -66,6 +66,14 @@ service cloud.firestore {
       return estadoOk && firmaOk;
     }
 
+    // SALIDAS A CITA O PERMISO (nov-2026): la decisión de RRHH sobre un permiso personal (no se descuenta / se descuenta /
+    // se repone) vive en decisiones_permiso del registro del día. Solo Admin la escribe: el colaborador sigue guardando su
+    // propio registro (salir, volver, marcar "Entendido" en decisiones_vistas), pero sin poder tocar esa decisión.
+    function decisionesPermisoSinCambio() {
+      return request.resource.data.get('decisiones_permiso', null) ==
+             (resource == null ? null : resource.data.get('decisiones_permiso', null));
+    }
+
     // PRIVACIDAD (30/10): ¿quien pregunta es el colaborador dueño de esta cédula? Igual que en las escrituras, se
     // compara el usuario de Firebase con el authUid guardado en su ficha (no basta con el correo emp{cédula}@…, porque
     // cualquiera podría crear esa cuenta para alguien que todavía no tiene PIN). Una cédula vacía o inexistente es "no".
@@ -235,7 +243,7 @@ service cloud.firestore {
         // ENDURECIDO (ronda 5): ver permisoAprobadoValido() — la rama 3 ya no acepta cualquier
         // registro con horas en cero, exige que exista un permiso real aprobado detrás.
         allow create: if esAdmin() ||
-          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes() && extrasEstadoPermitidoColaborador()) ||
+          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes() && extrasEstadoPermitidoColaborador() && decisionesPermisoSinCambio()) ||
           (request.resource.data.horas_ordinarias == 0 &&
            request.resource.data.horas_extras_diurnas == 0 &&
            request.resource.data.horas_extras_nocturnas == 0 &&
@@ -244,7 +252,7 @@ service cloud.firestore {
            permisoAprobadoValido(request.resource.data.permiso_id, cedula));
 
         allow update: if esAdmin() ||
-          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes() && extrasEstadoPermitidoColaborador()) ||
+          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes() && extrasEstadoPermitidoColaborador() && decisionesPermisoSinCambio()) ||
           (request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['tipo_permiso', 'horas_permiso', 'nota_permiso', 'dias_vacaciones_permiso', 'permiso_id']) &&
            permisoAprobadoValido(request.resource.data.permiso_id, cedula));

@@ -222,6 +222,36 @@ caso('38. Obra sin almuerzo (6:00-14:00 = 8 h): lunes 6:00-15:00 sin marcar almu
 caso('39. Obra sin sábado en su jornada: el sábado sigue siendo todo extra', {
   catalogos: SINALMUERZO, reg: { fecha: '2026-10-24', obra: 'TURNO', entrada: '06:00', salida: '10:00' }, tope: 42,
 }, { ord: 0, extD: 4, ...CERO });
+// Salidas a cita o permiso dentro del turno ("Salir a una cita o permiso" / "Ya volví"): el tiempo fuera no es
+// trabajado (no puede volverse extra), pero dentro del horario pactado es permiso pagado (horasPermiso, aparte).
+function casoPermiso(nombre, reg, esperado) {
+  setCatalogosCache({ horarios_obra: { BODEGA: '07:00' }, festivos: [] });
+  const r = calcularJornadaDiaria(reg, 42);
+  const ok = aprox(r.ord, esperado.ord) && aprox(r.extD, esperado.extD) && aprox(r.horasPermiso, esperado.permiso);
+  results.push({ nombre, ok, diffs: [], obtenido: r });
+  console.log(`${ok ? '✅ PASS' : '❌ FAIL'} — ${nombre}${ok ? '' : `  (esperado ${JSON.stringify(esperado)}, obtuvo ord ${r.ord} extD ${r.extD} permiso ${r.horasPermiso})`}`);
+}
+casoPermiso('45. Cita 10:00-13:00 sin marcar almuerzo (el almuerzo cae dentro de la cita), sale 16:30 -> 6,5 ord + 2 h de permiso = 8,5 pactadas',
+  { fecha: '2026-11-11', obra: 'BODEGA', entrada: '07:00', salida: '16:30', salidas_permiso: [{ motivo: 'Cita médica', sale: '10:00', vuelve: '13:00' }] },
+  { ord: 6.5, extD: 0, permiso: 2 });
+casoPermiso('46. Cita 8:00-10:00 con almuerzo marcado 12:00-13:00, sale 16:30 -> 6,5 ord + 2 h de permiso = 8,5 pactadas',
+  { fecha: '2026-11-11', obra: 'BODEGA', entrada: '07:00', salida: '16:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', salidas_permiso: [{ motivo: 'Cita médica', sale: '08:00', vuelve: '10:00' }] },
+  { ord: 6.5, extD: 0, permiso: 2 });
+casoPermiso('47. Permiso 14:00-16:00 y se queda hasta 18:00 -> el tiempo fuera no se vuelve extra: 6,5 ord + 1,5 extra + 2 h de permiso',
+  { fecha: '2026-11-11', obra: 'BODEGA', entrada: '07:00', salida: '18:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', salidas_permiso: [{ motivo: 'Permiso personal', sale: '14:00', vuelve: '16:00' }] },
+  { ord: 6.5, extD: 1.5, permiso: 2 });
+casoPermiso('48. Permiso después de la salida pactada (17:00-18:00, vuelve y trabaja hasta 19:00) -> sin permiso pagado fuera del horario',
+  { fecha: '2026-11-11', obra: 'BODEGA', entrada: '07:00', salida: '19:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', salidas_permiso: [{ motivo: 'Permiso personal', sale: '17:00', vuelve: '18:00' }] },
+  { ord: 8.5, extD: 1.5, permiso: 0 });
+casoPermiso('49. "No vuelvo hoy": sale 10:00 a la cita y no regresa -> 3 ord + 5,5 h de permiso (lo que faltaba, sin el almuerzo)',
+  { fecha: '2026-11-11', obra: 'BODEGA', entrada: '07:00', salida: '10:00', salidas_permiso: [{ motivo: 'Cita médica', sale: '10:00', vuelve: null, sin_regreso: true }] },
+  { ord: 3, extD: 0, permiso: 5.5 });
+casoPermiso('50. "No vuelvo hoy" habiendo llegado tarde (8:00) -> el permiso no cubre la tardanza: 2 ord + 5,5 h',
+  { fecha: '2026-11-11', obra: 'BODEGA', entrada: '08:00', salida: '10:00', salidas_permiso: [{ motivo: 'Cita médica', sale: '10:00', vuelve: null, sin_regreso: true }] },
+  { ord: 2, extD: 0, permiso: 5.5 });
+casoPermiso('51. Día sin salidas a permiso -> horasPermiso 0 y todo igual que antes',
+  { fecha: '2026-11-11', obra: 'BODEGA', entrada: '07:00', salida: '16:30' },
+  { ord: 8.5, extD: 0, permiso: 0 });
 const NOCHE = { horarios_obra: { NOCHE: '22:00' }, jornadas_obra: { NOCHE: { entrada: '22:00', salida_lj: '06:00', salida_v: '06:00', almuerzo: false, sabado: null } } };
 caso('40. Obra de turno nocturno 22:00-06:00 (cruza medianoche): lunes 22:00-07:00 -> 8 ordinarias con recargo nocturno y 1 extra', {
   catalogos: NOCHE, reg: { fecha: '2026-10-19', obra: 'NOCHE', entrada: '22:00', salida: '07:00' }, tope: 42,
