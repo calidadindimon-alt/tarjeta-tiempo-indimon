@@ -138,6 +138,30 @@ Las dos revisiones calificaron distinto dos puntos. Las reglas de la base de dat
   - Mejor a mediano plazo: guardar cuántas horas aprobó RRHH y pagar como máximo esa cifra.
 - **Prueba.** `tests/auditoria-nomina-reglas.mjs` (7 casos, todos aceptados hoy por las reglas). Los puntos 8 y 9
   están en `tests/auditoria-nomina-reglas-complemento.mjs`, que no se ejecutó (leídos en las reglas).
+- **Estado: CORREGIDO, menos el punto 7 (12-nov-2026).** `firestore.rules` agrega candados a lo que el colaborador
+  escribe en su propio día:
+  - un día nuevo solo nace como turno abierto, sin horas y con la fecha de hoy (margen de 3 días para fichajes sin señal);
+  - con el turno abierto no puede cambiar la entrada ni los datos de Admin;
+  - en un día cerrado solo puede recalcular horas; un día "por revisar" solo lo toca Admin;
+  - las horas no pueden pasar del tiempo entre la entrada y la salida;
+  - las horas dominicales solo caben en sábado, domingo, festivo o víspera de festivo;
+  - si cambian las extras, vuelven a "por aprobar";
+  - con decisión de RRHH, no cambia las horas de ese permiso.
+
+  En `index.html`, "Recalcular semana" se ajustó a lo mismo, porque también corre desde el celular. Quedan cubiertos
+  por 34 comprobaciones nuevas en `tests/test-reglas-firestore.mjs`, que corre en el CI: 14 de fichajes normales que
+  deben seguir funcionando y 20 de ataques que deben rechazarse. Todo se ejecutó en el emulador: 80 de 80 correctas, y
+  los puntos 1 a 6, 8 y 9 de `auditoria-nomina-reglas*.mjs` pasan a "YA CORREGIDO". Además se comprobó, apagando cada
+  candado por separado, que cada ataque lo detiene el candado previsto y no otra cosa.
+
+  Lo que **no** cierra:
+  - **Punto 7 (el sueldo).** Es el hallazgo 13 y es una decisión de RRHH: quitarle al colaborador ese campo cambia
+    lo que ve en Mi Tarjeta.
+  - **La hora de cada marca la pone el celular.** Quien cambie el reloj del teléfono, o escriba al cerrar una salida
+    más tarde, sigue cobrando ese tiempo. Cerrarlo necesita un servidor propio.
+  - **Un domingo real.** Ahí las horas ordinarias se pagan sin aprobación, hasta lo que dura el turno (pregunta P9).
+  - **Mantenimiento.** La lista de festivos está copiada también en `firestore.rules`: al agregar 2029 hay que ponerlo
+    en los dos lugares.
 
 ### Hallazgo 4 — ALTO — Cualquiera, sin sesión, puede fabricar un permiso "aprobado" y ponerle una ausencia a otro
 

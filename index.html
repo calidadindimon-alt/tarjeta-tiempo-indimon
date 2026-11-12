@@ -8298,10 +8298,22 @@
                     horas_permiso_turno: calc.horasPermiso || 0
                 };
                 const distinto = (a, b) => (typeof b === 'number' ? Math.abs((a || 0) - b) >= 0.005 : (a ?? false) !== b);
+                // Auditoría nov-2026, hallazgo 3 (las reglas de firestore.rules exigen lo mismo, porque esto también corre
+                // en el celular del colaborador al cerrar su día):
+                //  - Si cambian las horas extra (diurnas o nocturnas, cada una por separado), el día vuelve a "por aprobar",
+                //    sin importar su estado anterior (aprobada, no autorizada o sin estado). Una diferencia de menos de
+                //    medio centésimo no cuenta como cambio: se deja el valor guardado, para no escribir un número distinto.
+                //  - Si RRHH ya decidió sobre una salida a permiso de ese día, sus horas de permiso no se tocan: la decisión
+                //    se tomó con ese número.
+                const cambianExtras = distinto(dia.data.horas_extras_diurnas, calc.extD) || distinto(dia.data.horas_extras_nocturnas, calc.extN);
+                if (!cambianExtras) {
+                    nuevo.horas_extras_diurnas = dia.data.horas_extras_diurnas || 0;
+                    nuevo.horas_extras_nocturnas = dia.data.horas_extras_nocturnas || 0;
+                }
+                if (dia.data.decisiones_permiso && Object.keys(dia.data.decisiones_permiso).length > 0) delete nuevo.horas_permiso_turno;
                 const cambia = Object.keys(nuevo).some(k => distinto(dia.data[k], nuevo[k]));
-                const extrasAntes = (dia.data.horas_extras_diurnas || 0) + (dia.data.horas_extras_nocturnas || 0);
-                const extrasVuelvenAPorAprobar = dia.data.extras_estado === 'aprobada' && Math.abs(extrasAntes - (calc.extD + calc.extN)) >= 0.005;
-                if (extrasVuelvenAPorAprobar) nuevo.extras_estado = 'por_aprobar';
+                const extrasVuelvenAPorAprobar = dia.data.extras_estado === 'aprobada' && cambianExtras && calc.extD + calc.extN > 0;
+                if (cambianExtras && calc.extD + calc.extN > 0 && dia.data.extras_estado !== 'por_aprobar') nuevo.extras_estado = 'por_aprobar';
                 items.push({ id: dia.id, ref: dia.ref, antes: dia.data, nuevo, cambia, extrasVuelvenAPorAprobar });
                 acumulada += calc.ord + (calc.horasPermiso || 0); // el permiso pagado cuenta para la meta de 42 h
             }

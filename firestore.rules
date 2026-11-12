@@ -74,6 +74,144 @@ service cloud.firestore {
              (resource == null ? null : resource.data.get('decisiones_permiso', null));
     }
 
+    // ============ CANDADOS DEL COLABORADOR SOBRE SU PROPIO DÍA (auditoría nov-2026, hallazgo 3) ============
+    // Las horas las calcula el celular y el servidor no puede repetir ese cálculo. Hasta ahora solo se exigía que fueran
+    // "posibles" (máximo 24 y no negativas), así que con la consola del navegador un colaborador podía, en su propio
+    // registro: subir las extras de un día que RRHH ya aprobó, inventarse horas dominicales en un martes, crear días
+    // pasados o domingos sin fichar, quitarse una ausencia injustificada, autorizarse la entrada temprana, aprobarse un
+    // día "por revisar" o borrar las horas de un permiso que RRHH decidió descontar. Lo que sigue cierra eso sin cambiar
+    // nada de lo que la app hace normalmente desde el celular:
+    //   - Un día nuevo solo nace como turno abierto, sin horas y con fecha de hoy (con margen para fichajes sin señal).
+    //   - Mientras el turno está abierto, el celular marca almuerzo, salidas a permiso y la salida, pero no cambia la
+    //     entrada ni los datos que pone Admin (tipo de permiso, entrada temprana autorizada…).
+    //   - Un día cerrado ("completado") solo se puede recalcular (las horas), nunca cambiar de horario ni de estado.
+    //   - Un día "por revisar" solo lo toca Admin.
+    //   - Las horas trabajadas no pueden pasar de lo que hay entre la entrada y la salida.
+    //   - Las horas dominicales solo caben en sábado (turno que entra al domingo), domingo, festivo o víspera de festivo.
+    //   - Si cambian las horas extra, vuelven a "por aprobar" (también las ya aprobadas y las de antes del 21-oct-2026).
+    //   - Si RRHH ya decidió sobre una salida a permiso, el colaborador no cambia esas horas de permiso.
+    // Lo que NO cierra (necesita un servidor propio): la hora que marca el celular sigue siendo la del celular.
+
+    // Calendario nacional, copiado de FESTIVOS_COLOMBIA en index.html (2026–2028). Si se agrega un año allá, agregarlo
+    // aquí. Los festivos que Admin agrega a mano (catálogo) también cuentan (ver esFestivo). Va como UN texto separado
+    // por comas y no como lista: Firestore cuenta cada elemento de una lista escrita aquí como una expresión, y cada
+    // escritura tiene un tope de 1000.
+    function festivosNacionales() {
+      return ('2026-01-01,2026-01-12,2026-03-23,2026-04-02,2026-04-03,2026-05-01,2026-05-18,2026-06-08,2026-06-15,' +
+              '2026-06-29,2026-07-20,2026-08-07,2026-08-17,2026-10-12,2026-11-02,2026-11-16,2026-12-08,2026-12-25,' +
+              '2027-01-01,2027-01-11,2027-03-22,2027-03-25,2027-03-26,2027-05-01,2027-05-10,2027-05-31,2027-06-07,' +
+              '2027-07-05,2027-07-20,2027-08-07,2027-08-16,2027-10-18,2027-11-01,2027-11-15,2027-12-08,2027-12-25,' +
+              '2028-01-01,2028-01-10,2028-03-20,2028-04-13,2028-04-14,2028-05-01,2028-05-29,2028-06-19,2028-06-26,' +
+              '2028-07-03,2028-07-20,2028-08-07,2028-08-21,2028-10-16,2028-11-06,2028-11-13,2028-12-08,2028-12-25').split(',');
+    }
+
+    function fechaValida(fecha) {
+      return fecha is string && fecha.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+    function tsDeFecha(fecha) {
+      let p = fecha.split('-');
+      return timestamp.date(int(p[0]), int(p[1]), int(p[2]));
+    }
+    function dosDigitos(n) {
+      return n < 10 ? '0' + string(n) : string(n);
+    }
+    function textoDeFecha(t) {
+      return string(t.year()) + '-' + dosDigitos(t.month()) + '-' + dosDigitos(t.day());
+    }
+    function esFestivo(fecha) {
+      return fecha in festivosNacionales() ||
+        (exists(/databases/$(database)/documents/catalogos/listas) &&
+         fecha in get(/databases/$(database)/documents/catalogos/listas).data.get('festivos', []));
+    }
+    // dayOfWeek(): 1 = lunes … 6 = sábado, 7 = domingo.
+    function puedeTenerHorasDominicales(fecha) {
+      let t = tsDeFecha(fecha);
+      return t.dayOfWeek() >= 6 || esFestivo(fecha) || esFestivo(textoDeFecha(t + duration.value(1, 'd')));
+    }
+    // El día es de hoy en Colombia, con margen: hasta 3 días atrás (un fichaje que se guardó sin señal y se envió
+    // después) y 1 adelante (diferencia de hora con el servidor).
+    function fechaCercanaAHoy(fecha) {
+      let t = tsDeFecha(fecha);
+      return request.time > t - duration.value(1, 'd') && request.time < t + duration.value(4, 'd');
+    }
+
+    function horaValida(h) {
+      return h is string && h.matches('^[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?$');
+    }
+    function horaDecimal(h) {
+      let p = h.split(':');
+      return float(int(p[0])) + float(int(p[1])) / 60.0;
+    }
+    // Igual que calcularJornadaDiaria: si la salida es menor que la entrada, el turno pasó la medianoche.
+    function duracionDelTurno(entrada, salida) {
+      let ini = horaDecimal(entrada);
+      let fin = horaDecimal(salida);
+      return fin < ini ? fin - ini + 24.0 : fin - ini;
+    }
+    function horasDentroDelTurno(d) {
+      let total = d.get('horas_ordinarias', 0) + d.get('horas_extras_diurnas', 0) + d.get('horas_extras_nocturnas', 0);
+      return total <= 0 ||
+        (horaValida(d.get('entrada', null)) && horaValida(d.get('salida', null)) &&
+         total <= duracionDelTurno(d.entrada, d.salida) + 0.05);
+    }
+    function horasEnCero(d) {
+      return d.get('horas_ordinarias', 0) == 0 && d.get('horas_extras_diurnas', 0) == 0 &&
+             d.get('horas_extras_nocturnas', 0) == 0 && d.get('horas_recargo_nocturno', 0) == 0 &&
+             d.get('horas_dominicales', 0) == 0;
+    }
+    function dominicalesCoherentes(d, fecha) {
+      return (d.get('horas_dominicales', 0) == 0 && d.get('es_dominical_festivo', false) != true) ||
+             puedeTenerHorasDominicales(fecha);
+    }
+    function sinCambio(campo) {
+      return request.resource.data.get(campo, null) == (resource == null ? null : resource.data.get(campo, null));
+    }
+    // Si cambian las horas extra (o aparecen), quedan "por aprobar": RRHH aprueba la cifra nueva.
+    function extrasCambiadasVuelvenAPorAprobar() {
+      let n = request.resource.data;
+      let antesD = resource == null ? 0 : resource.data.get('horas_extras_diurnas', 0);
+      let antesN = resource == null ? 0 : resource.data.get('horas_extras_nocturnas', 0);
+      let cambian = n.get('horas_extras_diurnas', 0) != antesD || n.get('horas_extras_nocturnas', 0) != antesN;
+      return !cambian || n.get('horas_extras_diurnas', 0) + n.get('horas_extras_nocturnas', 0) <= 0 ||
+             n.get('extras_estado', null) == 'por_aprobar';
+    }
+    // Datos que solo pone Admin (o la sincronización de un permiso aprobado, que tiene su propia rama más abajo).
+    function camposDeAdminSinCambio() {
+      return sinCambio('entrada_temprana_autorizada') && sinCambio('permiso_id') && sinCambio('dias_vacaciones_permiso') &&
+             sinCambio('revision_aprobada_por') && sinCambio('revision_aprobada_en');
+    }
+    function permisoDelDiaSinCambio() {
+      return sinCambio('tipo_permiso') && sinCambio('horas_permiso') && sinCambio('nota_permiso');
+    }
+    // La app quita la marca de ausencia cuando la persona SÍ llega y marca entrada ese día (ver registrarEvento).
+    function ausenciaQuitadaAlLlegar() {
+      let n = request.resource.data;
+      return resource.data.get('tipo_permiso', '') is string && resource.data.get('tipo_permiso', '').matches('.*Ausencia.*') &&
+             n.get('tipo_permiso', null) == null && n.get('horas_permiso', 0) == 0 && n.get('nota_permiso', null) == null;
+    }
+    // Con la decisión de RRHH ya tomada sobre una salida a permiso de un día cerrado, sus horas no cambian.
+    function permisoTurnoSinCambioSiRrhhDecidio() {
+      return resource == null || resource.data.get('estado', null) == 'activo' ||
+             !(resource.data.get('decisiones_permiso', null) is map) ||
+             resource.data.get('decisiones_permiso', {}).size() == 0 ||
+             sinCambio('horas_permiso_turno');
+    }
+    // Lo común a toda escritura del colaborador sobre su propio día.
+    function escrituraColaboradorCoherente(cedula, fecha) {
+      let d = request.resource.data;
+      return esColaboradorActivoAutenticado(cedula) && fechaValida(fecha) && d.get('fecha', fecha) == fecha &&
+             horasDiaCoherentes() && extrasEstadoPermitidoColaborador() && decisionesPermisoSinCambio() &&
+             camposDeAdminSinCambio() && horasDentroDelTurno(d) && dominicalesCoherentes(d, fecha) &&
+             extrasCambiadasVuelvenAPorAprobar() && permisoTurnoSinCambioSiRrhhDecidio();
+    }
+    // Lo que cambia "Recalcular semana" (recalcularSemana en index.html), que también corre en el celular al cerrar el día.
+    function soloCamposDeRecalculo() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'horas_ordinarias', 'horas_extras_diurnas', 'horas_extras_nocturnas', 'horas_recargo_nocturno',
+        'es_dominical_festivo', 'horas_dominicales', 'minutos_tarde', 'horas_descuento_tardanza',
+        'horas_permiso_turno', 'extras_estado']);
+    }
+
     // PRIVACIDAD (30/10): ¿quien pregunta es el colaborador dueño de esta cédula? Igual que en las escrituras, se
     // compara el usuario de Firebase con el authUid guardado en su ficha (no basta con el correo emp{cédula}@…, porque
     // cualquiera podría crear esa cuenta para alguien que todavía no tiene PIN). Una cédula vacía o inexistente es "no".
@@ -242,20 +380,47 @@ service cloud.firestore {
         //
         // ENDURECIDO (ronda 5): ver permisoAprobadoValido() — la rama 3 ya no acepta cualquier
         // registro con horas en cero, exige que exista un permiso real aprobado detrás.
+        //
+        // ENDURECIDO (auditoría nov-2026, hallazgo 3): la rama 2 exige además los candados de arriba
+        // (escrituraColaboradorCoherente) y solo deja estos cambios de estado — ver la nota junto a esos candados.
+        //
+        // ORDEN A PROPÓSITO: Firestore corta cada escritura en 1000 expresiones evaluadas, y los candados del colaborador
+        // son largos. Cuando no se cumplen, el emulador muestra que se llega a ese tope. Por eso las ramas cortas (Admin,
+        // permiso aprobado, "Entendido") van ANTES: si fueran después, el tope podría rechazar una escritura que sí
+        // cumplía su rama. Y la rama del colaborador empieza por request.auth != null, que descarta enseguida a
+        // quien no tiene sesión.
         allow create: if esAdmin() ||
-          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes() && extrasEstadoPermitidoColaborador() && decisionesPermisoSinCambio()) ||
           (request.resource.data.horas_ordinarias == 0 &&
            request.resource.data.horas_extras_diurnas == 0 &&
            request.resource.data.horas_extras_nocturnas == 0 &&
            request.resource.data.horas_recargo_nocturno == 0 &&
            request.resource.data.horas_dominicales == 0 &&
-           permisoAprobadoValido(request.resource.data.permiso_id, cedula));
+           permisoAprobadoValido(request.resource.data.permiso_id, cedula)) ||
+          // Marcar entrada: el día nace como turno abierto, sin horas, con fecha de hoy y sin datos de Admin.
+          (request.auth != null && escrituraColaboradorCoherente(cedula, fecha) &&
+           request.resource.data.get('estado', null) == 'activo' && horasEnCero(request.resource.data) &&
+           fechaCercanaAHoy(fecha) && permisoDelDiaSinCambio());
 
         allow update: if esAdmin() ||
-          (esColaboradorActivoAutenticado(cedula) && horasDiaCoherentes() && extrasEstadoPermitidoColaborador() && decisionesPermisoSinCambio()) ||
+          // "Entendido" en la decisión de RRHH sobre un permiso: solo ese campo, en cualquier día.
+          (esColaboradorActivoAutenticado(cedula) &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['decisiones_vistas'])) ||
           (request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['tipo_permiso', 'horas_permiso', 'nota_permiso', 'dias_vacaciones_permiso', 'permiso_id']) &&
-           permisoAprobadoValido(request.resource.data.permiso_id, cedula));
+           permisoAprobadoValido(request.resource.data.permiso_id, cedula)) ||
+          (request.auth != null && escrituraColaboradorCoherente(cedula, fecha) && (
+            // a) Turno abierto: almuerzo, salidas a permiso, cambio de obra y cierre (también la salida olvidada).
+            (resource.data.get('estado', null) == 'activo' && sinCambio('entrada') && permisoDelDiaSinCambio() &&
+             request.resource.data.get('estado', null) in ['activo', 'completado', 'requiere_revision_admin']) ||
+            // b) Marcar entrada sobre un día que solo tenía un permiso o una ausencia, sin horas trabajadas.
+            (!(resource.data.get('estado', null) in ['activo', 'requiere_revision_admin']) &&
+             horasEnCero(resource.data) && horasEnCero(request.resource.data) &&
+             request.resource.data.get('estado', null) == 'activo' && fechaCercanaAHoy(fecha) &&
+             (permisoDelDiaSinCambio() || ausenciaQuitadaAlLlegar())) ||
+            // c) Recalcular la semana: en un día cerrado solo cambian las horas, nunca el horario ni el estado.
+            (resource.data.get('estado', null) == 'completado' && request.resource.data.get('estado', null) == 'completado' &&
+             soloCamposDeRecalculo())
+          ));
 
         allow delete: if esAdmin(); // el único botón de borrar un registro individual vive en el panel Admin
       }
