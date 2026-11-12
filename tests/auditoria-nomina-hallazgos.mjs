@@ -91,10 +91,16 @@ function hallazgo(n, titulo, sigueIgual, laAppDa, deberiaDar) {
 {
   const oyente = bloqueBalanceado(fuente, 'function startAdminTableListener() {');
   const exportar = fuente.slice(fuente.indexOf("document.getElementById('btn-export-excel').addEventListener"), fuente.indexOf('let nombreArchivo = "Tiempos_INDIMON"'));
-  const limiteTabla = /collectionGroup\(db, 'registros'\), orderBy\('fecha', 'desc'\), fsLimit\(500\)/.test(oyente);
-  const limiteExcel = /fsLimit\(2000\)/.test(exportar) && exportar.indexOf('fsLimit(2000)') < exportar.indexOf('startsWith(mesFiltro)');
+  // La tabla sin filtros puede seguir mostrando los 500 más recientes; lo que no puede pasar es que el mes filtrado, el
+  // Excel del mes o las listas de pendientes dependan de ese tope.
+  const filtros = bloqueBalanceado(fuente, 'async function aplicarFiltrosYRenderizar() {');
+  const mesCompleto = /asegurarFuenteConsolidado\(cedulaFiltro, mesFiltro\)/.test(filtros) &&
+    /function asegurarFuenteConsolidado[\s\S]*?where\('fecha', '>=', `\$\{mes\}-01`\)/.test(fuente);
+  const excelMesCompleto = /else if \(mesFiltro\) \{[\s\S]*?where\('fecha', '>=', `\$\{mesFiltro\}-01`\)/.test(exportar);
+  const pendientesSinTope = /function startPendientesAdmin\(\)[\s\S]*?escuchar\('estado', 'requiere_revision_admin'[\s\S]*?escuchar\('extras_estado', 'por_aprobar'/.test(fuente) &&
+    /startPendientesAdmin\(\)/.test(oyente);
   hallazgo(2, 'Admin: el costo del mes y las listas "por aprobar / por revisar" se arman con un tope de registros',
-    limiteTabla && limiteExcel,
+    !(mesCompleto && excelMesCompleto && pendientesSinTope),
     'la tabla de Admin lee los 500 registros más recientes de TODA la empresa y de ahí filtra el mes; el Excel sin colaborador lee los 2000 más recientes y DESPUÉS filtra el mes. Con 30 personas × 22 días = 660 registros al mes, 160 días quedan por fuera del costo sin ningún aviso',
     'consultar el mes pedido completo (por rango de fechas), como ya hace el "Resumen de nómina" por correo');
 }

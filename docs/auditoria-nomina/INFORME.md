@@ -104,6 +104,19 @@ Las dos revisiones calificaron distinto dos puntos. Las reglas de la base de dat
   "Resumen de nómina" por correo). Para "por aprobar" y "por revisar", consultar por estado y no por "los más
   recientes".
 - **Prueba.** Hallazgo 2 del archivo de pruebas (comprueba el tope en el código; no se puede simular sin la base).
+- **Estado: CORREGIDO en la app (12-nov-2026). Falta crear dos índices en Firestore.**
+  - **Mes completo.** Con filtro de mes o de colaborador, el Consolidado y el costo de mano de obra leen ese mes (o esa
+    persona) completo. Mientras llega se ve "Cargando…", nunca un número a medias.
+  - **Excel.** Con filtro de mes lee el mes completo. Antes leía los 2000 registros más recientes y después filtraba.
+  - **Pendientes.** "Por revisar" y "Extras por aprobar" se consultan aparte, por estado, sin tope. "Permisos por
+    decidir" usa todo lo que el panel tiene cargado. Los días que Admin carga a mano con extras ahora guardan
+    `extras_estado: 'por_aprobar'`, para que esa consulta los encuentre.
+  - **Sin filtros.** La tabla sigue mostrando los 500 más recientes, y ahora lo dice en pantalla.
+  - **Índices.** Las dos consultas de pendientes necesitan dos índices nuevos, definidos en `firestore.indexes.json`:
+    `estado` y `extras_estado` del grupo de colecciones `registros`. Mientras no existan, la app usa la lista de
+    siempre y muestra un aviso de "lista incompleta". Nada se rompe.
+  - **Sigue pendiente.** Un día con extras cargado a mano antes de este cambio, sin `extras_estado`, solo aparece en
+    "Extras por aprobar" si está en el mes filtrado o entre los recientes.
 
 ### Hallazgo 3 — ALTO — Un colaborador puede subirse el pago escribiendo directo en la base de datos
 

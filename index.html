@@ -6526,6 +6526,8 @@
 
         document.getElementById('btn-admin-logout').addEventListener('click', async () => {
             if (unsubAdminTable) { unsubAdminTable(); unsubAdminTable = null; }
+            detenerPendientesAdmin();
+            asegurarFuenteConsolidado('', '');
             await signOut(auth).catch(e => console.warn('Admin logout fallido:', e));
             document.getElementById('admin-panel-view').classList.add('hidden');
             document.getElementById('admin-panel-view').classList.remove('flex');
@@ -8194,6 +8196,9 @@
                     data.minutos_tarde = calc.minutosTarde;
                     data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                     data.horas_permiso_turno = calc.horasPermiso || 0;
+                    // Sin este campo el día ya contaba como "por aprobar" (ver estadoExtras), pero no lo encontraba la
+                    // consulta de "Extras por aprobar", que busca por extras_estado (auditoría nov-2026, hallazgo 2).
+                    if (calc.extD + calc.extN > 0 && fecha >= FECHA_INICIO_APROBACION_EXTRAS) data.extras_estado = 'por_aprobar';
                 } else {
                     // Día 100% permiso (no ausencia), sin horario trabajado
                     data.horas_ordinarias = 0;
@@ -8652,15 +8657,16 @@
         });
 
         // ================================== Registros por revisar (Admin) ==================================
-        // Se arman con los registros que ya escucha la tabla del Consolidado (allRegsCache: los 500 más
-        // recientes), así que no cuesta lecturas extra y se actualizan solos cuando alguien corrige o aprueba.
+        // Se arman con la consulta propia de los registros por revisar (sin tope, ver startPendientesAdmin) unida a los
+        // que ya escucha la tabla del Consolidado; se actualizan solos cuando alguien corrige o aprueba.
         function categoriaRevision(r) {
             if (r.salida_declarada_por_colaborador) return 'declarada';
             if (/geocerca/i.test(r.nota_revision || '')) return 'geocerca';
             return 'olvido';
         }
         function pendientesDeRevision() {
-            return allRegsCache.filter(r => r.estado === 'requiere_revision_admin').sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+            return unirRegistrosPorRuta(regsPendientesRevision, allRegsCache)
+                .filter(r => r.estado === 'requiere_revision_admin').sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
         }
         function actualizarAvisoPorRevisar() {
             const pend = pendientesDeRevision();
@@ -8683,7 +8689,7 @@
                 ['geocerca', 'Fuera de la geocerca']
             ];
             const cont = document.getElementById('por-revisar-lista');
-            const htmlPermisos = htmlPermisosPorDecidir();
+            const htmlPermisos = (pendientesParciales ? AVISO_PENDIENTES_PARCIALES : '') + htmlPermisosPorDecidir();
             if (!pend.length && !htmlPermisos) { cont.innerHTML = '<p class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">✔ No hay registros por revisar.</p>'; return; }
             cont.innerHTML = htmlPermisos + grupos.map(([cat, titulo]) => {
                 const items = pend.filter(r => categoriaRevision(r) === cat);
@@ -8736,7 +8742,7 @@
         }
         function permisosPorDecidir() {
             const items = [];
-            allRegsCache.forEach(r => salidasPermisoTerminadas(r).forEach(({ p, i }) => {
+            registrosAdminConocidos().forEach(r => salidasPermisoTerminadas(r).forEach(({ p, i }) => {
                 const dec = r.decisiones_permiso?.[i];
                 if (!dec || !DECISIONES_PERMISO[dec.decision]?.final) items.push({ r, p, i, dec });
             }));
@@ -8745,7 +8751,7 @@
         function permisosDecididosRecientes() {
             const limite = Date.now() - 3 * 86400000;
             const items = [];
-            allRegsCache.forEach(r => salidasPermisoTerminadas(r).forEach(({ p, i }) => {
+            registrosAdminConocidos().forEach(r => salidasPermisoTerminadas(r).forEach(({ p, i }) => {
                 const dec = r.decisiones_permiso?.[i];
                 if (dec && DECISIONES_PERMISO[dec.decision]?.final && Date.parse(dec.en || '') > limite) items.push({ r, p, i, dec });
             }));
@@ -8794,7 +8800,7 @@
         }
         async function decidirPermiso(btn) {
             const { ruta, i, decision } = btn.dataset;
-            const r = allRegsCache.find(x => x.ref.path === ruta);
+            const r = registrosAdminConocidos().find(x => x.ref.path === ruta);
             if (!r) return;
             const guardar = async () => {
                 btn.disabled = true;
@@ -8848,14 +8854,18 @@
         }
         document.getElementById('btn-aviso-por-revisar').addEventListener('click', abrirPorRevisar);
         // ================================== Extras por aprobar (RRHH) ==================================
-        // Igual que "Por revisar", se arma con allRegsCache (los 500 registros más recientes). Solo días ya
+        // Igual que "Por revisar", se arma con la consulta propia de lo pendiente (ver startPendientesAdmin). Solo días ya
         // Completados: los que están "por revisar" se resuelven primero allá.
         function diaCortoEs(fecha) {
             const [y, m, d] = fecha.split('-').map(Number);
             return new Date(y, m - 1, d).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
         }
         function extrasPorAprobar() {
-            return allRegsCache.filter(r => r.estado === 'completado' && estadoExtras(r) === 'por_aprobar');
+            // La consulta propia (sin tope) trae los días con extras_estado 'por_aprobar'. Un día con extras pero sin ese
+            // campo (cargado por Admin antes de nov-2026) también cuenta como por aprobar: esos solo se ven si están entre
+            // los registros recientes o en el mes filtrado.
+            return unirRegistrosPorRuta(regsExtrasPorAprobarDb, fuenteConsolidado.regs, allRegsCache)
+                .filter(r => r.estado === 'completado' && estadoExtras(r) === 'por_aprobar');
         }
         function horasExtraDe(r) { return (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0); }
         function actualizarAvisoExtras() {
@@ -8874,7 +8884,7 @@
         function renderExtras() {
             const cont = document.getElementById('extras-lista');
             const pend = extrasPorAprobar();
-            const noAut = allRegsCache.filter(r => estadoExtras(r) === 'no_autorizada').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 20);
+            const noAut = unirRegistrosPorRuta(fuenteConsolidado.regs, allRegsCache).filter(r => estadoExtras(r) === 'no_autorizada').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 20);
             const item = (r, acciones) => {
                 const motivo = r.extras_motivo ? ` · "${escapeHtml(r.extras_motivo)}"` : '';
                 return `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-slate-100 first:border-0">
@@ -8883,7 +8893,7 @@
             };
             const boton = (clase, texto, ids, color) => `<button type="button" class="${clase} btn-touch ${color} px-2 py-1 rounded-lg text-[11px] font-bold" data-ids="${escapeHtml(ids.join(','))}">${texto}</button>`;
             const idDe = (r) => `${r.ref.parent.parent.id}/${r.id}`;
-            let html = '';
+            let html = pendientesParciales ? AVISO_PENDIENTES_PARCIALES : '';
             if (!pend.length) html += '<p class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">✔ No hay horas extra por aprobar.</p>';
             const semanas = new Map();
             pend.forEach(r => { const [lun] = getRangoSemana(r.fecha || r.id); if (!semanas.has(lun)) semanas.set(lun, []); semanas.get(lun).push(r); });
@@ -9170,8 +9180,80 @@
                 : '<p class="text-sm text-slate-500 py-3">Nadie tiene el turno abierto en este momento.</p>';
         }
 
+        // ============ Más allá de los 500 registros más recientes (auditoría nov-2026, hallazgo 2) ============
+        // allRegsCache (abajo) trae solo los 500 registros más recientes de TODA la empresa: con 30 personas, unas dos
+        // semanas y media. Antes el Consolidado filtrado por mes, el costo de mano de obra, "Extras por aprobar" y "Por
+        // revisar" salían solo de ahí, así que se perdía parte del mes sin aviso, y unas extras por aprobar de hace un mes
+        // desaparecían de la lista de RRHH y no se pagaban nunca. Ahora:
+        //   - Lo pendiente se escucha aparte, por estado, sin tope: "por revisar" (estado) y "por aprobar"
+        //     (extras_estado). Esas dos consultas necesitan un índice de grupo de colecciones en Firestore (ver
+        //     firestore.indexes.json). Si todavía no existe, la consulta falla y se usa allRegsCache como antes, con un
+        //     aviso en pantalla.
+        //   - El Consolidado con filtro de mes o de colaborador lee ese mes (o esa persona) completo: ver
+        //     asegurarFuenteConsolidado.
+        let regsPendientesRevision = null;   // null = sin consulta propia todavía (o falló): se usa allRegsCache
+        let regsExtrasPorAprobarDb = null;
+        let pendientesParciales = false;     // true si alguna de las dos consultas falló (falta el índice)
+        let unsubPendientesAdmin = [];
+        const AVISO_PENDIENTES_PARCIALES = '<p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5 mb-2">⚠ Esta lista puede estar incompleta: solo revisa los registros recientes. Falta crear en Firestore los índices de <b>firestore.indexes.json</b> (estado y extras_estado del grupo "registros"). Avísale a quien administra Firebase.</p>';
+        // Registros completos del filtro del Consolidado (mes y/o colaborador). regs = null mientras carga o si falló.
+        let fuenteConsolidado = { clave: '', regs: null, error: false, unsub: null };
+        // Si hay filtro de mes o de colaborador, escucha ese mes (o esa persona) completo, sin el tope de 500. Usa el
+        // mismo índice de "fecha" que ya usan la tabla y el "Resumen de nómina" por correo: no hace falta otro.
+        function asegurarFuenteConsolidado(cedula, mes) {
+            const clave = cedula || mes ? `${cedula}|${mes}` : '';
+            if (fuenteConsolidado.clave === clave) return;
+            if (fuenteConsolidado.unsub) fuenteConsolidado.unsub();
+            fuenteConsolidado = { clave, regs: null, error: false, unsub: null };
+            if (!clave) return;
+            const rango = (q) => mes ? query(q, where('fecha', '>=', `${mes}-01`), where('fecha', '<=', `${mes}-31`)) : q;
+            const q = cedula ? rango(collection(db, 'empleados', cedula, 'registros')) : rango(collectionGroup(db, 'registros'));
+            fuenteConsolidado.unsub = onSnapshot(q, (snap) => {
+                if (fuenteConsolidado.clave !== clave) return;
+                fuenteConsolidado.regs = snap.docs.map(registroAdmin);
+                fuenteConsolidado.error = false;
+                aplicarFiltrosYRenderizar();
+                actualizarAvisoPorRevisar(); actualizarAvisoExtras();
+            }, (error) => {
+                console.error('No se pudo leer el mes completo para el Consolidado:', error);
+                if (fuenteConsolidado.clave !== clave) return;
+                fuenteConsolidado.error = true;
+                aplicarFiltrosYRenderizar();
+            });
+        }
+        function registroAdmin(d) { return { id: d.id, ref: d.ref, ...d.data() }; }
+        // Une varias listas de registros sin repetir (por ruta del documento); la primera lista que trae un registro gana.
+        function unirRegistrosPorRuta(...listas) {
+            const porRuta = new Map();
+            listas.forEach(lista => (lista || []).forEach(r => { if (r?.ref && !porRuta.has(r.ref.path)) porRuta.set(r.ref.path, r); }));
+            return [...porRuta.values()];
+        }
+        // Todos los registros que el panel conoce en este momento (para buscar uno por su ruta o por cédula y fecha).
+        function registrosAdminConocidos() {
+            return unirRegistrosPorRuta(regsPendientesRevision, regsExtrasPorAprobarDb, fuenteConsolidado.regs, allRegsCache);
+        }
+        function detenerPendientesAdmin() {
+            unsubPendientesAdmin.forEach(u => u());
+            unsubPendientesAdmin = [];
+        }
+        function startPendientesAdmin() {
+            detenerPendientesAdmin();
+            pendientesParciales = false;
+            const refrescar = () => { actualizarAvisoPorRevisar(); actualizarAvisoExtras(); actualizarInicioAdmin(); };
+            const escuchar = (campo, valor, guardar) => unsubPendientesAdmin.push(onSnapshot(
+                query(collectionGroup(db, 'registros'), where(campo, '==', valor)),
+                (snap) => { guardar(snap.docs.map(registroAdmin)); refrescar(); },
+                (error) => {
+                    console.warn(`No se pudo consultar los registros con ${campo} = ${valor} (¿falta el índice de firestore.indexes.json?):`, error);
+                    guardar(null); pendientesParciales = true; refrescar();
+                }));
+            escuchar('estado', 'requiere_revision_admin', (v) => { regsPendientesRevision = v; });
+            escuchar('extras_estado', 'por_aprobar', (v) => { regsExtrasPorAprobarDb = v; });
+        }
+
         function startAdminTableListener() {
             if (unsubAdminTable) unsubAdminTable();
+            startPendientesAdmin();
             const q = query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(500));
             unsubAdminTable = onSnapshot(q, (snapshot) => {
                 const regs = [];
@@ -9330,7 +9412,24 @@
             const mesFiltro = document.getElementById('filtro-mes').value; // formato AAAA-MM
             const obraFiltro = document.getElementById('filtro-obra').value;
 
-            let filtrados = allRegsCache;
+            // Con filtro de mes o de colaborador se usa ese mes (o esa persona) completo, no los 500 más recientes de la
+            // empresa (auditoría nov-2026, hallazgo 2). Mientras llega, se muestra "cargando" en vez de un número a medias.
+            asegurarFuenteConsolidado(cedulaFiltro, mesFiltro);
+            const conFuentePropia = !!(cedulaFiltro || mesFiltro);
+            if (conFuentePropia && fuenteConsolidado.regs === null && !fuenteConsolidado.error) {
+                const resumenCarga = document.getElementById('filtro-resumen');
+                resumenCarga.textContent = mesFiltro ? `Cargando ${mesFiltro} completo…` : 'Cargando todos los registros del colaborador…';
+                resumenCarga.classList.remove('hidden');
+                document.getElementById('costo-mano-obra-box').classList.add('hidden');
+                document.getElementById('admin-table-body').innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-400 font-medium">Cargando…</td></tr>';
+                return;
+            }
+            const soloRecientes = !conFuentePropia || fuenteConsolidado.error;
+            const avisoRecientes = !conFuentePropia
+                ? `solo los ${allRegsCache.length} registros más recientes de la empresa — filtra por Mes para ver el mes completo`
+                : 'no se pudo leer el mes completo: estos números salen solo de los 500 registros más recientes y pueden estar incompletos';
+
+            let filtrados = soloRecientes ? allRegsCache : fuenteConsolidado.regs;
             if (cedulaFiltro) filtrados = filtrados.filter(r => r.cedula === cedulaFiltro);
             if (mesFiltro) filtrados = filtrados.filter(r => (r.fecha || '').startsWith(mesFiltro));
             // Comparación insensible a mayúsculas/espacios, igual que getHoraEsperadaObra/getGeocercaObra,
@@ -9342,7 +9441,7 @@
                 const totalOrd = filtrados.reduce((a, r) => a + (r.horas_ordinarias || 0), 0);
                 const totalExtras = filtrados.reduce((a, r) => a + (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0), 0);
                 const extrasPorAprobar = filtrados.reduce((a, r) => a + (estadoExtras(r) === 'por_aprobar' ? (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0) : 0), 0);
-                resumen.textContent = `${filtrados.length} registro(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra en total${extrasPorAprobar > 0 ? ` (${extrasPorAprobar.toFixed(1)}h por aprobar)` : ''}`;
+                resumen.textContent = `${filtrados.length} registro(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra en total${extrasPorAprobar > 0 ? ` (${extrasPorAprobar.toFixed(1)}h por aprobar)` : ''}${soloRecientes ? ` · ⚠ ${avisoRecientes}` : ''}`;
                 resumen.classList.remove('hidden');
             } else {
                 resumen.classList.add('hidden');
@@ -9372,6 +9471,7 @@
                 if (colaboradoresSinPerfil > 0) partes.push(`${colaboradoresSinPerfil} sin perfil activo (no se incluyeron)`);
                 if (colaboradoresSinSueldoConfigurado > 0) partes.push(`${colaboradoresSinSueldoConfigurado} con perfil pero sin sueldo/tarifa configurado (contaron $0)`);
                 if (mesFiltro && obraFiltro) partes.push('el sueldo base NO se incluye porque hay filtro de Obra activo — no es prorrateable entre obras');
+                if (soloRecientes) partes.push(`⚠ ${avisoRecientes}`);
                 document.getElementById('costo-mano-obra-detalle').textContent =
                     `${partes.join(' · ')} · Estimado operativo: no incluye aportes patronales ni prestaciones sociales.`;
                 cajaCosto.classList.remove('hidden');
@@ -9704,7 +9804,7 @@
             if (seleccionRegistros.size === 0) return;
 
             const clavesSeleccionadas = [...seleccionRegistros];
-            const candidatos = allRegsCache.filter(r =>
+            const candidatos = registrosAdminConocidos().filter(r =>
                 clavesSeleccionadas.includes(`${r.cedula}|${r.fecha}`) && r.llegada_tarde && !r.tardanza_justificada
             );
 
@@ -10178,6 +10278,12 @@
                 if (cedulaFiltro) {
                     // Un solo colaborador: se consulta directo su subcolección (más rápido, sin límite de 2000)
                     const snap = await getDocs(collection(db, 'empleados', cedulaFiltro, 'registros'));
+                    snap.forEach(d => rows.push(d.data()));
+                } else if (mesFiltro) {
+                    // Auditoría nov-2026, hallazgo 2: con filtro de mes se lee ese mes completo (igual que el "Resumen de
+                    // nómina" por correo). Antes se leían los 2000 registros más recientes y DESPUÉS se filtraba el mes, así
+                    // que un mes viejo, o uno muy lleno, salía incompleto.
+                    const snap = await getDocs(query(collectionGroup(db, 'registros'), where('fecha', '>=', `${mesFiltro}-01`), where('fecha', '<=', `${mesFiltro}-31`)));
                     snap.forEach(d => rows.push(d.data()));
                 } else {
                     const snap = await getDocs(query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(2000)));
