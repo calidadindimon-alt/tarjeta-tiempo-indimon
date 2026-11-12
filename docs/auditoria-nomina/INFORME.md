@@ -6,6 +6,11 @@ Fecha: 11 de noviembre de 2026 · Revisión de solo lectura: **no se cambió `in
 > palabra, sobre todo en los puntos marcados como "pregunta". Los ejemplos en pesos usan un sueldo de $1.750.905
 > (hora = sueldo ÷ 210 = $8.338).
 
+> **Informe unido.** Este encargo lo hicieron dos revisiones por separado, sin verse entre sí. Coincidieron en los
+> hallazgos principales (1, 2, 3, 4, 7, 8, 9, 11, 12, 13 y 17), lo que da más confianza en ellos. Este archivo une las
+> dos: los hallazgos 21 a 24, los puntos 8 y 9 del hallazgo 3, la ampliación del turno de madrugada en el hallazgo 19
+> y las preguntas P9 a P11 vienen de la segunda revisión.
+
 ---
 
 ## 1. Resumen de una página
@@ -24,9 +29,13 @@ de seguridad de la base de datos y en algunos cruces entre reglas.
 |---|---|---|
 | Crítico | 1 | Se deja de pagar dinero que la app sí calculó |
 | Alto | 3 | Puede costar dinero o un reclamo; hay que corregirlo pronto |
-| Medio | 8 | Paga o descuenta mal en casos concretos |
-| Bajo | 8 | Casos raros, o cifras solo informativas |
-| Preguntas para RRHH o abogado | 8 | La ley deja margen o la decisión es de la empresa |
+| Medio | 10 | Paga o descuenta mal en casos concretos, o falla un control |
+| Bajo | 10 | Casos raros, o cifras solo informativas |
+| Preguntas para RRHH o abogado | 11 | La ley deja margen o la decisión es de la empresa |
+
+Las dos revisiones calificaron distinto dos puntos. Las reglas de la base de datos (hallazgo 3) quedaron aquí como
+"alto"; la segunda revisión las puso como "crítico". Y el turno de madrugada (dentro del hallazgo 19, "bajo") sube a
+"alto" si INDIMON tiene turnos que empiezan después de medianoche: RRHH sabe si es el caso.
 
 ### Los 3 que hay que corregir primero
 
@@ -47,7 +56,11 @@ de seguridad de la base de datos y en algunos cruces entre reglas.
   hallazgo, lo que la app da y lo que debería dar (19 casos).
 - `tests/auditoria-nomina-reglas.mjs` — prueba las reglas reales de `firestore.rules` en el emulador de Firebase (nunca
   la base real): 11 escrituras indebidas que hoy se aceptan. Las instrucciones están al inicio del archivo.
-- Ninguna de las dos está en el CI y las dos terminan siempre sin error. Cada caso dice "DEMUESTRA EL HALLAZGO N"
+- `node tests/auditoria-nomina-complemento.mjs` — lo mismo para los hallazgos 22, 23 y 24 y el turno de madrugada
+  completo del 19 (4 casos, ejecutados).
+- `tests/auditoria-nomina-reglas-complemento.mjs` — tres casos más de reglas (hallazgo 3, puntos 8 y 9, y hallazgo
+  21). **No se ejecutó**: el equipo de la segunda revisión no tenía Java. Salen de leer `firestore.rules`.
+- Ninguna de las cuatro está en el CI y todas terminan siempre sin error. Cada caso dice "DEMUESTRA EL HALLAZGO N"
   mientras el problema exista y "YA CORREGIDO" cuando se arregle: sirven para confirmar cada corrección.
 - Las pruebas que ya existían siguen pasando. No se usaron datos reales ni credenciales.
 
@@ -104,6 +117,9 @@ de seguridad de la base de datos y en algunos cruces entre reglas.
   5. Quitarse la marca de "Ausencia injustificada" que puso Admin (se salva del descuento de 2 días, **$116.727**).
   6. Marcarse "entrada temprana autorizada" o "sin almuerzo" en un día ya cerrado.
   7. Cambiar su propio sueldo base (ver hallazgo 13).
+  8. Pasar su propio día de "por revisar" a "completado": una salida olvidada, un fichaje fuera de la geocerca o un
+     turno de más de 16 horas quedan aprobados sin que Admin los mire.
+  9. Poner en 0 las horas del permiso que RRHH decidió descontar. La decisión sigue escrita, pero descuenta $0.
 - **Dónde.** `firestore.rules`: `horasDiaCoherentes`, `extrasEstadoPermitidoColaborador` y la regla de
   `/empleados/{cedula}/registros/{fecha}`. En `index.html`: `estadoExtras` (usa el campo `fecha`) y `extrasPagables`.
 - **Ley.** No aplica: es un riesgo de fraude. Requiere saber de programación, pero la dirección de la base es pública.
@@ -114,8 +130,11 @@ de seguridad de la base de datos y en algunos cruces entre reglas.
   - `horas_dominicales` solo puede ser mayor que cero en domingo o festivo (o en el día anterior, por los turnos de
     noche).
   - Solo Admin puede escribir `tipo_permiso` de ausencia y `entrada_temprana_autorizada`.
+  - Solo Admin puede pasar `estado` de "por revisar" a "completado", y el colaborador no puede cambiar
+    `horas_permiso_turno` de un día que ya tiene decisión de RRHH.
   - Mejor a mediano plazo: guardar cuántas horas aprobó RRHH y pagar como máximo esa cifra.
-- **Prueba.** `tests/auditoria-nomina-reglas.mjs` (7 casos, todos aceptados hoy por las reglas).
+- **Prueba.** `tests/auditoria-nomina-reglas.mjs` (7 casos, todos aceptados hoy por las reglas). Los puntos 8 y 9
+  están en `tests/auditoria-nomina-reglas-complemento.mjs`, que no se ejecutó (leídos en las reglas).
 
 ### Hallazgo 4 — ALTO — Cualquiera, sin sesión, puede fabricar un permiso "aprobado" y ponerle una ausencia a otro
 
@@ -253,7 +272,8 @@ Los seis caminos usan la misma función de cálculo (eso está bien), pero difie
 
 - **Qué pasa.** "Esta semana: X de 42 h" y el correo de "semana incompleta" suman lo trabajado y las salidas a cita
   dentro del turno, pero no los permisos de día completo, las vacaciones ni las incapacidades. Además, el correo solo
-  se revisa si la persona marca entrada un lunes (si el lunes es festivo o no viene, esa semana no se revisa).
+  se revisa si la persona marca entrada un lunes (si el lunes es festivo o no viene, esa semana no se revisa). Ojo:
+  según el hallazgo 21, hoy ese correo ni siquiera llega a enviarse.
 - **Ejemplo.** Lunes con licencia por luto y martes a viernes trabajados: la app dice 33,5 de 42 h. Si además hubo una
   tardanza, RRHH recibe un correo de "no completó las horas". Si esa persona trabaja el domingo, 8,5 h quedan como
   ordinarias (×1,90) en vez de extra (×2,15): $17.717 menos.
@@ -308,13 +328,18 @@ Los seis caminos usan la misma función de cálculo (eso está bien), pero difie
   ordinarias y 4 h extra ($52.214 si se aprueban). Si llega a las 12:31 es "otro turno": 8 h ordinarias, 0 extras.
 - **Turno que empieza después de medianoche.** Un llamado 00:30–8:00 en una obra con entrada 7:30 paga 0,5 h: todo lo
   anterior a las 7:30 se toma como "llegó temprano". Admin tiene que marcar "entrada temprana autorizada".
+  Lo mismo le pasa a un turno de noche entero: 00:30–8:30 da 1 h ordinaria y 0 h de recargo nocturno, cuando la misma
+  app, si la obra no tiene horario, da 7 h y 4,5 h de recargo. Son $13.132 de recargo nocturno sin pagar por turno, y
+  a un contratista le faltan 6 h de pago. Para las llegadas tarde la app ya distingue "más de 5 horas es otro turno";
+  para las tempranas no. **Si INDIMON tiene turnos que empiezan de madrugada en obras con hora de entrada, este punto
+  es de gravedad alta**, y la corrección es aplicar la misma regla de las 5 horas hacia atrás.
 - **Domingo a lunes.** Un turno domingo 20:00 – lunes 6:00, con la semana ya completa, queda todo como extra
   nocturna, incluidas las 6 horas del lunes, que ya son de la semana siguiente.
 - **Turnos largos cargados por Admin.** El colaborador no puede cerrar un turno de más de 16 h, pero "Guardar registro
   pasado" solo pide confirmar desde 12 h y "Editar" no tiene tope: un error de digitación de 23 h se liquida completo.
 - **Dónde.** `calcularJornadaDiaria`, `calcularMinutosTardanza`, botones de Admin.
 - **Corrección propuesta.** Marcar estos días para revisión de Admin en vez de liquidarlos solos.
-- **Prueba.** Hallazgo 19 (dos casos).
+- **Prueba.** Hallazgo 19 (dos casos), y el turno entero en `tests/auditoria-nomina-complemento.mjs`.
 
 ### Hallazgo 20 — BAJO — El descuento por ausencia se anota en el mes del domingo
 
@@ -325,6 +350,57 @@ Los seis caminos usan la misma función de cálculo (eso está bien), pero difie
 - **Dónde.** `calcularDiasDescontadosPorAusenciasMes`, `construirFilasAusencias`.
 - **Corrección propuesta.** Confirmar con nómina en qué mes lo descuentan ellos y dejarlo igual. También recordar que
   la app solo descuenta si Admin **registra** la ausencia: un día sin ningún registro no descuenta nada.
+
+### Hallazgo 21 — MEDIO — El correo de "semana incompleta" a RRHH nunca se envía
+
+- **Qué pasa.** Cada lunes, al marcar entrada, el celular del colaborador revisa su semana anterior y debería avisar
+  por correo a RRHH si hubo ausencia injustificada o faltaron horas con tardanza. Antes de enviar, lee una marca de
+  "ya avisado" para no repetir el correo. Las reglas solo le dejan leer esa marca a Admin: la lectura falla, la función
+  termina ahí y el correo no sale. El error solo queda en la consola del navegador.
+- **Por qué importa.** La decisión 4 (la tardanza no se descuenta sola; RRHH decide) se apoya en ese aviso.
+- **Dónde.** `verificarCumplimientoSemanal` en `index.html`; `match /avisos_semana_incumplida/{id}` en
+  `firestore.rules` (`allow read: if esAdmin()`).
+- **Ley.** No aplica: es un control interno que no está funcionando.
+- **Corrección propuesta.** Crear la marca sin leerla antes y tratar "ya existe" como "ya avisado", o generar el aviso
+  desde `scripts/` con la cuenta de servicio.
+- **Prueba.** `tests/auditoria-nomina-reglas-complemento.mjs`, que no se ejecutó (leído en el código y en las reglas).
+  RRHH lo puede confirmar sin programar: ¿ha llegado alguna vez un correo con asunto "Revisar semana de…"?
+
+### Hallazgo 22 — MEDIO — El Excel trae las extras sin aprobar en las mismas columnas que las aprobadas
+
+- **Qué pasa.** Mi Tarjeta y el costo de Admin solo cuentan las extras aprobadas. El Excel trae todas las horas extra
+  del día en las mismas columnas y deja el estado ("POR APROBAR", "NO AUTORIZADA") en otra columna, al final. Los días
+  "por revisar" también salen con sus horas calculadas. Además no hay columna para las horas ordinarias trabajadas en
+  domingo o festivo, que desde el 3-nov se pagan aparte al 100 % (decisión 7): solo sale "horas dominicales", con
+  ordinarias y extras juntas.
+- **Ejemplo.** Día con 2 h extra diurnas "no autorizadas": la columna del Excel dice 2 h; la app paga 0 h. Quien sume
+  la columna paga **$20.844** que RRHH no autorizó. Con 10 h en el mes son $104.221.
+- **Dónde.** `construirFilasDetalleHoras` y `descargarExcelConsolidado` frente a `extrasPagables`.
+- **Corrección propuesta.** Agregar las columnas "extras a pagar" (solo aprobadas) y "ordinarias en domingo/festivo",
+  y dejar aparte las horas de los días "por revisar".
+- **Prueba.** `tests/auditoria-nomina-complemento.mjs`, hallazgo 22.
+
+### Hallazgo 23 — BAJO — Recargo dominical retenido mientras las extras de ese domingo están por aprobar
+
+- **Qué pasa.** Si las extras de un domingo no están aprobadas, la app resta **todas** las horas extra del total de
+  horas dominicales. Si el turno pasa la medianoche y parte de las extras cae ya en lunes, resta de más.
+- **Ejemplo.** Domingo 22-nov-2026 de 14:00 a 02:00: 9 h ordinarias, todas en domingo, y 3 h extra (1 en domingo y 2
+  en lunes). Mientras RRHH no aprueba, se paga recargo dominical sobre 7 h en vez de 9: faltan **$15.008**. Al aprobar
+  queda bien.
+- **Dónde.** `extrasPagables`.
+- **Corrección propuesta.** Guardar por separado las horas dominicales de la parte ordinaria y de la parte extra.
+- **Prueba.** `tests/auditoria-nomina-complemento.mjs`, hallazgo 23.
+
+### Hallazgo 24 — BAJO — La meta de una semana con festivo no usa la jornada propia de la obra
+
+- **Qué pasa.** En una semana con festivo la meta baja 8,5 h (8 h si es viernes), que es el horario general. Si la
+  obra tiene otra jornada, la meta queda mal. Y un festivo que cae en un sábado pactado no baja la meta.
+- **Ejemplo.** Obra con lunes a viernes 7:00–15:30 (7,5 h) y sábado 7:00–11:30 (4,5 h): 42 h. Con festivo el lunes la
+  app da meta de 33,5 h; debería dar 34,5 h. Afecta "Mi semana", el aviso de semana incompleta y cuántas horas de un
+  domingo trabajado son ordinarias.
+- **Dónde.** `metaSemanalOrdinaria` (usa `HORARIO_PACTADO_HORAS`, no la jornada de la obra).
+- **Corrección propuesta.** Calcular la meta con la jornada de la obra del colaborador.
+- **Prueba.** `tests/auditoria-nomina-complemento.mjs`, hallazgo 24.
 
 ---
 
@@ -381,6 +457,12 @@ Se revisó y calcula correctamente:
   almorzó y no marcó "sin almuerzo", trabaja una hora sin pago. ¿Se le explica esto a cada colaborador nuevo?
 - **P8. Ausencia y domingo.** La app quita el domingo solo por ausencia injustificada registrada por Admin. ¿Qué pasa
   con quien se devuelve a media jornada sin permiso? Hoy conserva el domingo y se le pagan las horas trabajadas.
+- **P9. Domingo o festivo trabajado sin aprobación.** Las horas ordinarias de ese día se pagan (×1,90) sin que RRHH
+  las apruebe; solo las extras piden aprobación. ¿Debería aprobarse también el trabajo en domingo o festivo?
+- **P10. Extras anteriores al 21-oct-2026.** Se pagan sin aprobación para siempre (decisión 6), también si alguien
+  carga o corrige hoy un día de esa época. ¿Se quiere cerrar esa puerta?
+- **P11. Quién decide que una ausencia es injustificada.** El descuento de 2 días es automático cuando Admin pone la
+  etiqueta. El art. 173 CST exige que la falta no tenga justa causa. ¿Hay un paso para oír al trabajador antes?
 
 ---
 
@@ -394,6 +476,16 @@ npx firebase emulators:exec --only firestore --project demo-indimon "node tests/
 ```
 
 La segunda necesita Java y usa solo el emulador local. Ninguna toca la base real ni necesita credenciales.
+
+Las pruebas complementarias (hallazgos 21 a 24 y puntos 8 y 9 del hallazgo 3) se corren igual:
+
+```
+node tests/auditoria-nomina-complemento.mjs
+npx firebase emulators:exec --only firestore --project demo-indimon "node tests/auditoria-nomina-reglas-complemento.mjs"
+```
+
+La de reglas complementaria está escrita pero **no se ha ejecutado nunca**: conviene correrla una vez para confirmar
+sus tres casos.
 
 Lo que **no** se pudo probar con datos: el hallazgo 2 (tope de 500 registros) y los caminos de Admin del hallazgo 9
 dependen de la pantalla y de la base; se comprobaron leyendo el código y con una verificación del texto del código.
