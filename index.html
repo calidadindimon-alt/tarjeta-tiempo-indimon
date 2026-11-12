@@ -8772,6 +8772,7 @@
             ].filter(Boolean).join(' · ');
             if (!document.getElementById('modal-por-revisar').classList.contains('hidden')) renderPorRevisar();
         }
+        const obrasAbiertasRevision = new Set();
         function renderPorRevisar() {
             const pend = pendientesDeRevision();
             const grupos = [
@@ -8782,25 +8783,40 @@
             const cont = document.getElementById('por-revisar-lista');
             const htmlPermisos = (pendientesParciales ? AVISO_PENDIENTES_PARCIALES : '') + htmlPermisosPorDecidir();
             if (!pend.length && !htmlPermisos) { cont.innerHTML = '<p class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">✔ No hay registros por revisar.</p>'; return; }
-            cont.innerHTML = htmlPermisos + grupos.map(([cat, titulo]) => {
-                const items = pend.filter(r => categoriaRevision(r) === cat);
-                if (!items.length) return '';
-                return `<p class="text-[10px] font-bold text-slate-500 uppercase pt-2">${titulo} · ${items.length}</p>` + items.map(r => {
+            // Una tarjeta plegable por obra (nov-2026), de la que más registros tiene a la que menos; cada registro lleva una
+            // etiqueta con su motivo (salida olvidada, salida declarada, fuera de la geocerca). Antes se agrupaba por motivo.
+            const ETIQUETA_REVISION = { olvido: ['Salida olvidada', 'ambar'], declarada: ['Salida declarada', 'azul'], geocerca: ['Fuera de la geocerca', 'rojo'] };
+            const porObra = new Map();
+            pend.forEach(r => { const o = (r.obra || '').trim().toUpperCase() || 'SIN OBRA'; if (!porObra.has(o)) porObra.set(o, []); porObra.get(o).push(r); });
+            cont.innerHTML = htmlPermisos + (pend.length ? `<p class="text-[10px] font-bold text-slate-500 uppercase pt-2">Registros de horario por revisar · ${pend.length}</p>` : '') + [...porObra.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([obra, regsObra]) => {
+                const PLURAL_REVISION = { olvido: ['salida olvidada', 'salidas olvidadas'], declarada: ['salida declarada', 'salidas declaradas'], geocerca: ['fuera de la geocerca', 'fuera de la geocerca'] };
+                const resumen = grupos.map(([cat]) => { const n = regsObra.filter(r => categoriaRevision(r) === cat).length; return n ? `${n} ${PLURAL_REVISION[cat][n === 1 ? 0 : 1]}` : ''; }).filter(Boolean).join(' · ');
+                const abierta = obrasAbiertasRevision.has(obra) || porObra.size === 1;
+                return `<details class="ad-obra" data-obra-revision="${escapeHtml(obra)}"${abierta ? ' open' : ''}>
+                    <summary><span class="ad-obra-ico"><i class="ph-fill ph-buildings"></i></span>
+                        <span class="min-w-0"><span class="ad-obra-nombre">${escapeHtml(obra)}</span> <span class="text-xs font-bold text-slate-500">${regsObra.length}</span>
+                        <span class="ad-obra-det block">${escapeHtml(resumen)}</span></span>
+                        <i class="ph-bold ph-caret-right ad-obra-flecha"></i></summary>
+                    <div class="ad-obra-gente pt-2 flex flex-col gap-2">` + regsObra.sort((a, b) => (a.fecha || a.id || '').localeCompare(b.fecha || b.id || '')).map(r => {
+                    const cat = categoriaRevision(r);
                     const cedula = r.ref.parent.parent.id;
                     const aprobable = cat !== 'olvido';
                     const ext = (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0);
                     const horas = aprobable ? ` · ${textoHorasCorto(r.horas_ordinarias || 0)} ord${ext ? ` + ${textoHorasCorto(ext)} extra` : ''}` : '';
                     return `<div class="border border-slate-200 rounded-xl p-3">
-                        <p class="text-sm font-bold text-slate-800">${escapeHtml(r.empleado_nombre || cedula)} <span class="text-[10px] font-bold bg-amber-100 text-amber-800 rounded-full px-2 py-0.5 ml-1">${escapeHtml(r.fecha || r.id)}</span></p>
-                        <p class="text-[11px] text-slate-600">${escapeHtml(r.obra || '—')} · entrada ${escapeHtml(r.entrada || '—')} · salida ${escapeHtml(r.salida || '—')}${horas}</p>
+                        <p class="text-sm font-bold text-slate-800">${escapeHtml(r.empleado_nombre || cedula)} <span class="text-[10px] font-bold bg-amber-100 text-amber-800 rounded-full px-2 py-0.5 ml-1">${escapeHtml(r.fecha || r.id)}</span> <span class="ad-chip ${ETIQUETA_REVISION[cat][1]}">${ETIQUETA_REVISION[cat][0]}</span></p>
+                        <p class="text-[11px] text-slate-600">entrada ${escapeHtml(r.entrada || '—')} · salida ${escapeHtml(r.salida || '—')}${horas}</p>
                         <p class="text-[11px] text-slate-500 mt-1">${escapeHtml(r.nota_revision || '')}</p>
                         <div class="flex gap-2 mt-2">
                             ${aprobable ? `<button type="button" class="btn-aprobar-revision btn-touch bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold" data-cedula="${escapeHtml(cedula)}" data-fecha="${escapeHtml(r.id)}">✔ Aprobar</button>` : ''}
                             <button type="button" class="btn-corregir-revision btn-touch ${aprobable ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-amber-500 hover:bg-amber-600 text-white'} px-3 py-1.5 rounded-lg text-xs font-bold" data-cedula="${escapeHtml(cedula)}" data-fecha="${escapeHtml(r.id)}">${aprobable ? 'Corregir' : 'Corregir salida'}</button>
                         </div>
                     </div>`;
-                }).join('');
+                }).join('') + '</div></details>';
             }).join('');
+            cont.querySelectorAll('details[data-obra-revision]').forEach(d => d.addEventListener('toggle', () => {
+                if (d.open) obrasAbiertasRevision.add(d.dataset.obraRevision); else obrasAbiertasRevision.delete(d.dataset.obraRevision);
+            }));
             cont.querySelectorAll('.btn-aprobar-revision').forEach(b => b.addEventListener('click', () => aprobarRevision(b.dataset.cedula, b.dataset.fecha, b)));
             cont.querySelectorAll('.btn-corregir-revision').forEach(b => b.addEventListener('click', () => abrirEditarRegistro(b.dataset.cedula, b.dataset.fecha)));
             cont.querySelectorAll('.btn-decidir-permiso').forEach(b => b.addEventListener('click', () => decidirPermiso(b)));
