@@ -197,6 +197,7 @@ try {
   await page.click('#btn-aviso-por-revisar');
   await page.waitForTimeout(400);
   ok('   … con el registro pendiente y su botón Aprobar', await page.isVisible('#modal-por-revisar-box') && (await page.locator('.btn-aprobar-revision').count()) === 1);
+  ok('   … agrupado por obra', (await page.locator('details[data-obra-revision="BODEGA"]').count()) === 1);
   await page.click('#btn-por-revisar-cerrar');
   await page.waitForTimeout(400);
   ok('8. El aviso de "Extras por aprobar" aparece y abre la lista por semana',
