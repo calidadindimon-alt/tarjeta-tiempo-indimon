@@ -254,6 +254,16 @@ service cloud.firestore {
     // alcance de reglas de Firestore — ya señalado en la nota de /permisos/ más abajo); lo que sí
     // logra es que "aprobado" ya no se pueda alcanzar con una sola escritura arbitraria, sino que
     // exija reproducir la estructura completa de las 4 firmas.
+    // Copia de los tipos de PERMISOS_CATALOGO en index.html: si se agrega un tipo allá, agregarlo aquí. Va como un texto
+    // separado por ";" (no como lista; split() usa expresiones regulares y "|" ahí significa "o") por el tope de 1000 expresiones de Firestore (ver festivosNacionales).
+    function tiposDePermisoValidos() {
+      return ('Cita médica (urgencia o especialista);Calamidad doméstica;Diligencia judicial/entidad pública;' +
+              'Obligación escolar (acudiente);Votación o jurado de votación;Comisión sindical o entierro de compañero;' +
+              'Licencia por luto (familiar cercano);Licencia por matrimonio;Día libre por ir en bicicleta (transporte sostenible);' +
+              'Permiso personal (según política interna);Licencia no remunerada (art. 51 CST);' +
+              'Permiso no contemplado en la ley (Reglamento Interno);Vacaciones').split(';');
+    }
+
     function permisoTieneLas4Firmas() {
       let f = request.resource.data.firmantes;
       return f.trabajador.firmado == true &&
@@ -389,13 +399,13 @@ service cloud.firestore {
         // permiso aprobado, "Entendido") van ANTES: si fueran después, el tope podría rechazar una escritura que sí
         // cumplía su rama. Y la rama del colaborador empieza por request.auth != null, que descarta enseguida a
         // quien no tiene sesión.
+        //
+        // ENDURECIDO (auditoría nov-2026, hallazgo 4): se cierra la rama 3 (sincronizar un permiso aprobado SIN sesión).
+        // Con las credenciales públicas, cualquiera podía inventar un permiso "aprobado" (las 4 firmas no se pueden
+        // verificar sin un servidor) y con él escribir en el día de otra persona: ponerle una ausencia injustificada o
+        // quitarle la suya. Pasar un permiso aprobado a nómina ya lo hace Admin al entrar al panel
+        // (procesarPermisosAprobadosPendientes), así que esa rama no hace falta.
         allow create: if esAdmin() ||
-          (request.resource.data.horas_ordinarias == 0 &&
-           request.resource.data.horas_extras_diurnas == 0 &&
-           request.resource.data.horas_extras_nocturnas == 0 &&
-           request.resource.data.horas_recargo_nocturno == 0 &&
-           request.resource.data.horas_dominicales == 0 &&
-           permisoAprobadoValido(request.resource.data.permiso_id, cedula)) ||
           // Marcar entrada: el día nace como turno abierto, sin horas, con fecha de hoy y sin datos de Admin.
           (request.auth != null && escrituraColaboradorCoherente(cedula, fecha) &&
            request.resource.data.get('estado', null) == 'activo' && horasEnCero(request.resource.data) &&
@@ -405,9 +415,6 @@ service cloud.firestore {
           // "Entendido" en la decisión de RRHH sobre un permiso: solo ese campo, en cualquier día.
           (esColaboradorActivoAutenticado(cedula) &&
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['decisiones_vistas'])) ||
-          (request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['tipo_permiso', 'horas_permiso', 'nota_permiso', 'dias_vacaciones_permiso', 'permiso_id']) &&
-           permisoAprobadoValido(request.resource.data.permiso_id, cedula)) ||
           (request.auth != null && escrituraColaboradorCoherente(cedula, fecha) && (
             // a) Turno abierto: almuerzo, salidas a permiso, cambio de obra y cierre (también la salida olvidada).
             (resource.data.get('estado', null) == 'activo' && sinCambio('entrada') && permisoDelDiaSinCambio() &&
@@ -500,7 +507,10 @@ service cloud.firestore {
       allow list: if esAdmin() || esDuenoDe(resource.data.get('trabajador_cedula', null));
       // ENDURECIDO (ronda 5, parte 2): un permiso nace SIEMPRE en un estado distinto de 'aprobado'
       // (típicamente 'pendiente') — nadie puede crear uno que ya llegue "pre-aprobado".
-      allow create: if request.resource.data.estado != 'aprobado';
+      // ENDURECIDO (auditoría nov-2026, hallazgo 4): el tipo tiene que ser uno del catálogo de permisos (PERMISOS_CATALOGO en
+      // index.html). Así nadie puede crear un "permiso" de tipo "Ausencia injustificada" para que Admin lo pase a nómina.
+      allow create: if request.resource.data.estado != 'aprobado' &&
+        (esAdmin() || request.resource.data.get('tipo', '') in tiposDePermisoValidos());
       allow update: if esAdmin() ||
         // aprobado_en: lo marca la última firma, para que Admin pase el permiso a nómina si quien firmó no tenía sesión.
         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['firmantes', 'estado', 'aprobado_en']) &&

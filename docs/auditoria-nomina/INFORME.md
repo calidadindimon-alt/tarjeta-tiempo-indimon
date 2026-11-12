@@ -193,6 +193,20 @@ Las dos revisiones calificaron distinto dos puntos. Las reglas de la base de dat
   fecha del día coincida con la del permiso. Que pasar un permiso a nómina sea siempre tarea de Admin (la app ya tiene
   ese camino: `procesarPermisosAprobadosPendientes`), y cerrar la rama sin sesión.
 - **Prueba.** `tests/auditoria-nomina-reglas.mjs` (4 casos).
+- **Estado: CORREGIDO en lo principal (12-nov-2026).**
+  - `firestore.rules` cierra la rama que dejaba escribir en el día de alguien **sin sesión** con un permiso
+    "aprobado". Ahora solo Admin pasa un permiso a nómina, y ya lo hacía al entrar al panel.
+  - Un permiso nuevo tiene que ser de un tipo del catálogo, así que no se puede crear uno de tipo "Ausencia
+    injustificada".
+  - En `index.html`, el paso a nómina rechaza tipos o fechas que no sean válidos y **nunca reemplaza una ausencia** que
+    Admin ya registró en ese día: lo deja anotado en Auditoría para revisarlo a mano.
+  - Cubierto por 7 comprobaciones en `tests/test-reglas-firestore.mjs` (87/87 en el emulador).
+
+  **Lo que sigue abierto:** alguien sin sesión todavía puede crear un permiso de un tipo válido a nombre de otra
+  persona y ponerle las 4 firmas, porque sin un servidor no se puede verificar quién firma. El riesgo que queda es una
+  etiqueta de permiso en un día sin ausencia o, si es de vacaciones, el descuento de días del saldo. Cerrarlo del todo
+  requiere validar las firmas en un servidor (Cloud Function) o que Admin confirme cada permiso antes de pasarlo a
+  nómina.
 
 ### Hallazgo 5 — MEDIO — En festivo entre semana se descuenta 1 hora de almuerzo que la regla dice que no se asume
 

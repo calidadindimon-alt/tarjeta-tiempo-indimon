@@ -205,6 +205,7 @@ try {
   await page.waitForTimeout(400);
   ok('   … con el botón de aprobar de la semana', await page.isVisible('#modal-extras-box') && (await page.locator('.btn-extras-aprobar').count()) >= 1);
   ok('   … y el botón "Por compensar" en cada día', (await page.locator('.btn-extras-compensar').count()) >= 1);
+  ok('   … agrupado por obra y con selector de mes', (await page.locator('details[data-obra-extras]').count()) >= 1 && await page.isVisible('#extras-mes'));
   await page.locator('.btn-extras-aprobar').first().click();
   await page.waitForTimeout(600);
   ok('   … y al aprobar, el aviso desaparece', !(await page.isVisible('#btn-aviso-extras')));
