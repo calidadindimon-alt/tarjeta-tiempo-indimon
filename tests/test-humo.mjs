@@ -173,7 +173,17 @@ try {
   ok('5. Admin entra y ve el inicio con el menú y el resumen', await page.isVisible('#ad-menu') && await page.isVisible('#ad-hero') && (await page.textContent('#ad-kpi-revisar')) === '1');
   await page.click('#ad-menu [data-sec="consolidado"]');
   await page.waitForTimeout(300);
-  ok('5b. El menú lleva al Consolidado', await page.isVisible('#admin-table-body') && !(await page.isVisible('#ad-hero')));
+  ok('5b. El menú lleva al Consolidado, que abre en "Hoy por obra"', await page.isVisible('#consolidado-hoy') && !(await page.isVisible('#admin-table-body')) && !(await page.isVisible('#ad-hero')));
+  await page.click('[data-vista-consolidado="historial"]');
+  await page.waitForTimeout(300);
+  ok('5c. La pestaña "Historial y filtros" muestra la tabla de siempre', await page.isVisible('#admin-table-body') && !(await page.isVisible('#consolidado-hoy')));
+  await page.click('#ad-menu [data-sec="inicio"]');
+  await page.waitForTimeout(300);
+  await page.click('[data-filtro-hoy="tarde"]');
+  await page.waitForTimeout(300);
+  ok('5d. La tarjeta "Tardanzas hoy" abre el consolidado de hoy filtrado por tardanza',
+    await page.isVisible('#consolidado-hoy') && /Tardanza/.test(await page.textContent('#hoy-chips .ad-chipf.act') || ''));
+  await page.click('[data-filtro-hoy-chip="todos"]');
   await page.click('#ad-menu [data-sec="obras"]');
   await page.waitForTimeout(300);
   await page.click('#btn-add-horario-obra');
@@ -194,6 +204,7 @@ try {
   await page.click('#btn-aviso-extras');
   await page.waitForTimeout(400);
   ok('   … con el botón de aprobar de la semana', await page.isVisible('#modal-extras-box') && (await page.locator('.btn-extras-aprobar').count()) >= 1);
+  ok('   … y el botón "Por compensar" en cada día', (await page.locator('.btn-extras-compensar').count()) >= 1);
   await page.locator('.btn-extras-aprobar').first().click();
   await page.waitForTimeout(600);
   ok('   … y al aprobar, el aviso desaparece', !(await page.isVisible('#btn-aviso-extras')));

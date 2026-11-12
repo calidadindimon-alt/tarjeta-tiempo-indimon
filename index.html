@@ -218,6 +218,19 @@
         .mt-olvido { margin-top: .6rem; }
         .mt-enlace { display: flex; align-items: center; justify-content: center; gap: .4rem; width: 100%; margin-top: .55rem; padding: .45rem;
                      font-size: 12.5px; font-weight: 700; color: rgba(255,255,255,.92); text-decoration: underline; text-underline-offset: 3px; }
+        /* "Salir a una cita o permiso": botón con ícono, del mismo vidrio que Almuerzo / Sin almuerzo, más discreto que
+           "Terminar turno" para no competir con él. */
+        .mt-permiso-btn { display: flex; align-items: center; gap: .7rem; width: 100%; margin-top: .6rem; padding: .55rem .8rem .55rem .55rem;
+                          border-radius: 1.1rem; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.32); color: #fff; text-align: left;
+                          backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: background .15s; }
+        .mt-permiso-btn.hidden { display: none; }
+        .mt-permiso-btn:hover, .mt-permiso-btn:active { background: rgba(255,255,255,.24); }
+        .mt-permiso-ico { width: 38px; height: 38px; border-radius: .8rem; background: rgba(255,255,255,.95); color: #7c3aed;
+                          display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+        .mt-permiso-txt { flex: 1; min-width: 0; line-height: 1.2; }
+        .mt-permiso-txt b { display: block; font-size: 14px; font-weight: 800; }
+        .mt-permiso-txt small { display: block; font-size: 11.5px; opacity: .85; margin-top: .1rem; }
+        .mt-permiso-flecha { font-size: 16px; opacity: .8; }
         .mt-input-hora, .mt-olvido .hora24-texto { width: 100%; background: rgba(255,255,255,.95) !important; color: #0f172a !important; border: 0 !important;
                    border-radius: 1rem; padding: .7rem .9rem; font-size: 20px !important; font-weight: 700; }
         .mt-olvido .hora24-reloj { background: rgba(255,255,255,.95); border-radius: 1rem; padding: 0 .8rem; }
@@ -370,6 +383,47 @@
         .ad-rapido:hover { border-color: #93c5fd; }
         .ad-rapido i { font-size: 20px; color: #2563eb; }
         html.dark .ad-rapido { background: #273449; border-color: #334155; color: #f1f5f9; }
+        /* Consolidado: pestañas "Hoy por obra" / "Historial y filtros" y tarjetas por obra (nov-2026). */
+        .ad-tabs { display: flex; gap: .35rem; padding: .3rem; background: #f1f5f9; border-radius: .9rem; }
+        html.dark .ad-tabs { background: #0f172a; }
+        .ad-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: .4rem; padding: .55rem .7rem; border-radius: .7rem;
+                  font-size: 13px; font-weight: 700; color: #475569; }
+        html.dark .ad-tab { color: #a3b1c6; }
+        .ad-tab.act { background: #fff; color: #1d4ed8; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+        html.dark .ad-tab.act { background: #1e293b; color: #93c5fd; }
+        .ad-sub { display: flex; flex-direction: column; gap: 1rem; }
+        .ad-sub.hidden { display: none; }
+        .ad-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+        .ad-chipf { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .75rem; border-radius: 99px; font-size: 12.5px; font-weight: 700;
+                    background: #fff; border: 1px solid #e2e8f0; color: #334155; }
+        html.dark .ad-chipf { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+        .ad-chipf .pt { width: 8px; height: 8px; border-radius: 99px; background: var(--c, #94a3b8); }
+        .ad-chipf b { font-weight: 800; opacity: .7; }
+        .ad-chipf.act { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.25); color: #1d4ed8; }
+        html.dark .ad-chipf.act { color: #93c5fd; }
+        .ad-obra { background: #fff; border: 1px solid #e2e8f0; border-radius: 1.1rem; overflow: hidden; }
+        html.dark .ad-obra { background: #1e293b; border-color: #334155; }
+        .ad-obra > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; }
+        .ad-obra > summary::-webkit-details-marker { display: none; }
+        .ad-obra-ico { width: 38px; height: 38px; border-radius: .8rem; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+        html.dark .ad-obra-ico { background: rgba(59,130,246,.15); color: #93c5fd; }
+        .ad-obra-nombre { font-weight: 800; font-size: 14.5px; color: #0f172a; }
+        html.dark .ad-obra-nombre { color: #f1f5f9; }
+        .ad-obra-det { font-size: 12px; color: #64748b; margin-top: .1rem; }
+        html.dark .ad-obra-det { color: #a3b1c6; }
+        .ad-obra-barra { height: 6px; border-radius: 99px; background: #e2e8f0; overflow: hidden; display: flex; margin-top: .4rem; max-width: 260px; }
+        html.dark .ad-obra-barra { background: #334155; }
+        .ad-obra-barra i { display: block; height: 100%; }
+        .ad-obra-flecha { margin-left: auto; color: #94a3b8; transition: transform .15s; font-size: 18px; flex-shrink: 0; }
+        .ad-obra[open] .ad-obra-flecha { transform: rotate(90deg); }
+        .ad-obra-gente { padding: 0 1rem .5rem; border-top: 1px solid #f1f5f9; }
+        html.dark .ad-obra-gente { border-color: #334155; }
+        .ad-persona .ad-ver { font-size: 11.5px; font-weight: 700; color: #2563eb; white-space: nowrap; }
+        html.dark .ad-persona .ad-ver { color: #93c5fd; }
+        .ad-chip.azul { background: #dbeafe; color: #1d4ed8; } .ad-chip.morado { background: #ede9fe; color: #6d28d9; }
+        html.dark .ad-chip.verde { background: rgba(34,197,94,.15); color: #86efac; } html.dark .ad-chip.ambar { background: rgba(245,158,11,.15); color: #fcd34d; }
+        html.dark .ad-chip.rojo { background: rgba(244,63,94,.15); color: #fda4af; } html.dark .ad-chip.gris { background: #334155; color: #cbd5e1; }
+        html.dark .ad-chip.azul { background: rgba(59,130,246,.18); color: #93c5fd; } html.dark .ad-chip.morado { background: rgba(139,92,246,.18); color: #c4b5fd; }
         /* Consolidado en celular: cada fila de la tabla se vuelve una tarjeta (las mismas celdas, reacomodadas):
            casilla | colaborador | acciones arriba; debajo fecha/GPS, obra, horario y liquidación. */
         @media (max-width: 767px) {
@@ -561,7 +615,7 @@
                             <button id="btn-almuerzo-omitido" class="btn-touch mt-sec"><i class="ph-bold ph-prohibit"></i> Sin almuerzo</button>
                         </div>
                         <div id="mt-permisos-hoy" class="hidden mt-nota"></div>
-                        <button id="btn-salir-permiso" type="button" class="btn-touch mt-enlace">🩺 Salir a una cita o permiso</button>
+                        <button id="btn-salir-permiso" type="button" class="btn-touch mt-permiso-btn"><span class="mt-permiso-ico"><i class="ph-bold ph-first-aid-kit"></i></span><span class="mt-permiso-txt"><b>Salir a una cita o permiso</b><small>Tu turno sigue abierto mientras estás fuera</small></span><i class="ph-bold ph-caret-right mt-permiso-flecha"></i></button>
                         <div id="aviso-almuerzo-omitido" class="hidden mt-nota">
                             <i class="ph-bold ph-check-circle"></i> Hoy trabajas de corrido, sin descuento de almuerzo. Autorizado por: <span id="display-almuerzo-autoriza" class="font-bold"></span>. Queda registrado para revisión de Admin.
                         </div>
@@ -762,10 +816,10 @@
                             <img src="./logo-indimon.png" class="mt-hero-logo" alt="">
                         </div>
                         <div class="ad-kpis">
-                            <button type="button" class="mt-vidrio ad-kpi" data-ir="consolidado"><span class="mt-vidrio-t">En turno ahora</span><b id="ad-kpi-turno">0</b><small id="ad-kpi-turno-det">—</small></button>
+                            <button type="button" class="mt-vidrio ad-kpi" data-ir="consolidado" data-filtro-hoy="trabajando"><span class="mt-vidrio-t">En turno ahora</span><b id="ad-kpi-turno">0</b><small id="ad-kpi-turno-det">—</small></button>
                             <button type="button" class="mt-vidrio ad-kpi" data-abrir="revisar"><span class="mt-vidrio-t">Por revisar</span><b id="ad-kpi-revisar">0</b><small id="ad-kpi-revisar-det">—</small></button>
                             <button type="button" class="mt-vidrio ad-kpi" data-abrir="extras"><span class="mt-vidrio-t">Extras por aprobar</span><b id="ad-kpi-extras">0 h</b><small id="ad-kpi-extras-det">—</small></button>
-                            <button type="button" class="mt-vidrio ad-kpi" data-ir="consolidado"><span class="mt-vidrio-t">Tardanzas hoy</span><b id="ad-kpi-tarde">0</b><small id="ad-kpi-tarde-det">—</small></button>
+                            <button type="button" class="mt-vidrio ad-kpi" data-ir="consolidado" data-filtro-hoy="tarde"><span class="mt-vidrio-t">Tardanzas hoy</span><b id="ad-kpi-tarde">0</b><small id="ad-kpi-tarde-det">—</small></button>
                         </div>
                     </div>
                     <button id="btn-aviso-por-revisar" type="button" class="hidden btn-touch w-full text-left bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-2xl shadow-sm text-sm font-bold flex items-center gap-2">
@@ -778,7 +832,7 @@
                         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-5">
                             <div class="flex justify-between items-center mb-1">
                                 <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-hard-hat text-blue-500 text-lg"></i> En turno ahora</h3>
-                                <button type="button" class="ad-link" data-ir="consolidado">Ver consolidado ›</button>
+                                <button type="button" class="ad-link" data-ir="consolidado" data-filtro-hoy="todos">Ver consolidado ›</button>
                             </div>
                             <div id="ad-en-turno"><p class="text-xs text-slate-400 py-3">Cargando...</p></div>
                         </div>
@@ -807,7 +861,18 @@
                         <button id="btn-export-excel" class="btn-touch bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition-colors border border-emerald-200">
                             <i class="ph-bold ph-file-xls"></i> Exportar a Excel
                         </button>
+                        <div class="ad-tabs w-full" role="tablist" aria-label="Vista del consolidado">
+                            <button type="button" role="tab" class="ad-tab" data-vista-consolidado="hoy"><i class="ph-bold ph-buildings"></i> Hoy por obra</button>
+                            <button type="button" role="tab" class="ad-tab" data-vista-consolidado="historial"><i class="ph-bold ph-calendar-blank"></i> Historial y filtros</button>
+                        </div>
                     </div>
+                <!-- HOY POR OBRA (nov-2026): el consolidado abre en el día de hoy, con una tarjeta plegada por obra en vez de
+                     la tabla de todos los colaboradores y todos sus días. Ver renderConsolidadoHoy. -->
+                <div id="consolidado-hoy" class="ad-sub">
+                    <div id="hoy-chips" class="ad-chips"></div>
+                    <div id="hoy-obras" class="flex flex-col gap-3"></div>
+                </div>
+                <div id="consolidado-historial" class="ad-sub hidden">
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-end gap-3">
                     <div class="flex-1 min-w-[200px]">
                         <label for="filtro-colaborador" class="text-[10px] font-bold text-slate-500 uppercase">Filtrar por colaborador</label>
@@ -873,6 +938,7 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
                 </div>
                 </section>
 
@@ -3326,7 +3392,19 @@
             if (r.extras_estado) return r.extras_estado;
             return (r.fecha || '') >= FECHA_INICIO_APROBACION_EXTRAS ? 'por_aprobar' : 'anterior';
         }
-        const ESTADO_EXTRAS_LEGIBLE = { por_aprobar: 'POR APROBAR', aprobada: 'APROBADA', no_autorizada: 'NO AUTORIZADA', anterior: 'ANTERIOR A LA APROBACION' };
+        const ESTADO_EXTRAS_LEGIBLE = { por_aprobar: 'POR APROBAR', aprobada: 'APROBADA', no_autorizada: 'NO AUTORIZADA', anterior: 'ANTERIOR A LA APROBACION', por_compensar: 'POR COMPENSAR (BOLSA DE HORAS)' };
+
+        // BOLSA DE HORAS POR COMPENSAR (nov-2026). Hay tiempo que no es día laboral ni hora extra, pero que RRHH reconoce
+        // (p. ej. el domingo de viaje a la ciudad de residencia). En "Extras por aprobar", RRHH lo marca "Por compensar"
+        // (extras_estado: 'por_compensar'): esas horas NO se pagan como extra (ver extrasPagables) y suman a la bolsa de la
+        // persona. Cuando la persona toma el descanso, Admin lo registra en empleados/{cedula}.horas_compensadas
+        // ([{ fecha, horas, por, en }]) y se resta de la bolsa. Saldo = horas por compensar − horas ya compensadas.
+        function bolsaDeHoras(registrosPorCompensar, horasCompensadas) {
+            const ganadas = (registrosPorCompensar || []).filter(r => r.extras_estado === 'por_compensar')
+                .reduce((a, r) => a + (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0), 0);
+            const usadas = (horasCompensadas || []).reduce((a, c) => a + (Number(c?.horas) || 0), 0);
+            return { ganadas, usadas, saldo: ganadas - usadas };
+        }
         // Lo que se paga de un día: las extras (y su parte de recargo dominical/festivo) solo si están aprobadas.
         function extrasPagables(r) {
             const estado = estadoExtras(r);
@@ -4214,6 +4292,12 @@
                     if (extDia > 0) diasConExtras.push({ fecha: reg.fecha, horas: extDia, extD: reg.horas_extras_diurnas || 0, extN: reg.horas_extras_nocturnas || 0, estado: estadoEx });
                 }
             });
+            // Bolsa de horas por compensar (ver bolsaDeHoras): todos sus días "por compensar", no solo los del mes.
+            let bolsa = null;
+            try {
+                const snapBolsa = await getDocs(query(collection(db, 'empleados', currentUserId, 'registros'), where('extras_estado', '==', 'por_compensar')));
+                bolsa = bolsaDeHoras(snapBolsa.docs.map(d => d.data()), currentUserProfile.horas_compensadas);
+            } catch (e) { console.warn('No se pudo calcular la bolsa de horas por compensar:', e); }
             registrosMesMT = todosLosRegistros;
             unirRegistrosMiTarjeta();
             if (estadoMiTarjeta.state === 'entrada') prellenarObraMT();
@@ -4283,7 +4367,7 @@
                 pagoDom: totalDomHoras * vh,
                 total: calcularPagoExtras(base, totalExtD, totalExtN, totalRecNoct, totalDomHoras, esContratista ? tarifaHora : null) + (esContratista ? 0 : totalOrdDescanso * vh),
                 ordDescanso: esContratista ? 0 : totalOrdDescanso, pagoOrdDescanso: esContratista ? 0 : totalOrdDescanso * vh,
-                sinValor: faltaValorBase, esContratista,
+                sinValor: faltaValorBase, esContratista, bolsa,
                 dias: diasConExtras.sort((a, b) => b.fecha.localeCompare(a.fecha)).map(d => ({ ...d, valor: d.extD * vh * (1 + LEY.RECARGO_EXTRA_DIURNA) + d.extN * vh * (1 + LEY.RECARGO_EXTRA_NOCTURNA) }))
             };
             renderExtrasMT();
@@ -6461,8 +6545,11 @@
                 linea('📅', `Recargo dominical / festivo · ${numeroMT(x.domHoras)} h`, '', x.pagoDom) +
                 (x.ordDescanso ? linea('🗓️', `Horas trabajadas en domingo / festivo · ${numeroMT(x.ordDescanso)} h`, '×1', x.pagoOrdDescanso) : '') +
                 `<div class="mt-linea text-amber-700"><span>⏳ Por aprobar · ${numeroMT(x.pendientes)} h</span><b>RRHH</b></div>` +
-                `<div class="mt-linea text-slate-400"><span>✖ No autorizadas · ${numeroMT(x.noAutorizadas)} h</span><b>no suman</b></div>`;
-            const estadoTxt = { aprobada: ['✔ aprobadas', 'text-emerald-700'], anterior: ['✔', 'text-emerald-700'], por_aprobar: ['⏳ por aprobar', 'text-amber-700'], no_autorizada: ['✖ no autorizadas', 'text-slate-400'] };
+                `<div class="mt-linea text-slate-400"><span>✖ No autorizadas · ${numeroMT(x.noAutorizadas)} h</span><b>no suman</b></div>` +
+                (x.bolsa && (x.bolsa.ganadas || x.bolsa.usadas)
+                    ? `<div class="mt-linea text-violet-700"><span>🕒 Tiempo por compensar · saldo ${numeroMT(x.bolsa.saldo)} h <span class="text-slate-400">(${numeroMT(x.bolsa.ganadas)} h ganadas${x.bolsa.usadas ? ` − ${numeroMT(x.bolsa.usadas)} h descansadas` : ''})</span></span><b>en descanso</b></div>`
+                    : '');
+            const estadoTxt = { aprobada: ['✔ aprobadas', 'text-emerald-700'], anterior: ['✔', 'text-emerald-700'], por_aprobar: ['⏳ por aprobar', 'text-amber-700'], no_autorizada: ['✖ no autorizadas', 'text-slate-400'], por_compensar: ['🕒 por compensar', 'text-violet-700'] };
             document.getElementById('hoja-extras-dia').innerHTML = x.dias.length
                 ? x.dias.map(d => `<div class="mt-linea"><span><b>${fechaCortaMT(d.fecha)}</b> · ${numeroMT(d.horas)} h${d.extN ? ' (🌙 ' + numeroMT(d.extN) + ')' : ''}</span><span class="${(estadoTxt[d.estado] || ['', ''])[1]} font-semibold text-right">${(estadoTxt[d.estado] || [''])[0]}${(d.estado === 'aprobada' || d.estado === 'anterior') && !x.sinValor ? ' · ' + pesos(d.valor) : ''}</span></div>`).join('')
                 : '<p class="text-sm text-slate-500 text-center py-6">No tienes horas extra este mes.</p>';
@@ -6526,6 +6613,8 @@
 
         document.getElementById('btn-admin-logout').addEventListener('click', async () => {
             if (unsubAdminTable) { unsubAdminTable(); unsubAdminTable = null; }
+            detenerPendientesAdmin();
+            asegurarFuenteConsolidado('', '');
             await signOut(auth).catch(e => console.warn('Admin logout fallido:', e));
             document.getElementById('admin-panel-view').classList.add('hidden');
             document.getElementById('admin-panel-view').classList.remove('flex');
@@ -8194,6 +8283,9 @@
                     data.minutos_tarde = calc.minutosTarde;
                     data.horas_descuento_tardanza = calc.horasDescontadasTardanza;
                     data.horas_permiso_turno = calc.horasPermiso || 0;
+                    // Sin este campo el día ya contaba como "por aprobar" (ver estadoExtras), pero no lo encontraba la
+                    // consulta de "Extras por aprobar", que busca por extras_estado (auditoría nov-2026, hallazgo 2).
+                    if (calc.extD + calc.extN > 0 && fecha >= FECHA_INICIO_APROBACION_EXTRAS) data.extras_estado = 'por_aprobar';
                 } else {
                     // Día 100% permiso (no ausencia), sin horario trabajado
                     data.horas_ordinarias = 0;
@@ -8298,10 +8390,24 @@
                     horas_permiso_turno: calc.horasPermiso || 0
                 };
                 const distinto = (a, b) => (typeof b === 'number' ? Math.abs((a || 0) - b) >= 0.005 : (a ?? false) !== b);
+                // Auditoría nov-2026, hallazgo 3 (las reglas de firestore.rules exigen lo mismo, porque esto también corre
+                // en el celular del colaborador al cerrar su día):
+                //  - Si cambian las horas extra (diurnas o nocturnas, cada una por separado), el día vuelve a "por aprobar",
+                //    sin importar su estado anterior (aprobada, no autorizada o sin estado). Una diferencia de menos de
+                //    medio centésimo no cuenta como cambio: se deja el valor guardado, para no escribir un número distinto.
+                //  - Si RRHH ya decidió sobre una salida a permiso de ese día, sus horas de permiso no se tocan: la decisión
+                //    se tomó con ese número.
+                const cambianExtras = distinto(dia.data.horas_extras_diurnas, calc.extD) || distinto(dia.data.horas_extras_nocturnas, calc.extN);
+                if (!cambianExtras) {
+                    nuevo.horas_extras_diurnas = dia.data.horas_extras_diurnas || 0;
+                    nuevo.horas_extras_nocturnas = dia.data.horas_extras_nocturnas || 0;
+                }
+                if (dia.data.decisiones_permiso && Object.keys(dia.data.decisiones_permiso).length > 0) delete nuevo.horas_permiso_turno;
                 const cambia = Object.keys(nuevo).some(k => distinto(dia.data[k], nuevo[k]));
-                const extrasAntes = (dia.data.horas_extras_diurnas || 0) + (dia.data.horas_extras_nocturnas || 0);
-                const extrasVuelvenAPorAprobar = dia.data.extras_estado === 'aprobada' && Math.abs(extrasAntes - (calc.extD + calc.extN)) >= 0.005;
-                if (extrasVuelvenAPorAprobar) nuevo.extras_estado = 'por_aprobar';
+                // Si RRHH ya había aprobado las extras y la cifra cambia (aunque baje a cero), se le avisa y vuelve a "por
+                // aprobar", como siempre. Si no estaban aprobadas, solo vuelven a "por aprobar" si quedan extras.
+                const extrasVuelvenAPorAprobar = dia.data.extras_estado === 'aprobada' && cambianExtras;
+                if (cambianExtras && dia.data.extras_estado !== 'por_aprobar' && (extrasVuelvenAPorAprobar || calc.extD + calc.extN > 0)) nuevo.extras_estado = 'por_aprobar';
                 items.push({ id: dia.id, ref: dia.ref, antes: dia.data, nuevo, cambia, extrasVuelvenAPorAprobar });
                 acumulada += calc.ord + (calc.horasPermiso || 0); // el permiso pagado cuenta para la meta de 42 h
             }
@@ -8640,15 +8746,16 @@
         });
 
         // ================================== Registros por revisar (Admin) ==================================
-        // Se arman con los registros que ya escucha la tabla del Consolidado (allRegsCache: los 500 más
-        // recientes), así que no cuesta lecturas extra y se actualizan solos cuando alguien corrige o aprueba.
+        // Se arman con la consulta propia de los registros por revisar (sin tope, ver startPendientesAdmin) unida a los
+        // que ya escucha la tabla del Consolidado; se actualizan solos cuando alguien corrige o aprueba.
         function categoriaRevision(r) {
             if (r.salida_declarada_por_colaborador) return 'declarada';
             if (/geocerca/i.test(r.nota_revision || '')) return 'geocerca';
             return 'olvido';
         }
         function pendientesDeRevision() {
-            return allRegsCache.filter(r => r.estado === 'requiere_revision_admin').sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+            return unirRegistrosPorRuta(regsPendientesRevision, allRegsCache)
+                .filter(r => r.estado === 'requiere_revision_admin').sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
         }
         function actualizarAvisoPorRevisar() {
             const pend = pendientesDeRevision();
@@ -8671,7 +8778,7 @@
                 ['geocerca', 'Fuera de la geocerca']
             ];
             const cont = document.getElementById('por-revisar-lista');
-            const htmlPermisos = htmlPermisosPorDecidir();
+            const htmlPermisos = (pendientesParciales ? AVISO_PENDIENTES_PARCIALES : '') + htmlPermisosPorDecidir();
             if (!pend.length && !htmlPermisos) { cont.innerHTML = '<p class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">✔ No hay registros por revisar.</p>'; return; }
             cont.innerHTML = htmlPermisos + grupos.map(([cat, titulo]) => {
                 const items = pend.filter(r => categoriaRevision(r) === cat);
@@ -8724,7 +8831,7 @@
         }
         function permisosPorDecidir() {
             const items = [];
-            allRegsCache.forEach(r => salidasPermisoTerminadas(r).forEach(({ p, i }) => {
+            registrosAdminConocidos().forEach(r => salidasPermisoTerminadas(r).forEach(({ p, i }) => {
                 const dec = r.decisiones_permiso?.[i];
                 if (!dec || !DECISIONES_PERMISO[dec.decision]?.final) items.push({ r, p, i, dec });
             }));
@@ -8733,7 +8840,7 @@
         function permisosDecididosRecientes() {
             const limite = Date.now() - 3 * 86400000;
             const items = [];
-            allRegsCache.forEach(r => salidasPermisoTerminadas(r).forEach(({ p, i }) => {
+            registrosAdminConocidos().forEach(r => salidasPermisoTerminadas(r).forEach(({ p, i }) => {
                 const dec = r.decisiones_permiso?.[i];
                 if (dec && DECISIONES_PERMISO[dec.decision]?.final && Date.parse(dec.en || '') > limite) items.push({ r, p, i, dec });
             }));
@@ -8782,7 +8889,7 @@
         }
         async function decidirPermiso(btn) {
             const { ruta, i, decision } = btn.dataset;
-            const r = allRegsCache.find(x => x.ref.path === ruta);
+            const r = registrosAdminConocidos().find(x => x.ref.path === ruta);
             if (!r) return;
             const guardar = async () => {
                 btn.disabled = true;
@@ -8836,14 +8943,18 @@
         }
         document.getElementById('btn-aviso-por-revisar').addEventListener('click', abrirPorRevisar);
         // ================================== Extras por aprobar (RRHH) ==================================
-        // Igual que "Por revisar", se arma con allRegsCache (los 500 registros más recientes). Solo días ya
+        // Igual que "Por revisar", se arma con la consulta propia de lo pendiente (ver startPendientesAdmin). Solo días ya
         // Completados: los que están "por revisar" se resuelven primero allá.
         function diaCortoEs(fecha) {
             const [y, m, d] = fecha.split('-').map(Number);
             return new Date(y, m - 1, d).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
         }
         function extrasPorAprobar() {
-            return allRegsCache.filter(r => r.estado === 'completado' && estadoExtras(r) === 'por_aprobar');
+            // La consulta propia (sin tope) trae los días con extras_estado 'por_aprobar'. Un día con extras pero sin ese
+            // campo (cargado por Admin antes de nov-2026) también cuenta como por aprobar: esos solo se ven si están entre
+            // los registros recientes o en el mes filtrado.
+            return unirRegistrosPorRuta(regsExtrasPorAprobarDb, fuenteConsolidado.regs, allRegsCache)
+                .filter(r => r.estado === 'completado' && estadoExtras(r) === 'por_aprobar');
         }
         function horasExtraDe(r) { return (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0); }
         function actualizarAvisoExtras() {
@@ -8862,7 +8973,7 @@
         function renderExtras() {
             const cont = document.getElementById('extras-lista');
             const pend = extrasPorAprobar();
-            const noAut = allRegsCache.filter(r => estadoExtras(r) === 'no_autorizada').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 20);
+            const noAut = unirRegistrosPorRuta(fuenteConsolidado.regs, allRegsCache).filter(r => estadoExtras(r) === 'no_autorizada').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 20);
             const item = (r, acciones) => {
                 const motivo = r.extras_motivo ? ` · "${escapeHtml(r.extras_motivo)}"` : '';
                 return `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-slate-100 first:border-0">
@@ -8871,7 +8982,7 @@
             };
             const boton = (clase, texto, ids, color) => `<button type="button" class="${clase} btn-touch ${color} px-2 py-1 rounded-lg text-[11px] font-bold" data-ids="${escapeHtml(ids.join(','))}">${texto}</button>`;
             const idDe = (r) => `${r.ref.parent.parent.id}/${r.id}`;
-            let html = '';
+            let html = pendientesParciales ? AVISO_PENDIENTES_PARCIALES : '';
             if (!pend.length) html += '<p class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">✔ No hay horas extra por aprobar.</p>';
             const semanas = new Map();
             pend.forEach(r => { const [lun] = getRangoSemana(r.fecha || r.id); if (!semanas.has(lun)) semanas.set(lun, []); semanas.get(lun).push(r); });
@@ -8890,7 +9001,7 @@
                     html += `<div class="bg-slate-50 rounded-xl p-2.5 mb-2">
                         <div class="flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-800">${escapeHtml(rs[0].empleado_nombre || cedula)} <span class="font-normal text-slate-500">· ${textoHorasCorto(total)} en ${rs.length} día${rs.length === 1 ? '' : 's'}</span></p>
                         ${boton('btn-extras-aprobar', `✔ Aprobar ${textoHorasCorto(total)}`, rs.map(idDe), 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800')}</div>
-                        ${rs.map(r => item(r, boton('btn-extras-aprobar', 'Aprobar', [idDe(r)], 'bg-white border border-emerald-200 text-emerald-700') + boton('btn-extras-no-autorizar', 'No autorizada', [idDe(r)], 'bg-rose-50 border border-rose-200 text-rose-700'))).join('')}
+                        ${rs.map(r => item(r, boton('btn-extras-aprobar', 'Aprobar', [idDe(r)], 'bg-white border border-emerald-200 text-emerald-700') + boton('btn-extras-compensar', 'Por compensar', [idDe(r)], 'bg-violet-50 border border-violet-200 text-violet-700') + boton('btn-extras-no-autorizar', 'No autorizada', [idDe(r)], 'bg-rose-50 border border-rose-200 text-rose-700'))).join('')}
                     </div>`;
                 });
                 html += '</div>';
@@ -8899,9 +9010,66 @@
                 html += `<p class="text-[10px] font-bold text-slate-500 uppercase pt-2">No autorizadas (se pueden aprobar después)</p><div class="border border-rose-100 rounded-xl p-2.5">` +
                     noAut.map(r => item({ ...r, fecha: r.fecha || r.id }, boton('btn-extras-aprobar', 'Aprobar', [idDe(r)], 'bg-white border border-emerald-200 text-emerald-700')).replace('<p class="text-[11px] text-slate-600 min-w-0">', `<p class="text-[11px] text-slate-600 min-w-0"><b>${escapeHtml(r.empleado_nombre || '')}</b> · `)).join('') + '</div>';
             }
+            html += htmlBolsaDeHorasAdmin();
             cont.innerHTML = html;
             cont.querySelectorAll('.btn-extras-aprobar').forEach(b => b.addEventListener('click', () => decidirExtras(b.dataset.ids.split(','), 'aprobada', b)));
             cont.querySelectorAll('.btn-extras-no-autorizar').forEach(b => b.addEventListener('click', () => decidirExtras(b.dataset.ids.split(','), 'no_autorizada', b)));
+            cont.querySelectorAll('.btn-extras-compensar').forEach(b => b.addEventListener('click', () => decidirExtras(b.dataset.ids.split(','), 'por_compensar', b)));
+            cont.querySelectorAll('.btn-bolsa-descanso').forEach(b => b.addEventListener('click', () => registrarDescansoCompensado(b.dataset.cedula, b)));
+        }
+
+        // Bolsa de horas por compensar, por persona (ver bolsaDeHoras). Los días salen de la consulta propia por
+        // extras_estado (sin tope, ver startPendientesAdmin) unida a los registros que el panel ya tiene cargados.
+        function bolsasDeHorasAdmin() {
+            const dias = registrosAdminConocidos().filter(r => r.extras_estado === 'por_compensar');
+            const porCedula = new Map();
+            dias.forEach(r => {
+                const ced = r.cedula || r.ref?.parent?.parent?.id;
+                if (!ced) return;
+                if (!porCedula.has(ced)) porCedula.set(ced, { cedula: ced, nombre: r.empleado_nombre || ced, dias: [] });
+                porCedula.get(ced).dias.push(r);
+            });
+            return [...porCedula.values()].map(p => {
+                const perfil = colaboradoresAdminCache.find(c => c.cedula === p.cedula);
+                return { ...p, ...bolsaDeHoras(p.dias, perfil?.horas_compensadas) };
+            }).sort((a, b) => b.saldo - a.saldo || a.nombre.localeCompare(b.nombre));
+        }
+        function htmlBolsaDeHorasAdmin() {
+            const bolsas = bolsasDeHorasAdmin();
+            if (!bolsas.length) return '';
+            return `<p class="text-[10px] font-bold text-slate-500 uppercase pt-2">Bolsa de horas por compensar (no se pagan como extra)</p>
+                <div class="border border-violet-200 rounded-xl p-2.5">${bolsas.map(p => `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-slate-100 first:border-0">
+                    <p class="text-[11px] text-slate-600 min-w-0"><b>${escapeHtml(p.nombre)}</b> · saldo <b class="text-violet-700">${textoHorasCorto(p.saldo)}</b>
+                    <span class="text-slate-400">(${textoHorasCorto(p.ganadas)} por compensar${p.usadas ? ` − ${textoHorasCorto(p.usadas)} ya descansadas` : ''})</span></p>
+                    <button type="button" class="btn-bolsa-descanso btn-touch bg-white border border-violet-200 text-violet-700 px-2 py-1 rounded-lg text-[11px] font-bold flex-shrink-0" data-cedula="${escapeHtml(p.cedula)}">Registrar descanso</button></div>`).join('')}</div>`;
+        }
+        // La persona tomó (parte de) su descanso: se anota en su ficha y se resta de la bolsa.
+        async function registrarDescansoCompensado(cedula, btn) {
+            const bolsa = bolsasDeHorasAdmin().find(p => p.cedula === cedula);
+            if (!bolsa) return;
+            const texto = await UI.showPrompt('Registrar descanso compensado', `${bolsa.nombre} tiene ${textoHorasCorto(bolsa.saldo)} por compensar. ¿Cuántas horas descansó?`, 'Ej: 5,5');
+            if (texto === null || texto === undefined || !String(texto).trim()) return;
+            const horas = Number(String(texto).replace(',', '.'));
+            if (!(horas > 0) || horas > 24) return UI.showAlert('Horas no válidas', 'Escribe las horas que descansó, entre 0 y 24 (por ejemplo 5,5).', 'error');
+            const guardar = async () => {
+                btn.disabled = true;
+                try {
+                    const entrada = { fecha: getTodayStr(), horas: Number(horas.toFixed(2)), por: auth.currentUser?.email || 'Admin', en: new Date().toISOString() };
+                    await updateDoc(doc(db, 'empleados', cedula), { horas_compensadas: arrayUnion(entrada) });
+                    const perfil = colaboradoresAdminCache.find(c => c.cedula === cedula);
+                    if (perfil) perfil.horas_compensadas = [...(perfil.horas_compensadas || []), entrada];
+                    registrarAuditoria('Descanso compensado (bolsa de horas)', `CC ${cedula} · ${textoHorasCorto(horas)}`);
+                    renderExtras();
+                } catch (e) {
+                    console.error(e);
+                    btn.disabled = false;
+                    UI.showAlert('Error', 'No se pudo registrar el descanso. Revisa tu conexión.', 'error');
+                }
+            };
+            if (horas > bolsa.saldo + 0.005) {
+                return UI.showConfirm('Más horas de las que tiene', `${bolsa.nombre} solo tiene ${textoHorasCorto(bolsa.saldo)} en la bolsa. Si registras ${textoHorasCorto(horas)}, el saldo queda negativo. ¿Registrar igual?`, guardar, { texto: 'Sí, registrar' });
+            }
+            guardar();
         }
         async function decidirExtras(ids, estado, btn) {
             btn.disabled = true;
@@ -9099,8 +9267,133 @@
             if (b.dataset.abrir === 'revisar') return abrirPorRevisar();
             if (b.dataset.abrir === 'extras') return abrirExtras();
             irSeccionAdmin(b.dataset.sec || b.dataset.ir);
+            // Las tarjetas del inicio ("En turno ahora", "Tardanzas hoy"…) abren el consolidado de hoy ya filtrado.
+            if (b.dataset.filtroHoy) { filtroHoy = b.dataset.filtroHoy; mostrarVistaConsolidado('hoy'); }
             if (b.dataset.clic) document.getElementById(b.dataset.clic)?.click();
         });
+
+        // ===================== Consolidado: "Hoy por obra" (nov-2026) =====================
+        // Antes el consolidado abría con la tabla de todos los colaboradores y todos sus días. Ahora abre en el día de hoy:
+        // una tarjeta plegada por obra con su gente y su estado, y chips para filtrar por estado. La tabla con filtros de
+        // mes, colaborador y obra sigue igual en la pestaña "Historial y filtros". Sale de allRegsCache (los registros más
+        // recientes), que siempre incluye el día de hoy.
+        const ESTADOS_HOY = {
+            todos: { texto: 'Todos', color: '#64748b' },
+            trabajando: { texto: 'Trabajando', color: '#16a34a', chip: 'verde' },
+            almuerzo: { texto: 'Almuerzo', color: '#f59e0b', chip: 'ambar' },
+            permiso: { texto: 'En cita o permiso', color: '#8b5cf6', chip: 'morado' },
+            sin_cerrar: { texto: 'Turno sin cerrar', color: '#94a3b8', chip: 'gris' },
+            tarde: { texto: 'Tardanza', color: '#e11d48', chip: 'rojo' },
+            termino: { texto: 'Terminó', color: '#3b82f6', chip: 'azul' },
+            revisar: { texto: 'Por revisar', color: '#f97316', chip: 'ambar' },
+        };
+        let filtroHoy = 'todos';
+        const obrasAbiertasHoy = new Set();
+        let vistaConsolidado = (() => { try { return localStorage.getItem('vista_consolidado') || 'hoy'; } catch (_) { return 'hoy'; } })();
+        function estadoHoyDe(r, hoy) {
+            if (r.estado === 'requiere_revision_admin') return 'revisar';
+            if (r.estado !== 'activo') return 'termino';
+            if ((r.fecha || r.id) < hoy) return 'sin_cerrar';
+            if (salidaPermisoAbierta(r)) return 'permiso';
+            if (r.almuerzo_inicio && !r.almuerzo_fin) return 'almuerzo';
+            return 'trabajando';
+        }
+        const llegoTardeHoy = (r) => (r.minutos_tarde || 0) >= TOLERANCIA_TARDANZA_MIN && !r.tardanza_justificada;
+        const cumpleFiltroHoy = (r, filtro, hoy) => filtro === 'todos' || (filtro === 'tarde' ? llegoTardeHoy(r) : estadoHoyDe(r, hoy) === filtro);
+        function mostrarVistaConsolidado(vista) {
+            vistaConsolidado = vista === 'historial' ? 'historial' : 'hoy';
+            try { localStorage.setItem('vista_consolidado', vistaConsolidado); } catch (_) { /* almacenamiento bloqueado */ }
+            document.getElementById('consolidado-hoy').classList.toggle('hidden', vistaConsolidado !== 'hoy');
+            document.getElementById('consolidado-historial').classList.toggle('hidden', vistaConsolidado !== 'historial');
+            document.querySelectorAll('[data-vista-consolidado]').forEach(b => {
+                const act = b.dataset.vistaConsolidado === vistaConsolidado;
+                b.classList.toggle('act', act);
+                b.setAttribute('aria-selected', act ? 'true' : 'false');
+            });
+            if (vistaConsolidado === 'hoy') renderConsolidadoHoy();
+        }
+        function renderConsolidadoHoy() {
+            const cont = document.getElementById('hoy-obras');
+            if (!cont) return;
+            const hoy = getTodayStr();
+            const regs = allRegsCache.filter(r => (r.fecha || r.id) === hoy || (r.estado === 'activo' && (r.fecha || r.id) < hoy));
+            // Chips con el conteo de cada estado.
+            const cuenta = (f) => regs.filter(r => cumpleFiltroHoy(r, f, hoy)).length;
+            document.getElementById('hoy-chips').innerHTML = Object.entries(ESTADOS_HOY)
+                .filter(([k]) => k === 'todos' || k === filtroHoy || cuenta(k) > 0)
+                .map(([k, e]) => `<button type="button" class="ad-chipf${k === filtroHoy ? ' act' : ''}" data-filtro-hoy-chip="${k}"><span class="pt" style="--c:${e.color}"></span>${e.texto} <b>${cuenta(k)}</b></button>`).join('');
+            if (!regs.length) {
+                cont.innerHTML = '<p class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-4">Nadie ha marcado hoy todavía.</p>';
+                return;
+            }
+            const porObra = new Map();
+            regs.forEach(r => {
+                const obra = (r.obra || '').trim().toUpperCase() || 'SIN OBRA';
+                if (!porObra.has(obra)) porObra.set(obra, []);
+                porObra.get(obra).push(r);
+            });
+            const html = [...porObra.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([obra, gente]) => {
+                const visibles = gente.filter(r => cumpleFiltroHoy(r, filtroHoy, hoy));
+                if (filtroHoy !== 'todos' && !visibles.length) return '';
+                const n = (f) => gente.filter(r => cumpleFiltroHoy(r, f, hoy)).length;
+                const enObra = n('trabajando') + n('almuerzo') + n('permiso');
+                const partes = [
+                    enObra ? `${enObra} en turno` : '', n('termino') ? `${n('termino')} terminaron` : '',
+                    n('sin_cerrar') ? `${n('sin_cerrar')} sin cerrar` : '', n('tarde') ? `${n('tarde')} tarde` : '', n('revisar') ? `${n('revisar')} por revisar` : ''
+                ].filter(Boolean).join(' · ');
+                const barra = ['trabajando', 'almuerzo', 'permiso', 'termino', 'revisar', 'sin_cerrar']
+                    .map(k => { const c = gente.filter(r => estadoHoyDe(r, hoy) === k).length; return c ? `<i style="width:${c / gente.length * 100}%;background:${ESTADOS_HOY[k].color}"></i>` : ''; }).join('');
+                const abierta = filtroHoy !== 'todos' || obrasAbiertasHoy.has(obra);
+                const filas = visibles.sort((a, b) => (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '')).map(r => {
+                    const est = estadoHoyDe(r, hoy);
+                    const fechaReg = r.fecha || r.id;
+                    const horas = (r.horas_ordinarias || 0) + (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0);
+                    const detalle = [
+                        r.entrada ? `entró ${escapeHtml(r.entrada)}${fechaReg < hoy ? ` (${escapeHtml(diaCortoEs(fechaReg))})` : ''}` : '',
+                        r.salida ? `salió ${escapeHtml(r.salida)}` : '',
+                        est === 'termino' && horas ? textoHorasCorto(horas) : ''
+                    ].filter(Boolean).join(' · ');
+                    const chipTarde = llegoTardeHoy(r) ? `<span class="ad-chip rojo">Tarde ${Number(r.minutos_tarde) || 0} min</span>` : '';
+                    return `<div class="ad-persona"><div class="ad-av">${escapeHtml(inicialesAdmin(nombreCortoAdmin(r.empleado_nombre) || r.empleado_nombre))}</div>
+                        <div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-800 truncate">${escapeHtml(nombreCortoAdmin(r.empleado_nombre) || r.empleado_nombre || r.cedula || '')}</p>
+                        <p class="text-xs text-slate-500 truncate">${detalle || '—'}</p></div>
+                        <div class="flex flex-col items-end gap-1"><span class="ad-chip ${ESTADOS_HOY[est].chip}">${ESTADOS_HOY[est].texto}</span>${chipTarde}
+                        <button type="button" class="ad-ver" data-ver-colaborador="${escapeHtml(r.cedula || '')}">Ver días ›</button></div></div>`;
+                }).join('');
+                return `<details class="ad-obra" data-obra="${escapeHtml(obra)}"${abierta ? ' open' : ''}>
+                    <summary><span class="ad-obra-ico"><i class="ph-fill ph-buildings"></i></span>
+                        <span class="min-w-0"><span class="ad-obra-nombre">${escapeHtml(obra)}</span> <span class="text-xs font-bold text-slate-500">${gente.length}</span>
+                        <span class="ad-obra-det block">${escapeHtml(partes)}</span><span class="ad-obra-barra">${barra}</span></span>
+                        <i class="ph-bold ph-caret-right ad-obra-flecha"></i></summary>
+                    <div class="ad-obra-gente">${filas}</div></details>`;
+            }).join('');
+            cont.innerHTML = html || `<p class="text-sm text-slate-500 bg-white border border-slate-200 rounded-2xl p-4">Nadie en "${escapeHtml(ESTADOS_HOY[filtroHoy].texto)}" hoy.</p>`;
+        }
+        document.querySelectorAll('[data-vista-consolidado]').forEach(b => b.addEventListener('click', () => mostrarVistaConsolidado(b.dataset.vistaConsolidado)));
+        document.getElementById('hoy-chips').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-filtro-hoy-chip]');
+            if (!b) return;
+            filtroHoy = b.dataset.filtroHoyChip;
+            renderConsolidadoHoy();
+        });
+        document.getElementById('hoy-obras').addEventListener('toggle', (e) => {
+            const d = e.target.closest('details.ad-obra');
+            if (!d || filtroHoy !== 'todos') return;
+            if (d.open) obrasAbiertasHoy.add(d.dataset.obra); else obrasAbiertasHoy.delete(d.dataset.obra);
+        }, true);
+        // "Ver días ›": pasa al historial de esa persona en el mes en curso.
+        document.getElementById('hoy-obras').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-ver-colaborador]');
+            if (!b || !b.dataset.verColaborador) return;
+            const sel = document.getElementById('filtro-colaborador');
+            if (![...sel.options].some(o => o.value === b.dataset.verColaborador)) sel.add(new Option(b.closest('.ad-persona').querySelector('p').textContent, b.dataset.verColaborador));
+            sel.value = b.dataset.verColaborador;
+            document.getElementById('filtro-mes').value = getTodayStr().slice(0, 7);
+            document.getElementById('filtro-obra').value = '';
+            mostrarVistaConsolidado('historial');
+            aplicarFiltrosYRenderizar();
+        });
+        mostrarVistaConsolidado(vistaConsolidado);
 
         function inicialesAdmin(nombre) {
             return String(nombre || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase();
@@ -9154,18 +9447,93 @@
                     <span class="ad-chip ${clase}">${texto}</span></div>`;
             }).join('');
             document.getElementById('ad-en-turno').innerHTML = abiertos.length
-                ? filas + (abiertos.length > MAX ? `<button type="button" class="ad-link mt-2" data-ir="consolidado">y ${abiertos.length - MAX} más ›</button>` : '')
+                ? filas + (abiertos.length > MAX ? `<button type="button" class="ad-link mt-2" data-ir="consolidado" data-filtro-hoy="todos">y ${abiertos.length - MAX} más ›</button>` : '')
                 : '<p class="text-sm text-slate-500 py-3">Nadie tiene el turno abierto en este momento.</p>';
+        }
+
+        // ============ Más allá de los 500 registros más recientes (auditoría nov-2026, hallazgo 2) ============
+        // allRegsCache (abajo) trae solo los 500 registros más recientes de TODA la empresa: con 30 personas, unas dos
+        // semanas y media. Antes el Consolidado filtrado por mes, el costo de mano de obra, "Extras por aprobar" y "Por
+        // revisar" salían solo de ahí, así que se perdía parte del mes sin aviso, y unas extras por aprobar de hace un mes
+        // desaparecían de la lista de RRHH y no se pagaban nunca. Ahora:
+        //   - Lo pendiente se escucha aparte, por estado, sin tope: "por revisar" (estado) y "por aprobar"
+        //     (extras_estado). Esas dos consultas necesitan un índice de grupo de colecciones en Firestore (ver
+        //     firestore.indexes.json). Si todavía no existe, la consulta falla y se usa allRegsCache como antes, con un
+        //     aviso en pantalla.
+        //   - El Consolidado con filtro de mes o de colaborador lee ese mes (o esa persona) completo: ver
+        //     asegurarFuenteConsolidado.
+        let regsPendientesRevision = null;   // null = sin consulta propia todavía (o falló): se usa allRegsCache
+        let regsExtrasPorAprobarDb = null;
+        let regsPorCompensarDb = null;       // días con extras_estado 'por_compensar' (bolsa de horas)
+        let pendientesParciales = false;     // true si alguna de las dos consultas falló (falta el índice)
+        let unsubPendientesAdmin = [];
+        const AVISO_PENDIENTES_PARCIALES = '<p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5 mb-2">⚠ Esta lista puede estar incompleta: solo revisa los registros recientes. Falta crear en Firestore los índices de <b>firestore.indexes.json</b> (estado y extras_estado del grupo "registros"). Avísale a quien administra Firebase.</p>';
+        // Registros completos del filtro del Consolidado (mes y/o colaborador). regs = null mientras carga o si falló.
+        let fuenteConsolidado = { clave: '', regs: null, error: false, unsub: null };
+        // Si hay filtro de mes o de colaborador, escucha ese mes (o esa persona) completo, sin el tope de 500. Usa el
+        // mismo índice de "fecha" que ya usan la tabla y el "Resumen de nómina" por correo: no hace falta otro.
+        function asegurarFuenteConsolidado(cedula, mes) {
+            const clave = cedula || mes ? `${cedula}|${mes}` : '';
+            if (fuenteConsolidado.clave === clave) return;
+            if (fuenteConsolidado.unsub) fuenteConsolidado.unsub();
+            fuenteConsolidado = { clave, regs: null, error: false, unsub: null };
+            if (!clave) return;
+            const rango = (q) => mes ? query(q, where('fecha', '>=', `${mes}-01`), where('fecha', '<=', `${mes}-31`)) : q;
+            const q = cedula ? rango(collection(db, 'empleados', cedula, 'registros')) : rango(collectionGroup(db, 'registros'));
+            fuenteConsolidado.unsub = onSnapshot(q, (snap) => {
+                if (fuenteConsolidado.clave !== clave) return;
+                fuenteConsolidado.regs = snap.docs.map(registroAdmin);
+                fuenteConsolidado.error = false;
+                aplicarFiltrosYRenderizar();
+                actualizarAvisoPorRevisar(); actualizarAvisoExtras();
+            }, (error) => {
+                console.error('No se pudo leer el mes completo para el Consolidado:', error);
+                if (fuenteConsolidado.clave !== clave) return;
+                fuenteConsolidado.error = true;
+                aplicarFiltrosYRenderizar();
+            });
+        }
+        function registroAdmin(d) { return { id: d.id, ref: d.ref, ...d.data() }; }
+        // Une varias listas de registros sin repetir (por ruta del documento); la primera lista que trae un registro gana.
+        function unirRegistrosPorRuta(...listas) {
+            const porRuta = new Map();
+            listas.forEach(lista => (lista || []).forEach(r => { if (r?.ref && !porRuta.has(r.ref.path)) porRuta.set(r.ref.path, r); }));
+            return [...porRuta.values()];
+        }
+        // Todos los registros que el panel conoce en este momento (para buscar uno por su ruta o por cédula y fecha).
+        function registrosAdminConocidos() {
+            return unirRegistrosPorRuta(regsPendientesRevision, regsExtrasPorAprobarDb, regsPorCompensarDb, fuenteConsolidado.regs, allRegsCache);
+        }
+        function detenerPendientesAdmin() {
+            unsubPendientesAdmin.forEach(u => u());
+            unsubPendientesAdmin = [];
+        }
+        function startPendientesAdmin() {
+            detenerPendientesAdmin();
+            pendientesParciales = false;
+            const refrescar = () => { actualizarAvisoPorRevisar(); actualizarAvisoExtras(); actualizarInicioAdmin(); };
+            const escuchar = (campo, valor, guardar) => unsubPendientesAdmin.push(onSnapshot(
+                query(collectionGroup(db, 'registros'), where(campo, '==', valor)),
+                (snap) => { guardar(snap.docs.map(registroAdmin)); refrescar(); },
+                (error) => {
+                    console.warn(`No se pudo consultar los registros con ${campo} = ${valor} (¿falta el índice de firestore.indexes.json?):`, error);
+                    guardar(null); pendientesParciales = true; refrescar();
+                }));
+            escuchar('estado', 'requiere_revision_admin', (v) => { regsPendientesRevision = v; });
+            escuchar('extras_estado', 'por_aprobar', (v) => { regsExtrasPorAprobarDb = v; });
+            escuchar('extras_estado', 'por_compensar', (v) => { regsPorCompensarDb = v; });
         }
 
         function startAdminTableListener() {
             if (unsubAdminTable) unsubAdminTable();
+            startPendientesAdmin();
             const q = query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(500));
             unsubAdminTable = onSnapshot(q, (snapshot) => {
                 const regs = [];
                 snapshot.forEach(d => regs.push({ id: d.id, ref: d.ref, ...d.data() }));
                 allRegsCache = regs;
                 aplicarFiltrosYRenderizar();
+                renderConsolidadoHoy();
                 actualizarAvisoPorRevisar();
                 actualizarAvisoExtras();
                 actualizarInicioAdmin();
@@ -9318,7 +9686,24 @@
             const mesFiltro = document.getElementById('filtro-mes').value; // formato AAAA-MM
             const obraFiltro = document.getElementById('filtro-obra').value;
 
-            let filtrados = allRegsCache;
+            // Con filtro de mes o de colaborador se usa ese mes (o esa persona) completo, no los 500 más recientes de la
+            // empresa (auditoría nov-2026, hallazgo 2). Mientras llega, se muestra "cargando" en vez de un número a medias.
+            asegurarFuenteConsolidado(cedulaFiltro, mesFiltro);
+            const conFuentePropia = !!(cedulaFiltro || mesFiltro);
+            if (conFuentePropia && fuenteConsolidado.regs === null && !fuenteConsolidado.error) {
+                const resumenCarga = document.getElementById('filtro-resumen');
+                resumenCarga.textContent = mesFiltro ? `Cargando ${mesFiltro} completo…` : 'Cargando todos los registros del colaborador…';
+                resumenCarga.classList.remove('hidden');
+                document.getElementById('costo-mano-obra-box').classList.add('hidden');
+                document.getElementById('admin-table-body').innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-400 font-medium">Cargando…</td></tr>';
+                return;
+            }
+            const soloRecientes = !conFuentePropia || fuenteConsolidado.error;
+            const avisoRecientes = !conFuentePropia
+                ? `solo los ${allRegsCache.length} registros más recientes de la empresa — filtra por Mes para ver el mes completo`
+                : 'no se pudo leer el mes completo: estos números salen solo de los 500 registros más recientes y pueden estar incompletos';
+
+            let filtrados = soloRecientes ? allRegsCache : fuenteConsolidado.regs;
             if (cedulaFiltro) filtrados = filtrados.filter(r => r.cedula === cedulaFiltro);
             if (mesFiltro) filtrados = filtrados.filter(r => (r.fecha || '').startsWith(mesFiltro));
             // Comparación insensible a mayúsculas/espacios, igual que getHoraEsperadaObra/getGeocercaObra,
@@ -9330,7 +9715,7 @@
                 const totalOrd = filtrados.reduce((a, r) => a + (r.horas_ordinarias || 0), 0);
                 const totalExtras = filtrados.reduce((a, r) => a + (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0), 0);
                 const extrasPorAprobar = filtrados.reduce((a, r) => a + (estadoExtras(r) === 'por_aprobar' ? (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0) : 0), 0);
-                resumen.textContent = `${filtrados.length} registro(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra en total${extrasPorAprobar > 0 ? ` (${extrasPorAprobar.toFixed(1)}h por aprobar)` : ''}`;
+                resumen.textContent = `${filtrados.length} registro(s) · ${totalOrd.toFixed(1)}h ordinarias · ${totalExtras.toFixed(1)}h extra en total${extrasPorAprobar > 0 ? ` (${extrasPorAprobar.toFixed(1)}h por aprobar)` : ''}${soloRecientes ? ` · ⚠ ${avisoRecientes}` : ''}`;
                 resumen.classList.remove('hidden');
             } else {
                 resumen.classList.add('hidden');
@@ -9360,6 +9745,7 @@
                 if (colaboradoresSinPerfil > 0) partes.push(`${colaboradoresSinPerfil} sin perfil activo (no se incluyeron)`);
                 if (colaboradoresSinSueldoConfigurado > 0) partes.push(`${colaboradoresSinSueldoConfigurado} con perfil pero sin sueldo/tarifa configurado (contaron $0)`);
                 if (mesFiltro && obraFiltro) partes.push('el sueldo base NO se incluye porque hay filtro de Obra activo — no es prorrateable entre obras');
+                if (soloRecientes) partes.push(`⚠ ${avisoRecientes}`);
                 document.getElementById('costo-mano-obra-detalle').textContent =
                     `${partes.join(' · ')} · Estimado operativo: no incluye aportes patronales ni prestaciones sociales.`;
                 cajaCosto.classList.remove('hidden');
@@ -9692,7 +10078,7 @@
             if (seleccionRegistros.size === 0) return;
 
             const clavesSeleccionadas = [...seleccionRegistros];
-            const candidatos = allRegsCache.filter(r =>
+            const candidatos = registrosAdminConocidos().filter(r =>
                 clavesSeleccionadas.includes(`${r.cedula}|${r.fecha}`) && r.llegada_tarde && !r.tardanza_justificada
             );
 
@@ -10029,9 +10415,13 @@
         };
 
         function construirFilasDetalleHoras(rows) {
-            // Solo días efectivamente trabajados (sin tipo_permiso) — los permisos y ausencias tienen
-            // su propia tabla más abajo, para no repetir la misma fila en dos tablas a la vez.
-            const dias = rows.filter(r => !r.tipo_permiso);
+            // Días sin permiso, y también los días con permiso en los que SÍ se trabajó (auditoría nov-2026,
+            // hallazgo 1): una cita médica por horas con el resto de la jornada trabajada, un permiso parcial cargado
+            // por Admin o "Se devolvió sin completar la jornada". Antes se excluía todo día con tipo_permiso, y las
+            // horas y extras de esos días no salían en ninguna tabla del Excel, aunque Mi Tarjeta y el costo de Admin
+            // sí las contaban. El permiso sigue saliendo además en su propia tabla (solo con las horas del permiso).
+            // Un día 100 % permiso o ausencia (sin horas trabajadas) sigue yendo solo a su tabla.
+            const dias = rows.filter(r => !r.tipo_permiso || horasTrabajadasRegistro(r) > 0);
             dias.sort((a, b) => (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '') || (a.fecha || '').localeCompare(b.fecha || ''));
             return dias.map(r => [
                 r.cedula, r.empleado_nombre, r.fecha, r.es_dominical_festivo ? 'SI' : 'NO',
@@ -10162,6 +10552,12 @@
                 if (cedulaFiltro) {
                     // Un solo colaborador: se consulta directo su subcolección (más rápido, sin límite de 2000)
                     const snap = await getDocs(collection(db, 'empleados', cedulaFiltro, 'registros'));
+                    snap.forEach(d => rows.push(d.data()));
+                } else if (mesFiltro) {
+                    // Auditoría nov-2026, hallazgo 2: con filtro de mes se lee ese mes completo (igual que el "Resumen de
+                    // nómina" por correo). Antes se leían los 2000 registros más recientes y DESPUÉS se filtraba el mes, así
+                    // que un mes viejo, o uno muy lleno, salía incompleto.
+                    const snap = await getDocs(query(collectionGroup(db, 'registros'), where('fecha', '>=', `${mesFiltro}-01`), where('fecha', '<=', `${mesFiltro}-31`)));
                     snap.forEach(d => rows.push(d.data()));
                 } else {
                     const snap = await getDocs(query(collectionGroup(db, 'registros'), orderBy('fecha', 'desc'), fsLimit(2000)));
