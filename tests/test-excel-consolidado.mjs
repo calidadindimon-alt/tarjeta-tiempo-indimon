@@ -97,6 +97,28 @@ caso('4. Ausencia justificada no descuenta ningún día', () => {
   assertEqual(filas[0], ['444', 'CARLOS', '2026-06-05', 'Ausencia justificada', '—', 'Cita médica'], 'sin descuento para ausencia justificada');
 });
 
+// Auditoría nov-2026, hallazgo 1: un día con permiso en el que SÍ se trabajó tiene que salir en el detalle de horas
+// (con sus horas y extras), y además en su tabla de permisos o de ausencias. Un día 100 % permiso o ausencia no.
+caso('5. Detalle de horas incluye los días con permiso que tienen horas trabajadas', () => {
+  const rows = [
+    // Cita médica de 2,5 h en la mañana; trabajó 10:00–19:00 con 2 h extra que RRHH aprobó.
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-11-10', estado: 'completado', entrada: '10:00', salida: '19:00', horas_ordinarias: 6, horas_extras_diurnas: 2, extras_estado: 'aprobada', tipo_permiso: 'Cita médica (urgencia o especialista)', horas_permiso: 2.5 },
+    // Se devolvió a las 11:00: 3,5 h trabajadas.
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-11-11', estado: 'completado', entrada: '07:30', salida: '11:00', horas_ordinarias: 3.5, tipo_permiso: 'Se devolvió', horas_permiso: 5 },
+    // Ausencia injustificada con un horario residual digitado: las horas quedaron en 0, no debe salir en el detalle.
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-11-12', estado: 'completado', entrada: '07:30', salida: '17:00', horas_ordinarias: 0, tipo_permiso: 'Ausencia injustificada' },
+    // Vacaciones de día completo: tampoco.
+    { cedula: '111', empleado_nombre: 'ANA', fecha: '2026-11-13', estado: 'completado', horas_ordinarias: 0, tipo_permiso: 'Vacaciones', dias_vacaciones_permiso: 1 },
+  ];
+  const filas = construirFilasDetalleHoras(rows);
+  assertEqual(filas.map(f => f[2]), ['2026-11-10', '2026-11-11'], 'solo los dos días con horas trabajadas');
+  assertEqual([filas[0][11], filas[0][12], filas[0][24]], [6, 2, 'APROBADA'], 'el día de la cita trae sus 6 h ordinarias y 2 h extra aprobadas');
+  assertEqual(filas[1][11], 3.5, 'el día que se devolvió trae sus 3,5 h trabajadas');
+  // Los permisos siguen saliendo en su tabla, con las horas del permiso.
+  assertEqual(construirFilasPermisos(rows).map(f => f[2]), ['2026-11-10', '2026-11-13'], 'la cita y las vacaciones siguen en la tabla de permisos');
+  assertEqual(construirFilasAusencias(rows).map(f => f[2]), ['2026-11-11', '2026-11-12'], 'el "se devolvió" y la ausencia siguen en la tabla de ausencias');
+});
+
 console.log('\n========== RESUMEN ==========');
 const fails = results.filter((r) => !r.ok);
 console.log(`${results.length - fails.length} / ${results.length} casos correctos`);

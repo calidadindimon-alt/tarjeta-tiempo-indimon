@@ -10029,9 +10029,13 @@
         };
 
         function construirFilasDetalleHoras(rows) {
-            // Solo días efectivamente trabajados (sin tipo_permiso) — los permisos y ausencias tienen
-            // su propia tabla más abajo, para no repetir la misma fila en dos tablas a la vez.
-            const dias = rows.filter(r => !r.tipo_permiso);
+            // Días sin permiso, y también los días con permiso en los que SÍ se trabajó (auditoría nov-2026,
+            // hallazgo 1): una cita médica por horas con el resto de la jornada trabajada, un permiso parcial cargado
+            // por Admin o "Se devolvió sin completar la jornada". Antes se excluía todo día con tipo_permiso, y las
+            // horas y extras de esos días no salían en ninguna tabla del Excel, aunque Mi Tarjeta y el costo de Admin
+            // sí las contaban. El permiso sigue saliendo además en su propia tabla (solo con las horas del permiso).
+            // Un día 100 % permiso o ausencia (sin horas trabajadas) sigue yendo solo a su tabla.
+            const dias = rows.filter(r => !r.tipo_permiso || horasTrabajadasRegistro(r) > 0);
             dias.sort((a, b) => (a.empleado_nombre || '').localeCompare(b.empleado_nombre || '') || (a.fecha || '').localeCompare(b.fecha || ''));
             return dias.map(r => [
                 r.cedula, r.empleado_nombre, r.fecha, r.es_dominical_festivo ? 'SI' : 'NO',

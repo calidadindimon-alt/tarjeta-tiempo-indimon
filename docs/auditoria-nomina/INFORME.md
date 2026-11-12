@@ -82,6 +82,9 @@ Las dos revisiones calificaron distinto dos puntos. Las reglas de la base de dat
 - **Corrección propuesta.** Incluir en el detalle todo día que tenga entrada y salida u horas mayores que cero, aunque
   tenga permiso. El permiso puede seguir saliendo también en su tabla.
 - **Prueba.** `tests/auditoria-nomina-hallazgos.mjs`, hallazgo 1.
+- **Estado: CORREGIDO (12-nov-2026).** La tabla de horas ahora incluye todo día sin permiso y todo día con permiso que
+  tenga horas trabajadas. Un día 100 % permiso o ausencia sigue saliendo solo en su tabla. Queda cubierto por el caso
+  5 de `tests/test-excel-consolidado.mjs`, que corre en el CI.
 
 ### Hallazgo 2 — ALTO — Admin solo ve los 500 registros más recientes (costo, extras por aprobar, por revisar)
 
