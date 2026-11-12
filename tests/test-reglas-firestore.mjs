@@ -72,7 +72,7 @@ await caso(G, 'sí lista nombres para el ingreso (empleados_publico)', SI, () =>
 await caso(G, 'sí lee catálogos (obras, horarios)', SI, () => getDoc(doc(anon, 'catalogos/listas')));
 await caso(G, 'sí abre UN permiso por su enlace', SI, () => getDoc(doc(anon, 'permisos/p1')));
 await caso(G, 'sí abre UN desprendible por su enlace', SI, () => getDoc(doc(anon, 'desprendibles/d1')));
-await caso(G, 'sí crea una solicitud de permiso pendiente', SI, () => setDoc(doc(anon, 'permisos/nuevo'), { trabajador: 'ANA PRUEBA', trabajador_cedula: '111', estado: 'pendiente', firmantes: FIRMANTES(false) }));
+await caso(G, 'sí crea una solicitud de permiso pendiente', SI, () => setDoc(doc(anon, 'permisos/nuevo'), { trabajador: 'ANA PRUEBA', trabajador_cedula: '111', tipo: 'Cita médica (urgencia o especialista)', fecha: '2026-11-20', estado: 'pendiente', firmantes: FIRMANTES(false) }));
 await caso(G, 'sí firma de último y aprueba (con aprobado_en)', SI, () => updateDoc(doc(anon, 'permisos/p1'), { 'firmantes.rrhh.firmado': true, estado: 'aprobado', aprobado_en: '2026-10-30T12:00:00Z' }));
 await caso(G, 'sí firma un desprendible por su enlace', SI, () => updateDoc(doc(anon, 'desprendibles/d1'), { firmado_por: 'ANA', firma: 'x', estado: 'firmado', firmado_en: '2026-10-30' }));
 
@@ -186,6 +186,18 @@ await caso(X, 'NO cambia la hora de entrada de su turno abierto', NO, () => upda
 await caso(X, 'NO se autoriza la entrada temprana en su turno abierto', NO, () => updateDoc(doc(beto, reg('222', HOY)), { entrada_temprana_autorizada: true }));
 await caso(X, 'NO se pone un tipo de permiso en su turno abierto', NO, () => updateDoc(doc(beto, reg('222', HOY)), { tipo_permiso: 'Cita médica (urgencia o especialista)', horas_permiso: 4 }));
 await caso(X, 'NO reabre un día cerrado con horas', NO, () => updateDoc(doc(beto, reg('222', '2026-11-10')), { estado: 'activo' }));
+
+// ---------- Permiso falso (auditoría nov-2026, hallazgo 4) ----------
+// Sin sesión se puede crear y firmar un permiso (así funcionan los enlaces), pero ya no se puede usar para escribir en el
+// día de nadie: eso lo hace solo Admin. Y un permiso nuevo tiene que ser de un tipo del catálogo.
+const P = 'Permiso falso sin sesión (debe rechazarse)';
+await caso(P, 'NO crea un "permiso" de tipo Ausencia injustificada', NO, () => setDoc(doc(anon, 'permisos/falsoAusencia'), { trabajador: 'BETO PRUEBA', trabajador_cedula: '222', tipo: 'Ausencia injustificada', fecha: '2026-11-18', estado: 'pendiente', firmantes: FIRMANTES(false) }));
+await caso(P, 'sí crea un permiso de un tipo del catálogo (la firma por enlace sigue igual)', SI, () => setDoc(doc(anon, 'permisos/falso2'), { trabajador: 'BETO PRUEBA', trabajador_cedula: '222', tipo: 'Calamidad doméstica', fecha: '2026-11-18', estado: 'pendiente', firmantes: FIRMANTES(false) }));
+await caso(P, '… y le pone las 4 firmas y lo aprueba (no se puede verificar quién firma sin servidor)', SI, () => updateDoc(doc(anon, 'permisos/falso2'), { firmantes: FIRMANTES(true), estado: 'aprobado', aprobado_en: '2026-11-12T12:00:00Z' }));
+await caso(P, 'NO usa ese permiso para crearle a Beto un día con ausencia', NO, () => setDoc(doc(anon, reg('222', '2026-11-18')), { fecha: '2026-11-18', cedula: '222', estado: 'completado', tipo_permiso: 'Ausencia injustificada', horas_permiso: 8, permiso_id: 'falso2', ...CERO }));
+await caso(P, 'NO usa ese permiso para cambiar el día que Beto SÍ trabajó', NO, () => updateDoc(doc(anon, reg('222', '2026-11-10')), { tipo_permiso: 'Ausencia injustificada', horas_permiso: 8, permiso_id: 'falso2' }));
+await caso(P, 'NO usa ese permiso para quitar la ausencia de Ana', NO, () => updateDoc(doc(anon, reg('111', '2026-11-04')), { tipo_permiso: 'Calamidad doméstica', horas_permiso: 8, permiso_id: 'falso2' }));
+await caso(A, 'sí pasa un permiso aprobado a nómina (Admin escribe en el día)', SI, () => updateDoc(doc(admin, reg('222', MANANA)), { tipo_permiso: 'Calamidad doméstica', horas_permiso: 2, permiso_id: 'falso2' }));
 
 await env.cleanup();
 const ok = resultados.filter(Boolean).length;

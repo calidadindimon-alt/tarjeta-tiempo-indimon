@@ -2072,6 +2072,8 @@
         <div id="modal-extras-box" class="bg-white rounded-3xl p-5 w-full max-w-lg shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] overflow-y-auto">
             <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-clock-countdown text-amber-500"></i> Extras por aprobar</h3>
             <p class="text-xs text-slate-500 mb-3">Solo las horas extra aprobadas entran a la nómina. "No autorizada" no borra las horas: quedan registradas y se pueden aprobar después.</p>
+            <label for="extras-mes" class="text-[10px] font-bold text-slate-500 uppercase">Mes</label>
+            <select id="extras-mes" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none mb-3"></select>
             <div id="extras-lista" class="space-y-3"></div>
             <button id="btn-extras-cerrar" class="btn-touch w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-3 rounded-xl text-sm mt-4">Cerrar</button>
         </div>
@@ -8949,11 +8951,57 @@
             const [y, m, d] = fecha.split('-').map(Number);
             return new Date(y, m - 1, d).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
         }
+        // ===================== Extras por aprobar: por mes y por obra (nov-2026) =====================
+        // Arriba hay un selector de mes. "Todos los pendientes" usa la consulta propia por extras_estado (sin tope). Al
+        // elegir un mes se lee ese mes COMPLETO (rango de fechas, como el Consolidado): así aparecen también los días con
+        // extras que no tienen el campo extras_estado (los que Admin cargó o corrigió a mano), que la consulta por estado
+        // no encuentra. A esos se les guarda extras_estado 'por_aprobar' (estadoExtras ya los contaba así), para que la
+        // próxima vez salgan también sin elegir el mes. La lista va agrupada por obra, en tarjetas plegables.
+        let mesExtras = '';
+        let regsExtrasMes = null;      // registros del mes elegido (null = sin mes o cargando)
+        let cargandoExtrasMes = false;
+        function opcionesMesExtras() {
+            const sel = document.getElementById('extras-mes');
+            if (sel.options.length) return;
+            sel.add(new Option('Todos los pendientes', ''));
+            const [y, m] = getTodayStr().split('-').map(Number);
+            for (let i = 0; i < 6; i++) {
+                const d = new Date(y, m - 1 - i, 1);
+                const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const texto = d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+                sel.add(new Option(texto.charAt(0).toUpperCase() + texto.slice(1), valor));
+            }
+        }
+        async function cargarExtrasMes(mes) {
+            mesExtras = mes;
+            regsExtrasMes = null;
+            if (!mes) return renderExtras();
+            cargandoExtrasMes = true;
+            renderExtras();
+            try {
+                const snap = await getDocs(query(collectionGroup(db, 'registros'), where('fecha', '>=', `${mes}-01`), where('fecha', '<=', `${mes}-31`)));
+                if (mesExtras !== mes) return;
+                regsExtrasMes = snap.docs.map(registroAdmin);
+                // Días con extras sin extras_estado: se marcan "por aprobar" (es como ya los contaba estadoExtras).
+                const sinEstado = regsExtrasMes.filter(r => r.estado === 'completado' && horasExtraDe(r) > 0 && !r.extras_estado && (r.fecha || '') >= FECHA_INICIO_APROBACION_EXTRAS);
+                if (sinEstado.length) {
+                    const batch = writeBatch(db);
+                    sinEstado.forEach(r => { batch.update(r.ref, { extras_estado: 'por_aprobar' }); r.extras_estado = 'por_aprobar'; });
+                    await batch.commit().catch(e => console.warn('No se pudo marcar "por aprobar" en los días sin estado de extras:', e));
+                    registrarAuditoria('Extras sin estado marcadas "por aprobar"', `${mes}: ${sinEstado.length} día(s)`);
+                }
+            } catch (e) {
+                console.error('No se pudo leer el mes de extras:', e);
+                UI.showAlert('Error', 'No se pudo cargar ese mes. Revisa tu conexión.', 'error');
+            } finally {
+                cargandoExtrasMes = false;
+                if (mesExtras === mes) renderExtras();
+            }
+        }
         function extrasPorAprobar() {
-            // La consulta propia (sin tope) trae los días con extras_estado 'por_aprobar'. Un día con extras pero sin ese
-            // campo (cargado por Admin antes de nov-2026) también cuenta como por aprobar: esos solo se ven si están entre
-            // los registros recientes o en el mes filtrado.
-            return unirRegistrosPorRuta(regsExtrasPorAprobarDb, fuenteConsolidado.regs, allRegsCache)
+            // La consulta propia (sin tope) trae los días con extras_estado 'por_aprobar'; con un mes elegido, también
+            // ese mes completo (ver cargarExtrasMes).
+            return unirRegistrosPorRuta(regsExtrasPorAprobarDb, regsExtrasMes, fuenteConsolidado.regs, allRegsCache)
                 .filter(r => r.estado === 'completado' && estadoExtras(r) === 'por_aprobar');
         }
         function horasExtraDe(r) { return (r.horas_extras_diurnas || 0) + (r.horas_extras_nocturnas || 0); }
@@ -8972,8 +9020,13 @@
         }
         function renderExtras() {
             const cont = document.getElementById('extras-lista');
-            const pend = extrasPorAprobar();
-            const noAut = unirRegistrosPorRuta(fuenteConsolidado.regs, allRegsCache).filter(r => estadoExtras(r) === 'no_autorizada').sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 20);
+            opcionesMesExtras();
+            document.getElementById('extras-mes').value = mesExtras;
+            const delMes = (r) => !mesExtras || (r.fecha || r.id || '').startsWith(mesExtras);
+            const pend = extrasPorAprobar().filter(delMes);
+            const noAut = unirRegistrosPorRuta(regsExtrasMes, fuenteConsolidado.regs, allRegsCache).filter(r => estadoExtras(r) === 'no_autorizada' && delMes(r)).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')).slice(0, 20);
+            // Días con extras que todavía esperan en "Por revisar": sus extras no salen aquí hasta aprobarlos allá.
+            const enRevision = unirRegistrosPorRuta(pendientesDeRevision(), regsExtrasMes).filter(r => r.estado === 'requiere_revision_admin' && horasExtraDe(r) > 0 && delMes(r));
             const item = (r, acciones) => {
                 const motivo = r.extras_motivo ? ` · "${escapeHtml(r.extras_motivo)}"` : '';
                 return `<div class="flex items-center justify-between gap-2 py-1.5 border-t border-slate-100 first:border-0">
@@ -8982,17 +9035,30 @@
             };
             const boton = (clase, texto, ids, color) => `<button type="button" class="${clase} btn-touch ${color} px-2 py-1 rounded-lg text-[11px] font-bold" data-ids="${escapeHtml(ids.join(','))}">${texto}</button>`;
             const idDe = (r) => `${r.ref.parent.parent.id}/${r.id}`;
-            let html = pendientesParciales ? AVISO_PENDIENTES_PARCIALES : '';
-            if (!pend.length) html += '<p class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">✔ No hay horas extra por aprobar.</p>';
-            const semanas = new Map();
-            pend.forEach(r => { const [lun] = getRangoSemana(r.fecha || r.id); if (!semanas.has(lun)) semanas.set(lun, []); semanas.get(lun).push(r); });
-            [...semanas.keys()].sort().forEach(lun => {
-                const regs = semanas.get(lun);
-                const [, dom] = getRangoSemana(lun);
-                const totalSemana = regs.reduce((a, r) => a + horasExtraDe(r), 0);
-                html += `<div class="border border-slate-200 rounded-2xl p-3">
-                    <div class="flex items-center justify-between gap-2 mb-2"><p class="text-sm font-bold text-slate-800">Semana ${escapeHtml(diaCortoEs(lun))} – ${escapeHtml(diaCortoEs(dom))}</p>
-                    ${boton('btn-extras-aprobar', `✔ Aprobar todas (${textoHorasCorto(totalSemana)})`, regs.map(idDe), 'bg-emerald-600 hover:bg-emerald-700 text-white')}</div>`;
+            let html = (pendientesParciales && !mesExtras) ? AVISO_PENDIENTES_PARCIALES : '';
+            if (cargandoExtrasMes) {
+                cont.innerHTML = '<p class="text-sm text-slate-500 text-center py-6">Cargando el mes completo…</p>';
+                return;
+            }
+            if (!pend.length) html += `<p class="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3">✔ No hay horas extra por aprobar${mesExtras ? ' en este mes' : ''}.</p>`;
+            if (enRevision.length) {
+                const horasRev = enRevision.reduce((a, r) => a + horasExtraDe(r), 0);
+                html += `<div class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5">⚠ <b>${enRevision.length} día${enRevision.length === 1 ? '' : 's'} con ${textoHorasCorto(horasRev)} extra</b> todavía en "Por revisar" (salida olvidada o fuera de la geocerca): ${enRevision.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).slice(0, 6).map(r => `${escapeHtml(nombreCortoAdmin(r.empleado_nombre) || r.empleado_nombre || '')} ${escapeHtml(diaCortoEs(r.fecha || r.id))}`).join(', ')}${enRevision.length > 6 ? '…' : ''}. Sus extras aparecen aquí cuando los apruebes allá.
+                    <button type="button" id="btn-extras-ir-revisar" class="underline font-bold ml-1">Ir a Por revisar ›</button></div>`;
+            }
+            // Una tarjeta plegable por obra, de la que más horas tiene a la que menos; dentro, cada colaborador y sus días.
+            const porObra = new Map();
+            pend.forEach(r => { const o = (r.obra || '').trim().toUpperCase() || 'SIN OBRA'; if (!porObra.has(o)) porObra.set(o, []); porObra.get(o).push(r); });
+            [...porObra.entries()].sort((a, b) => b[1].reduce((s, r) => s + horasExtraDe(r), 0) - a[1].reduce((s, r) => s + horasExtraDe(r), 0) || a[0].localeCompare(b[0])).forEach(([obra, regs]) => {
+                const totalObra = regs.reduce((a, r) => a + horasExtraDe(r), 0);
+                const personasObra = new Set(regs.map(r => r.ref.parent.parent.id)).size;
+                const abierta = obrasAbiertasExtras.has(obra) || porObra.size === 1;
+                html += `<details class="ad-obra" data-obra-extras="${escapeHtml(obra)}"${abierta ? ' open' : ''}>
+                    <summary><span class="ad-obra-ico"><i class="ph-fill ph-buildings"></i></span>
+                        <span class="min-w-0"><span class="ad-obra-nombre">${escapeHtml(obra)}</span>
+                        <span class="ad-obra-det block">${textoHorasCorto(totalObra)} extra · ${personasObra} colaborador${personasObra === 1 ? '' : 'es'} · ${regs.length} día${regs.length === 1 ? '' : 's'}</span></span>
+                        <i class="ph-bold ph-caret-right ad-obra-flecha"></i></summary>
+                    <div class="ad-obra-gente pt-2"><div class="flex justify-end mb-2">${boton('btn-extras-aprobar', `✔ Aprobar toda la obra (${textoHorasCorto(totalObra)})`, regs.map(idDe), 'bg-emerald-600 hover:bg-emerald-700 text-white')}</div>`;
                 const porPersona = new Map();
                 regs.forEach(r => { const c = r.ref.parent.parent.id; if (!porPersona.has(c)) porPersona.set(c, []); porPersona.get(c).push(r); });
                 [...porPersona.entries()].sort((a, b) => (a[1][0].empleado_nombre || '').localeCompare(b[1][0].empleado_nombre || '')).forEach(([cedula, rs]) => {
@@ -9004,7 +9070,7 @@
                         ${rs.map(r => item(r, boton('btn-extras-aprobar', 'Aprobar', [idDe(r)], 'bg-white border border-emerald-200 text-emerald-700') + boton('btn-extras-compensar', 'Por compensar', [idDe(r)], 'bg-violet-50 border border-violet-200 text-violet-700') + boton('btn-extras-no-autorizar', 'No autorizada', [idDe(r)], 'bg-rose-50 border border-rose-200 text-rose-700'))).join('')}
                     </div>`;
                 });
-                html += '</div>';
+                html += '</div></details>';
             });
             if (noAut.length) {
                 html += `<p class="text-[10px] font-bold text-slate-500 uppercase pt-2">No autorizadas (se pueden aprobar después)</p><div class="border border-rose-100 rounded-xl p-2.5">` +
@@ -9016,7 +9082,13 @@
             cont.querySelectorAll('.btn-extras-no-autorizar').forEach(b => b.addEventListener('click', () => decidirExtras(b.dataset.ids.split(','), 'no_autorizada', b)));
             cont.querySelectorAll('.btn-extras-compensar').forEach(b => b.addEventListener('click', () => decidirExtras(b.dataset.ids.split(','), 'por_compensar', b)));
             cont.querySelectorAll('.btn-bolsa-descanso').forEach(b => b.addEventListener('click', () => registrarDescansoCompensado(b.dataset.cedula, b)));
+            document.getElementById('btn-extras-ir-revisar')?.addEventListener('click', () => { cerrarExtras(); setTimeout(abrirPorRevisar, 250); });
+            cont.querySelectorAll('details[data-obra-extras]').forEach(d => d.addEventListener('toggle', () => {
+                if (d.open) obrasAbiertasExtras.add(d.dataset.obraExtras); else obrasAbiertasExtras.delete(d.dataset.obraExtras);
+            }));
         }
+        const obrasAbiertasExtras = new Set();
+        document.getElementById('extras-mes').addEventListener('change', (e) => cargarExtrasMes(e.target.value));
 
         // Bolsa de horas por compensar, por persona (ver bolsaDeHoras). Los días salen de la consulta propia por
         // extras_estado (sin tope, ver startPendientesAdmin) unida a los registros que el panel ya tiene cargados.
@@ -10188,7 +10260,7 @@
                 const snap = await getDoc(doc(db, 'empleados', cedula, 'registros', fecha));
                 if (!snap.exists()) return UI.showAlert("No encontrado", "Este registro ya no existe (puede que lo hayan borrado).", "error");
                 const d = snap.data();
-                editarRegistroActual = { cedula, fecha, obra: d.obra || '', cliente: d.cliente || '', autoriza: d.autoriza || '', entrada_temprana_autorizada: !!d.entrada_temprana_autorizada, salidas_permiso: d.salidas_permiso || null };
+                editarRegistroActual = { cedula, fecha, obra: d.obra || '', cliente: d.cliente || '', autoriza: d.autoriza || '', entrada_temprana_autorizada: !!d.entrada_temprana_autorizada, salidas_permiso: d.salidas_permiso || null, extD: d.horas_extras_diurnas || 0, extN: d.horas_extras_nocturnas || 0, extras_estado: d.extras_estado || null };
                 document.getElementById('editar-registro-obra').value = d.obra || '';
                 document.getElementById('editar-registro-cliente').value = d.cliente || '';
                 document.getElementById('editar-registro-autoriza').value = d.autoriza || '';
@@ -10284,6 +10356,10 @@
                     horas_descuento_tardanza: calc.horasDescontadasTardanza,
                     horas_permiso_turno: calc.horasPermiso || 0
                 };
+                // Si quedan extras y cambiaron (o el día no tenía estado de extras, como una salida olvidada que se corrige),
+                // vuelven a "por aprobar": así aparecen en "Extras por aprobar" y RRHH aprueba la cifra nueva (nov-2026).
+                const extrasCambian = Math.abs(editarRegistroActual.extD - calc.extD) >= 0.005 || Math.abs(editarRegistroActual.extN - calc.extN) >= 0.005;
+                if (calc.extD + calc.extN > 0 && fecha >= FECHA_INICIO_APROBACION_EXTRAS && (extrasCambian || !editarRegistroActual.extras_estado)) datosNuevos.extras_estado = 'por_aprobar';
                 if (obraCambio) datosNuevos.cambios_obra = arrayUnion({ hora: getHoraActualStr(), de_obra: editarRegistroActual.obra || '', a_obra: obra, de_autoriza: editarRegistroActual.autoriza || '', a_autoriza: autoriza, por: auth.currentUser?.email || 'admin' });
                 await updateDoc(doc(db, 'empleados', cedula, 'registros', fecha), datosNuevos);
                 registrarAuditoria('Editar registro (Admin)', `CC ${cedula} · ${fecha}: ${obraCambio ? `obra ${editarRegistroActual.obra || '—'} → ${obra}, ` : ''}entrada ${entrada}, salida ${salida}${almuerzoOmitido ? ' · sin almuerzo (autorizado)' : almuerzoInicio ? ` · almuerzo ${almuerzoInicio}-${almuerzoFin}` : ''} → ${calc.ord}h ord., +${calc.extD}h ED, +${calc.extN}h EN`);
@@ -12783,9 +12859,20 @@
         // Devuelve true si quedó reflejado en el registro del día (o no había colaborador vinculado), false si falló.
         async function sincronizarPermisoConNomina(data, permisoId) {
             if (!data.trabajador_cedula) return true; // no se pudo vincular con un colaborador conocido, se omite
+            // Auditoría nov-2026, hallazgo 4: un permiso se puede aprobar por enlace sin que nadie verifique quién firmó.
+            // Por eso aquí solo pasan a nómina los tipos del catálogo (nunca una "ausencia"), y nunca se reemplaza una
+            // ausencia que Admin ya registró en ese día: eso queda anotado para que Admin lo revise a mano.
+            if (!infoTipoPermiso(data.tipo) || !/^\d{4}-\d{2}-\d{2}$/.test(data.fecha || '')) {
+                registrarAuditoria('Permiso NO pasado a nómina (tipo o fecha no válidos)', `${permisoId}: ${data.tipo || '—'} · ${data.fecha || '—'} · CC ${data.trabajador_cedula}`);
+                return true;
+            }
             try {
                 const ref = doc(db, 'empleados', data.trabajador_cedula, 'registros', data.fecha);
                 const existing = await getDoc(ref);
+                if (existing.exists() && esAusenciaSinHoras(existing.data().tipo_permiso) && existing.data().permiso_id !== permisoId) {
+                    registrarAuditoria('Permiso NO pasado a nómina: el día ya tenía una ausencia', `${permisoId}: ${data.tipo} · ${data.fecha} · CC ${data.trabajador_cedula} tenía "${existing.data().tipo_permiso}". Revísalo a mano.`);
+                    return true;
+                }
                 if (existing.exists()) {
                     await updateDoc(ref, {
                         tipo_permiso: data.tipo || null,
@@ -12999,9 +13086,9 @@
                         // Firma de Admin: se pasa a nómina y se descuenta el saldo ya mismo.
                         await aplicarPermisoAprobado(permisoId, data).catch(e => console.error('No se pudo pasar el permiso a nómina:', e));
                     } else if (conMarca) {
-                        // Firma por enlace sin sesión de Admin: se intenta reflejar en el registro del día (funciona si
-                        // quien firma es el propio colaborador); el descuento de vacaciones lo hace Admin al entrar.
-                        await sincronizarPermisoConNomina(data, permisoId);
+                        // Firma por enlace sin sesión de Admin: el permiso queda con aprobado_en y Admin lo pasa a nómina al
+                        // entrar (procesarPermisosAprobadosPendientes). Desde nov-2026 (hallazgo 4) las reglas ya no dejan
+                        // escribir en el registro del día sin ser Admin, así que aquí no se intenta.
                     } else {
                         // Reglas anteriores (sin aprobado_en): mismo camino que antes del cambio.
                         await sincronizarPermisoConNomina(data, permisoId);
