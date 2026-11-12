@@ -8317,8 +8317,10 @@
                 }
                 if (dia.data.decisiones_permiso && Object.keys(dia.data.decisiones_permiso).length > 0) delete nuevo.horas_permiso_turno;
                 const cambia = Object.keys(nuevo).some(k => distinto(dia.data[k], nuevo[k]));
-                const extrasVuelvenAPorAprobar = dia.data.extras_estado === 'aprobada' && cambianExtras && calc.extD + calc.extN > 0;
-                if (cambianExtras && calc.extD + calc.extN > 0 && dia.data.extras_estado !== 'por_aprobar') nuevo.extras_estado = 'por_aprobar';
+                // Si RRHH ya había aprobado las extras y la cifra cambia (aunque baje a cero), se le avisa y vuelve a "por
+                // aprobar", como siempre. Si no estaban aprobadas, solo vuelven a "por aprobar" si quedan extras.
+                const extrasVuelvenAPorAprobar = dia.data.extras_estado === 'aprobada' && cambianExtras;
+                if (cambianExtras && dia.data.extras_estado !== 'por_aprobar' && (extrasVuelvenAPorAprobar || calc.extD + calc.extN > 0)) nuevo.extras_estado = 'por_aprobar';
                 items.push({ id: dia.id, ref: dia.ref, antes: dia.data, nuevo, cambia, extrasVuelvenAPorAprobar });
                 acumulada += calc.ord + (calc.horasPermiso || 0); // el permiso pagado cuenta para la meta de 42 h
             }
