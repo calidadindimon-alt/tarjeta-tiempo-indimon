@@ -4237,7 +4237,11 @@
             const esContratista = currentUserProfile.tipo_vinculacion === 'Contratista';
             const base = currentUserProfile.sueldo_base;
             const tarifaHora = currentUserProfile.tarifa_hora || 0;
-            const currentMonthPrefix = getTodayStr().substring(0, 7);
+            // BUG CORREGIDO (nov-2026): antes era siempre el mes actual, así que al elegir octubre en el historial la tarjeta
+            // "Extras de…" y su detalle seguían mostrando noviembre. Ahora siguen el mes elegido en el historial.
+            const mesHoy = getTodayStr().substring(0, 7);
+            const currentMonthPrefix = document.getElementById('historial-mes').value || mesHoy;
+            const esMesActual = currentMonthPrefix === mesHoy;
 
             // BUG CORREGIDO (M5): si a un colaborador no se le cargó el sueldo base (o la tarifa por
             // hora, en contratistas), el cálculo daba un valor inválido que el formateador convertía en
@@ -4300,9 +4304,13 @@
                 const snapBolsa = await getDocs(query(collection(db, 'empleados', currentUserId, 'registros'), where('extras_estado', '==', 'por_compensar')));
                 bolsa = bolsaDeHoras(snapBolsa.docs.map(d => d.data()), currentUserProfile.horas_compensadas);
             } catch (e) { console.warn('No se pudo calcular la bolsa de horas por compensar:', e); }
-            registrosMesMT = todosLosRegistros;
-            unirRegistrosMiTarjeta();
-            if (estadoMiTarjeta.state === 'entrada') prellenarObraMT();
+            // Los registros del mes actual también alimentan los avisos de permisos y la obra del último turno: si se eligió
+            // otro mes, esos se quedan con los del mes actual.
+            if (esMesActual) {
+                registrosMesMT = todosLosRegistros;
+                unirRegistrosMiTarjeta();
+                if (estadoMiTarjeta.state === 'entrada') prellenarObraMT();
+            }
 
             document.getElementById('ui-horas-mes').textContent = `${(totalExtD + totalExtN).toFixed(1)}h`;
             const elPorAprobar = document.getElementById('ui-extras-por-aprobar');
@@ -4572,7 +4580,10 @@
         }
 
         document.getElementById('historial-mes').addEventListener('change', (e) => {
-            if (currentUserId && e.target.value) cargarHistorialPersonal(e.target.value);
+            if (currentUserId && e.target.value) {
+                cargarHistorialPersonal(e.target.value);
+                calculateMonthlyAccumulated(); // las extras y la proyección de pago siguen el mes elegido
+            }
         });
 
         // ===================================== Login de colaborador (con PIN) =====================================
