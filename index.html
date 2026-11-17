@@ -65,6 +65,7 @@
         .btn-touch { transition: all 0.15s ease; }
         .btn-touch:active { transform: scale(0.97); }
         .btn-touch:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-touch.ocupado:disabled { cursor: progress; }
         /* Logo flotante de reCAPTCHA (App Check): tapa el menú inferior en el celular. Google permite ocultarlo si se
            muestra el aviso de reCAPTCHA en la página; está en la pantalla de ingreso. */
         .grecaptcha-badge { visibility: hidden; }
@@ -8941,19 +8942,34 @@
             guardar();
         }
         async function aprobarRevision(cedula, fecha, btn) {
+            const textoOriginal = btn.innerHTML;
             btn.disabled = true;
+            btn.classList.add('ocupado');
+            btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Aprobando…';
             try {
-                await updateDoc(doc(db, 'empleados', cedula, 'registros', fecha), {
+                const cambios = {
                     estado: 'completado',
                     revision_aprobada_por: auth.currentUser?.email || 'admin',
                     revision_aprobada_en: new Date().toISOString()
-                });
+                };
+                await updateDoc(doc(db, 'empleados', cedula, 'registros', fecha), cambios);
+                // BUG CORREGIDO (nov-2026): la tarjeta solo se quitaba cuando llegaba el aviso de Firebase; mientras tanto
+                // el botón quedaba desactivado (cursor de prohibido) y parecía que "Aprobar" no hacía nada. Ahora se
+                // actualizan al instante todas las copias que tiene el panel y se repinta la lista.
+                const ruta = `empleados/${cedula}/registros/${fecha}`;
+                [regsPendientesRevision, allRegsCache, fuenteConsolidado.regs, regsExtrasMes, regsExtrasPorAprobarDb, regsPorCompensarDb]
+                    .forEach(lista => (lista || []).forEach(r => { if (r?.ref?.path === ruta) Object.assign(r, cambios); }));
+                actualizarAvisoPorRevisar();
+                actualizarAvisoExtras();
+                actualizarInicioAdmin();
                 // Ya cuenta para la semana: se reparte de nuevo el tope semanal con este día incluido.
                 try { await recalcularSemana(cedula, fecha); } catch (eRec) { console.error('No se pudo recalcular la semana al aprobar:', eRec); }
                 registrarAuditoria('Aprobar registro por revisar (Admin)', `CC ${cedula} · ${fecha}`);
             } catch (e) {
                 console.error(e);
                 btn.disabled = false;
+                btn.classList.remove('ocupado');
+                btn.innerHTML = textoOriginal;
                 UI.showAlert("Error", "No se pudo aprobar el registro.", "error");
             }
         }

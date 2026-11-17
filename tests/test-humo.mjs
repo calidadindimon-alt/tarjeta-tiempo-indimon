@@ -202,6 +202,12 @@ try {
   await page.waitForTimeout(400);
   ok('   … con el registro pendiente y su botón Aprobar', await page.isVisible('#modal-por-revisar-box') && (await page.locator('.btn-aprobar-revision').count()) === 1);
   ok('   … agrupado por obra', (await page.locator('details[data-obra-revision="BODEGA"]').count()) === 1);
+  // "Aprobar" quita el registro de la lista sin esperar el aviso de Firebase (antes el botón quedaba bloqueado).
+  await page.evaluate(() => { window.__OYENTES_BAK__ = window.__OYENTES__; window.__OYENTES__ = []; window.__DB_BAK__ = JSON.stringify(window.__DB__); }); // simula que el aviso de Firebase no llega
+  await page.click('.btn-aprobar-revision');
+  await page.waitForTimeout(400);
+  ok('   … y "Aprobar" lo quita de la lista al instante', (await page.locator('.btn-aprobar-revision').count()) === 0 && /No hay registros por revisar/.test(await page.textContent('#por-revisar-lista')));
+  await page.evaluate(() => { window.__OYENTES__ = window.__OYENTES_BAK__.concat(window.__OYENTES__); Object.assign(window.__DB__, JSON.parse(window.__DB_BAK__)); window.__OYENTES__.forEach(f => f()); });
   await page.click('#btn-por-revisar-cerrar');
   await page.waitForTimeout(400);
   ok('8. El aviso de "Extras por aprobar" aparece y abre la lista por semana',
