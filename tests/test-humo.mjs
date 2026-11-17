@@ -210,7 +210,8 @@ try {
   await page.locator('.btn-extras-aprobar').first().click();
   await page.waitForTimeout(600);
   ok('   … y al aprobar, el aviso desaparece', !(await page.isVisible('#btn-aviso-extras')));
-  await page.click('#btn-extras-cerrar');
+  ok('   … el día sale de la lista y ningún botón queda desactivado',
+    (await page.locator('#extras-lista .btn-extras-aprobar').count()) === 0 && (await page.locator('#extras-lista button:disabled').count()) === 0);  await page.click('#btn-extras-cerrar');
   await page.waitForTimeout(400);
   await page.click('#btn-resumen-alertas');
   await page.waitForSelector('#modal-alertas-box', { state: 'visible', timeout: 5000 });

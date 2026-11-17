@@ -8958,6 +8958,7 @@
             const b = document.getElementById('modal-por-revisar-box');
             m.classList.add('opacity-0'); b.classList.add('scale-95');
             setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
+            marcarMenuAdmin(); // vuelve a marcar en el menú la sección donde estaba
         }
         document.getElementById('btn-aviso-por-revisar').addEventListener('click', abrirPorRevisar);
         // ================================== Extras por aprobar (RRHH) ==================================
@@ -9001,9 +9002,11 @@
                 // Días con extras sin extras_estado: se marcan "por aprobar" (es como ya los contaba estadoExtras).
                 const sinEstado = regsExtrasMes.filter(r => r.estado === 'completado' && horasExtraDe(r) > 0 && !r.extras_estado && (r.fecha || '') >= FECHA_INICIO_APROBACION_EXTRAS);
                 if (sinEstado.length) {
-                    const batch = writeBatch(db);
-                    sinEstado.forEach(r => { batch.update(r.ref, { extras_estado: 'por_aprobar' }); r.extras_estado = 'por_aprobar'; });
-                    await batch.commit().catch(e => console.warn('No se pudo marcar "por aprobar" en los días sin estado de extras:', e));
+                    for (let i = 0; i < sinEstado.length; i += 450) {
+                        const batch = writeBatch(db);
+                        sinEstado.slice(i, i + 450).forEach(r => { batch.update(r.ref, { extras_estado: 'por_aprobar' }); r.extras_estado = 'por_aprobar'; });
+                        await batch.commit().catch(e => console.warn('No se pudo marcar "por aprobar" en los días sin estado de extras:', e));
+                    }
                     registrarAuditoria('Extras sin estado marcadas "por aprobar"', `${mes}: ${sinEstado.length} día(s)`);
                 }
             } catch (e) {
@@ -9162,14 +9165,27 @@
         async function decidirExtras(ids, estado, btn) {
             btn.disabled = true;
             try {
-                const batch = writeBatch(db);
                 const quien = auth.currentUser?.email || 'admin';
                 const cuando = new Date().toISOString();
-                ids.forEach(id => {
-                    const [cedula, fecha] = id.split('/');
-                    batch.update(doc(db, 'empleados', cedula, 'registros', fecha), { extras_estado: estado, extras_revisada_por: quien, extras_revisada_en: cuando });
-                });
-                await batch.commit();
+                const cambios = { extras_estado: estado, extras_revisada_por: quien, extras_revisada_en: cuando };
+                // Firestore acepta máximo 500 cambios por lote: una obra con muchos días se guarda en varios.
+                for (let i = 0; i < ids.length; i += 450) {
+                    const batch = writeBatch(db);
+                    ids.slice(i, i + 450).forEach(id => {
+                        const [cedula, fecha] = id.split('/');
+                        batch.update(doc(db, 'empleados', cedula, 'registros', fecha), cambios);
+                    });
+                    await batch.commit();
+                }
+                // BUG CORREGIDO (nov-2026): al elegir un mes, la lista guarda una copia de los días que no se actualiza sola,
+                // así que después de "Aprobar" volvía a pintar el día como "por aprobar" (y el botón quedaba desactivado,
+                // con el cursor de prohibido). Ahora se actualizan todas las copias que tiene el panel y se repinta.
+                const rutas = new Set(ids.map(id => { const [cedula, fecha] = id.split('/'); return `empleados/${cedula}/registros/${fecha}`; }));
+                [regsExtrasMes, fuenteConsolidado.regs, allRegsCache, regsExtrasPorAprobarDb, regsPorCompensarDb, regsPendientesRevision]
+                    .forEach(lista => (lista || []).forEach(r => { if (r?.ref && rutas.has(r.ref.path)) Object.assign(r, cambios); }));
+                actualizarAvisoExtras();
+                actualizarInicioAdmin();
+                if (!document.getElementById('modal-extras').classList.contains('hidden')) renderExtras();
                 registrarAuditoria(estado === 'aprobada' ? 'Aprobar horas extra (RRHH)' : 'Horas extra no autorizadas (RRHH)', ids.map(i => i.replace('/', ' · ')).join(', '));
             } catch (e) {
                 console.error(e);
@@ -9189,6 +9205,7 @@
             const b = document.getElementById('modal-extras-box');
             m.classList.add('opacity-0'); b.classList.add('scale-95');
             setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 200);
+            marcarMenuAdmin(); // vuelve a marcar en el menú la sección donde estaba
         }
         document.getElementById('btn-aviso-extras').addEventListener('click', abrirExtras);
         // ===================================== Resumen de alertas (Admin) =====================================
@@ -9341,6 +9358,12 @@
         // El menú muestra una sección a la vez (data-sec). Botones con data-ir="seccion" llevan a esa sección y, si
         // traen data-clic="id", además tocan ese botón (p. ej. "Agregar colaborador" abre su formulario). data-abrir
         // abre las ventanas de "Por revisar" y "Extras por aprobar".
+        // Marca en el menú la opción que coincide con el selector (o, sin selector, la de la sección visible).
+        function marcarMenuAdmin(selector) {
+            const sec = document.querySelector('.ad-sec.ad-activa')?.dataset.sec || 'inicio';
+            const sel = selector || `[data-sec="${sec}"]`;
+            document.querySelectorAll('#ad-menu .ad-item').forEach(b => b.classList.toggle('act', b.matches(sel)));
+        }
         function irSeccionAdmin(sec) {
             if (!document.querySelector(`.ad-sec[data-sec="${sec}"]`)) sec = 'inicio';
             document.querySelectorAll('.ad-sec').forEach(s => s.classList.toggle('ad-activa', s.dataset.sec === sec));
@@ -9352,6 +9375,9 @@
         document.getElementById('admin-panel-view').addEventListener('click', (e) => {
             const b = e.target.closest('button[data-sec], button[data-ir], button[data-abrir]');
             if (!b) return;
+            // "Por revisar" y "Extras por aprobar" abren una ventana: mientras esté abierta, su opción del menú queda marcada
+            // (antes se quedaba marcada la sección anterior y parecía que el clic no había funcionado).
+            if (b.dataset.abrir) marcarMenuAdmin(`[data-abrir="${b.dataset.abrir}"]`);
             if (b.dataset.abrir === 'revisar') return abrirPorRevisar();
             if (b.dataset.abrir === 'extras') return abrirExtras();
             irSeccionAdmin(b.dataset.sec || b.dataset.ir);
