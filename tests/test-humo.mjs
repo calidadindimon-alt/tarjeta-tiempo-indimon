@@ -156,6 +156,10 @@ try {
   ok('3c. Al tocar las extras se abre el detalle del mes', await page.isVisible('#hoja-extras') && /Extra diurna/.test(await page.textContent('#hoja-extras-tipo')));
   await page.click('#btn-hoja-extras-cerrar');
   await page.waitForTimeout(200);
+  // Al elegir otro mes en el historial, las extras de Mi Tarjeta siguen ese mes (antes se quedaban en el mes actual).
+  await page.evaluate(() => { const i = document.getElementById('historial-mes'); i.value = '2026-10'; i.dispatchEvent(new Event('change')); });
+  await page.waitForTimeout(1200);
+  ok('3f. Al elegir octubre en el historial, la tarjeta de extras muestra octubre', /octubre 2026/.test(await page.textContent('#mt-ext-mes')), await page.textContent('#mt-ext-mes'));
 
   for (const [tab, nombre] of [['tab-permisos', 'Permisos'], ['tab-desprendibles', 'Nómina']]) {
     await page.locator(`.nav-tab[data-target="${tab}"]:visible`).first().click();
