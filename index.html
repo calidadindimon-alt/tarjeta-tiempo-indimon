@@ -5450,6 +5450,9 @@
                 let selfieUrl = null;
                 // "No vuelvo hoy": el turno se cierra con la hora, el GPS y la foto de cuando salió a la cita o permiso.
                 const salidaSinRegreso = action === 'out' ? salidaPermisoAbierta(data) : null;
+                // Si la salida queda "por revisar" por estar fuera de la geocerca, el aviso al colaborador lo dice así
+                // (antes le mostraba el texto del turno demasiado largo, que no era cierto: sus horas sí se calculan).
+                let avisoFueraGeocerca = null;
                 if (action === 'in' || (action === 'out' && !salidaSinRegreso) || action === 'permiso_sale' || action === 'permiso_vuelve') {
                     // El GPS se empieza a pedir AQUÍ MISMO, en el instante en que el colaborador tocó
                     // el botón. BUG CORREGIDO: antes se pedía DESPUÉS de la selfie — pero al volver de
@@ -5632,6 +5635,7 @@
                             const radioAviso = (geocercaSalida || {}).radio || catalogosCache.radio_geocerca_metros || 500;
                             const notaGeocerca = `Fuera de la geocerca (${partes.join('; ')}). Radio permitido: ${radioAviso}m. Las horas sí se calcularon normalmente — verifica que el fichaje sea real antes de liquidar.`;
                             data.nota_revision = data.nota_revision ? `${data.nota_revision} | ${notaGeocerca}` : notaGeocerca;
+                            avisoFueraGeocerca = { obra: data.obra, salidaM: fueraSalida ? geocercaSalida.distanciaM : null, entradaM: fueraEntrada ? data.distancia_geocerca_entrada_m : null };
                         } else {
                             data.estado = 'completado';
                         }
@@ -5683,12 +5687,19 @@
                 } else if (action === 'permiso_vuelve') {
                     UI.showAlert("¡Bienvenido de vuelta!", `Volviste a las ${hora12MT(tTime)}. Tu turno sigue contando. RRHH ya fue avisado del permiso.`, "success");
                 } else if (action === 'out') {
-                    if (data.estado === 'requiere_revision_admin') {
+                    const distanciaLegible = (m) => m >= 1000 ? `${String(Number((m / 1000).toFixed(1))).replace('.', ',')} km` : `${Math.round(m)} m`;
+                    if (data.estado === 'requiere_revision_admin' && avisoFueraGeocerca) {
+                        const g = avisoFueraGeocerca;
+                        const donde = g.salidaM != null
+                            ? `Marcaste la salida a ${distanciaLegible(g.salidaM)} de ${g.obra || 'la obra'}`
+                            : `Marcaste la entrada a ${distanciaLegible(g.entradaM)} de ${g.obra || 'la obra'}`;
+                        UI.showAlert("📍 Marcaste lejos de la obra", `${donde}. Tu día quedó para revisión de Admin: tus horas ya se calcularon y se pagan cuando Admin lo apruebe.\n\nLa próxima vez marca la entrada y la salida en la obra, antes de irte. Cerrando sesión...`, "info");
+                    } else if (data.estado === 'requiere_revision_admin') {
                         UI.showAlert("Jornada Finalizada", "Este turno quedó marcado para revisión de Admin (quedó abierto demasiado tiempo), así que tus horas NO se calcularon automáticamente — Admin las revisará y corregirá. Tu hora de salida ya quedó guardada. Cerrando sesión...", "info");
                     } else {
                         UI.showAlert("Jornada Finalizada", "Tus horas de hoy han sido guardadas. Cerrando sesión...", "success");
                     }
-                    setTimeout(() => document.getElementById('btn-logout').click(), 3000);
+                    setTimeout(() => document.getElementById('btn-logout').click(), avisoFueraGeocerca ? 8000 : 3000);
                 }
             } catch (e) {
                 console.error(e);
