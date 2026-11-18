@@ -37,12 +37,19 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'permisos/p3'), { trabajador: 'Ana Prueba', trabajador_cedula: null, estado: 'aprobado' });
   await setDoc(doc(db, 'desprendibles/d1'), { trabajador_cedula: '111', estado: 'pendiente', enlace_documento: 'https://drive.google.com/x' });
   await setDoc(doc(db, 'catalogos/listas'), { obras: ['BODEGA'] });
+  // Supervisores: sup1 activo con BODEGA; sup2 desactivado.
+  await setDoc(doc(db, 'supervisores/sup1'), { nombre: 'SUPER UNO', correo: 'super1@indimon.com', obras: ['BODEGA'], activo: true, debe_cambiar_clave: true });
+  await setDoc(doc(db, 'supervisores/sup2'), { nombre: 'SUPER DOS', correo: 'super2@indimon.com', obras: ['BODEGA'], activo: false });
+  await setDoc(doc(db, 'empleados/111/registros/2026-10-21'), { fecha: '2026-10-21', obra: 'BODEGA', estado: 'completado', horas_ordinarias: 8.5, horas_extras_diurnas: 2, extras_estado: 'por_aprobar' });
+  await setDoc(doc(db, 'empleados/222/registros/2026-10-21'), { fecha: '2026-10-21', obra: 'PLANTA NORTE', estado: 'completado', horas_ordinarias: 8.5, horas_extras_diurnas: 1, extras_estado: 'por_aprobar' });
 });
 
 const anon = env.unauthenticatedContext().firestore();
 const ana = env.authenticatedContext('u111', { email: 'emp111@indimon-tiempo.app' }).firestore();
 const intruso = env.authenticatedContext('uX', { email: 'emp333@indimon-tiempo.app' }).firestore();
 const admin = env.authenticatedContext('adm1', { email: 'admin@indimon.com' }).firestore();
+const sup = env.authenticatedContext('sup1', { email: 'super1@indimon.com' }).firestore();
+const supOff = env.authenticatedContext('sup2', { email: 'super2@indimon.com' }).firestore();
 
 const resultados = [];
 const caso = async (grupo, nombre, esperado, fn) => {
@@ -198,6 +205,30 @@ await caso(P, 'NO usa ese permiso para crearle a Beto un día con ausencia', NO,
 await caso(P, 'NO usa ese permiso para cambiar el día que Beto SÍ trabajó', NO, () => updateDoc(doc(anon, reg('222', '2026-11-10')), { tipo_permiso: 'Ausencia injustificada', horas_permiso: 8, permiso_id: 'falso2' }));
 await caso(P, 'NO usa ese permiso para quitar la ausencia de Ana', NO, () => updateDoc(doc(anon, reg('111', '2026-11-04')), { tipo_permiso: 'Calamidad doméstica', horas_permiso: 8, permiso_id: 'falso2' }));
 await caso(A, 'sí pasa un permiso aprobado a nómina (Admin escribe en el día)', SI, () => updateDoc(doc(admin, reg('222', MANANA)), { tipo_permiso: 'Calamidad doméstica', horas_permiso: 2, permiso_id: 'falso2' }));
+
+// ---------- Supervisores ----------
+const S = 'Supervisor';
+const vb = (uid, estado = 'aprobada') => ({ extras_supervisor: { estado, uid, nombre: 'SUPER UNO', horas: 2, en: '2026-10-22T10:00:00Z' } });
+await caso(S, 'sí lee su propia ficha de supervisor', SI, () => getDoc(doc(sup, 'supervisores/sup1')));
+await caso(S, 'NO lee la ficha de otro supervisor', NO, () => getDoc(doc(sup, 'supervisores/sup2')));
+await caso(S, 'sí marca que ya cambió la clave inicial', SI, () => updateDoc(doc(sup, 'supervisores/sup1'), { debe_cambiar_clave: false, clave_cambiada_en: '2026-10-22' }));
+await caso(S, 'NO se asigna otra obra', NO, () => updateDoc(doc(sup, 'supervisores/sup1'), { obras: ['BODEGA', 'PLANTA NORTE'] }));
+await caso(S, 'NO se crea como supervisor', NO, () => setDoc(doc(intruso, 'supervisores/uX'), { nombre: 'X', obras: ['BODEGA'], activo: true }));
+await caso(S, 'sí consulta los registros de SU obra (collectionGroup por obra)', SI, () => getDocs(query(collectionGroup(sup, 'registros'), where('obra', '==', 'BODEGA'))));
+await caso(S, 'NO consulta los registros de otra obra', NO, () => getDocs(query(collectionGroup(sup, 'registros'), where('obra', '==', 'PLANTA NORTE'))));
+await caso(S, 'NO consulta los registros de todos', NO, () => getDocs(collectionGroup(sup, 'registros')));
+await caso(S, 'sí abre un día de su obra', SI, () => getDoc(doc(sup, 'empleados/111/registros/2026-10-21')));
+await caso(S, 'NO abre un día de otra obra', NO, () => getDoc(doc(sup, 'empleados/222/registros/2026-10-21')));
+await caso(S, 'NO lee fichas con sueldo', NO, () => getDoc(doc(sup, 'empleados/111')));
+await caso(S, 'sí da su visto bueno a las extras de su obra', SI, () => updateDoc(doc(sup, 'empleados/111/registros/2026-10-21'), vb('sup1')));
+await caso(S, 'NO aprueba para pago (extras_estado es de RRHH)', NO, () => updateDoc(doc(sup, 'empleados/111/registros/2026-10-21'), { extras_estado: 'aprobada' }));
+await caso(S, 'NO cambia las horas', NO, () => updateDoc(doc(sup, 'empleados/111/registros/2026-10-21'), { horas_extras_diurnas: 5 }));
+await caso(S, 'NO firma a nombre de otro supervisor', NO, () => updateDoc(doc(sup, 'empleados/111/registros/2026-10-21'), vb('otro')));
+await caso(S, 'NO da visto bueno en otra obra', NO, () => updateDoc(doc(sup, 'empleados/222/registros/2026-10-21'), vb('sup1')));
+await caso(S, 'desactivado: NO lee su obra', NO, () => getDocs(query(collectionGroup(supOff, 'registros'), where('obra', '==', 'BODEGA'))));
+await caso(S, 'desactivado: NO da visto bueno', NO, () => updateDoc(doc(supOff, 'empleados/111/registros/2026-10-21'), { extras_supervisor: { estado: 'aprobada', uid: 'sup2' } }));
+await caso(A, 'sí crea un supervisor y le cambia la obra', SI, async () => { await setDoc(doc(admin, 'supervisores/sup3'), { nombre: 'TRES', obras: ['BODEGA'], activo: true }); await updateDoc(doc(admin, 'supervisores/sup3'), { obras: ['PLANTA NORTE'] }); });
+await caso(C, 'NO se pone el visto bueno del supervisor en su propio día', NO, () => updateDoc(doc(ana, 'empleados/111/registros/2026-10-21'), vb('u111')));
 
 await env.cleanup();
 const ok = resultados.filter(Boolean).length;

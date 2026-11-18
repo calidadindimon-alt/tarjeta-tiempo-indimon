@@ -178,7 +178,7 @@ service cloud.firestore {
     // Datos que solo pone Admin (o la sincronización de un permiso aprobado, que tiene su propia rama más abajo).
     function camposDeAdminSinCambio() {
       return sinCambio('entrada_temprana_autorizada') && sinCambio('permiso_id') && sinCambio('dias_vacaciones_permiso') &&
-             sinCambio('revision_aprobada_por') && sinCambio('revision_aprobada_en');
+             sinCambio('revision_aprobada_por') && sinCambio('revision_aprobada_en') && sinCambio('extras_supervisor');
     }
     function permisoDelDiaSinCambio() {
       return sinCambio('tipo_permiso') && sinCambio('horas_permiso') && sinCambio('nota_permiso');
@@ -210,6 +210,18 @@ service cloud.firestore {
         'horas_ordinarias', 'horas_extras_diurnas', 'horas_extras_nocturnas', 'horas_recargo_nocturno',
         'es_dominical_festivo', 'horas_dominicales', 'minutos_tarde', 'horas_descuento_tardanza',
         'horas_permiso_turno', 'extras_estado']);
+    }
+
+    // SUPERVISORES (nov-2026): Admin los crea en la sección Supervisores y les asigna obras. Un supervisor activo solo lee
+    // los registros de SUS obras (sin sueldos: las fichas de empleados siguen siendo de Admin) y solo escribe su visto
+    // bueno de las horas extra (extras_supervisor). La aprobación para el pago la sigue dando RRHH (extras_estado).
+    function supervisorActivo() {
+      return request.auth != null && exists(/databases/$(database)/documents/supervisores/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/supervisores/$(request.auth.uid)).data.get('activo', false) == true;
+    }
+    function esSupervisorDeObra(obra) {
+      return supervisorActivo() && obra is string &&
+             obra in get(/databases/$(database)/documents/supervisores/$(request.auth.uid)).data.get('obras', []);
     }
 
     // PRIVACIDAD (30/10): ¿quien pregunta es el colaborador dueño de esta cédula? Igual que en las escrituras, se
@@ -294,7 +306,7 @@ service cloud.firestore {
     // PRIVACIDAD (30/10): esta consulta trae los registros de TODOS (horas, GPS, selfies): solo Admin. Mi Tarjeta lee
     // los suyos por la ruta normal (más abajo), nunca con esta consulta.
     match /{path=**}/registros/{fecha} {
-      allow read: if esAdmin();
+      allow read: if esAdmin() || esSupervisorDeObra(resource.data.obra);
       allow write: if false;
     }
 
@@ -303,6 +315,19 @@ service cloud.firestore {
     // (necesario para el propio chequeo de esAdmin()). Nadie puede crear admins
     // desde la app — eso se hace a mano desde la consola de Firebase.
     // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // SUPERVISORES: ficha de cada supervisor (nombre, correo, obras asignadas). Solo Admin la crea y la cambia; el
+    // supervisor lee la suya y, la primera vez, marca que ya cambió la clave inicial (su cédula).
+    // -------------------------------------------------------------------------
+    match /supervisores/{uid} {
+      allow read: if esAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow create, delete: if esAdmin();
+      allow update: if esAdmin() ||
+        (request.auth != null && request.auth.uid == uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['debe_cambiar_clave', 'clave_cambiada_en']) &&
+         request.resource.data.debe_cambiar_clave == false);
+    }
+
     match /admins/{uid} {
       allow read: if request.auth != null;
       allow write: if false;
@@ -358,6 +383,8 @@ service cloud.firestore {
            .hasOnly(['sueldo_base', 'tarifa_hora']));
 
       match /registros/{fecha} {
+        // Supervisor: lee los días de sus obras (Consolidado y Extras de su obra).
+        allow get: if esSupervisorDeObra(resource.data.obra);
         // PRIVACIDAD (30/10): horas, ubicación GPS y selfies: solo Admin o el dueño.
         allow read: if esAdmin() || esDuenoDe(cedula);
 
@@ -412,6 +439,11 @@ service cloud.firestore {
            fechaCercanaAHoy(fecha) && permisoDelDiaSinCambio());
 
         allow update: if esAdmin() ||
+          // Supervisor de esa obra: solo su visto bueno de las horas extra, firmado con su propia cuenta.
+          (esSupervisorDeObra(resource.data.obra) &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['extras_supervisor']) &&
+           request.resource.data.extras_supervisor.uid == request.auth.uid &&
+           request.resource.data.extras_supervisor.estado in ['aprobada', 'no_autorizada']) ||
           // "Entendido" en la decisión de RRHH sobre un permiso: solo ese campo, en cualquier día.
           (esColaboradorActivoAutenticado(cedula) &&
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['decisiones_vistas'])) ||

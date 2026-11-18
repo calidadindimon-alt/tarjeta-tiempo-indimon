@@ -30,12 +30,14 @@ await new Promise(r => servidor.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${servidor.address().port}`;
 
 // ---------- Firebase y EmailJS simulados (en memoria) ----------
-const STUB_APP = `export const initializeApp = () => ({});`;
+const STUB_APP = `export const initializeApp = () => ({}); export const deleteApp = async () => {};`;
 const STUB_AUTH = `
 export const getAuth = () => ({ get currentUser() { return window.__AUTH_USER__ || null; } });
 export const createUserWithEmailAndPassword = async () => { throw new Error('simulado'); };
 export const signInWithEmailAndPassword = async (a, email) => { window.__AUTH_USER__ = { email, uid: email.startsWith('admin') ? 'adm1' : 'u1' }; return { user: window.__AUTH_USER__ }; };
 export const signOut = async () => { window.__AUTH_USER__ = null; };
+export const updatePassword = async () => {};
+export const sendPasswordResetEmail = async () => {};
 export const onAuthStateChanged = (a, cb) => { setTimeout(() => cb(null), 0); return () => {}; };`;
 const STUB_FS = `
 const DB = () => (window.__DB__ = window.__DB__ || {});
