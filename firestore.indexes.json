@@ -5,6 +5,20 @@
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         {
+          "fieldPath": "fecha",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "cedula",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
           "fieldPath": "obra",
           "order": "ASCENDING"
         },
@@ -19,6 +33,7 @@
     {
       "collectionGroup": "registros",
       "fieldPath": "estado",
+      "ttl": false,
       "indexes": [
         {
           "order": "ASCENDING",
@@ -41,6 +56,7 @@
     {
       "collectionGroup": "registros",
       "fieldPath": "extras_estado",
+      "ttl": false,
       "indexes": [
         {
           "order": "ASCENDING",
@@ -56,6 +72,33 @@
         },
         {
           "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "fieldPath": "fecha",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        },
+        {
+          "order": "DESCENDING",
           "queryScope": "COLLECTION_GROUP"
         }
       ]
