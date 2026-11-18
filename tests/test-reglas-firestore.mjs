@@ -11,7 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, setDoc, updateDoc, collection, collectionGroup, query, where } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, collection, collectionGroup, query, where, writeBatch, arrayUnion } from 'firebase/firestore';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080').split(':');
@@ -227,6 +227,19 @@ await caso(S, 'NO firma a nombre de otro supervisor', NO, () => updateDoc(doc(su
 await caso(S, 'NO da visto bueno en otra obra', NO, () => updateDoc(doc(sup, 'empleados/222/registros/2026-10-21'), vb('sup1')));
 await caso(S, 'desactivado: NO lee su obra', NO, () => getDocs(query(collectionGroup(supOff, 'registros'), where('obra', '==', 'BODEGA'))));
 await caso(S, 'desactivado: NO da visto bueno', NO, () => updateDoc(doc(supOff, 'empleados/111/registros/2026-10-21'), { extras_supervisor: { estado: 'aprobada', uid: 'sup2' } }));
+// Supervisor crea obra y pone geocercas (nov-2026)
+const crearObraSup = (ctx, uid, obraCatalogo, obraPropia) => { const b = writeBatch(ctx); b.update(doc(ctx, 'catalogos/listas'), { obras: arrayUnion(obraCatalogo) }); b.update(doc(ctx, `supervisores/${uid}`), { obras: arrayUnion(obraPropia) }); return b.commit(); };
+await caso(S, 'NO agrega una obra al catálogo sin quedar asignado', NO, () => updateDoc(doc(sup, 'catalogos/listas'), { obras: arrayUnion('OBRA SUELTA') }));
+await caso(S, 'NO crea una obra y se asigna otra que ya existía', NO, () => crearObraSup(sup, 'sup1', 'OBRA X', 'PLANTA NORTE'));
+await caso(S, 'sí crea una obra nueva y queda asignado a ella', SI, () => crearObraSup(sup, 'sup1', 'OBRA SUP', 'OBRA SUP'));
+await caso(S, 'NO agrega dos obras de una vez', NO, () => { const b = writeBatch(sup); b.update(doc(sup, 'catalogos/listas'), { obras: arrayUnion('O1', 'O2') }); b.update(doc(sup, 'supervisores/sup1'), { obras: arrayUnion('O1', 'O2') }); return b.commit(); });
+await caso(S, 'NO borra obras del catálogo', NO, () => updateDoc(doc(sup, 'catalogos/listas'), { obras: ['BODEGA'] }));
+await caso(S, 'sí pone la geocerca de su obra', SI, () => updateDoc(doc(sup, 'catalogos/listas'), { 'geocercas_obra.BODEGA': { lat: 4.6, lng: -74.1 } }));
+await caso(S, 'sí cambia la geocerca de su obra nueva', SI, () => updateDoc(doc(sup, 'catalogos/listas'), { 'geocercas_obra.OBRA SUP': { lat: 4.7, lng: -74.0 } }));
+await caso(S, 'NO pone la geocerca de otra obra', NO, () => updateDoc(doc(sup, 'catalogos/listas'), { 'geocercas_obra.PLANTA NORTE': { lat: 4.6, lng: -74.1 } }));
+await caso(S, 'NO cambia otros ajustes del catálogo', NO, () => updateDoc(doc(sup, 'catalogos/listas'), { email_rrhh: 'yo@x.com' }));
+await caso(S, 'desactivado: NO pone geocercas', NO, () => updateDoc(doc(supOff, 'catalogos/listas'), { 'geocercas_obra.BODEGA': { lat: 1, lng: 1 } }));
+await caso(C, 'colaborador: NO pone geocercas', NO, () => updateDoc(doc(ana, 'catalogos/listas'), { 'geocercas_obra.BODEGA': { lat: 1, lng: 1 } }));
 await caso(A, 'sí crea un supervisor y le cambia la obra', SI, async () => { await setDoc(doc(admin, 'supervisores/sup3'), { nombre: 'TRES', obras: ['BODEGA'], activo: true }); await updateDoc(doc(admin, 'supervisores/sup3'), { obras: ['PLANTA NORTE'] }); });
 await caso(C, 'NO se pone el visto bueno del supervisor en su propio día', NO, () => updateDoc(doc(ana, 'empleados/111/registros/2026-10-21'), vb('u111')));
 

@@ -797,6 +797,7 @@
                     <button type="button" data-vista="extras" class="sup-tab flex-1 py-2.5 rounded-lg text-xs font-bold bg-white shadow-sm text-slate-800">Extras</button>
                     <button type="button" data-vista="hoy" class="sup-tab flex-1 py-2.5 rounded-lg text-xs font-bold text-slate-500">Hoy</button>
                     <button type="button" data-vista="dias" class="sup-tab flex-1 py-2.5 rounded-lg text-xs font-bold text-slate-500">Días</button>
+                    <button type="button" data-vista="obras" class="sup-tab flex-1 py-2.5 rounded-lg text-xs font-bold text-slate-500">Obras</button>
                 </div>
                 <div id="sup-contenido" class="flex flex-col gap-3"></div>
                 <button id="btn-sup-salir" type="button" class="btn-touch w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
@@ -6776,6 +6777,16 @@
                     html += tarjeta(`<p class="font-bold text-slate-800 mb-1 flex items-center gap-2"><i class="ph-fill ph-buildings text-blue-600"></i>${escapeHtml(obra)} <span class="font-normal text-slate-500 text-xs">· ${rs.length} persona${rs.length === 1 ? '' : 's'}</span></p>${rs.length ? rs.map(fila).join('') : '<p class="text-xs text-slate-400">Nadie ha marcado hoy.</p>'}`);
                 });
                 if (abiertos.length) html += tarjeta(`<p class="font-bold text-slate-800 mb-1">Turnos de días anteriores sin cerrar</p>${abiertos.map(r => `<p class="text-[11px] text-slate-600 py-1">${nombre(r)} · ${escapeHtml(diaCortoEs(r.fecha || r.id))} · entró ${escapeHtml(r.entrada || '—')} · ${escapeHtml(r.obra || '')}</p>`).join('')}<p class="text-[10px] text-slate-400 mt-1">Recuérdales cerrar el turno o avísale a SSTA.</p>`);
+            } else if (supVista === 'obras') {
+                html += `<p class="text-xs text-slate-500 px-1">La geocerca es el punto de la obra: si alguien marca lejos de ahí, el día queda para revisión. Ponla <b>parado en la obra</b>, a cielo abierto.</p>`;
+                (supPerfil.obras || []).slice().sort().forEach(obra => {
+                    const g = getGeocercaObra(obra);
+                    html += tarjeta(`<div class="flex flex-wrap items-center justify-between gap-2"><div class="min-w-0"><p class="font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-buildings text-blue-600"></i>${escapeHtml(obra)}</p>
+                        <p class="text-[11px] mt-0.5 ${g ? 'text-emerald-700' : 'text-amber-700'}">${g ? '✔ Tiene geocerca' : '⚠ Sin geocerca: no se revisa dónde marcan'}</p></div>
+                        <button type="button" class="btn-sup-geocerca btn-touch bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold" data-obra="${escapeHtml(obra)}"><i class="ph-bold ph-map-pin"></i> ${g ? 'Cambiar geocerca' : 'Poner geocerca aquí'}</button></div>`);
+                });
+                html += `<button type="button" id="btn-sup-crear-obra" class="btn-touch w-full bg-white border-2 border-dashed border-blue-300 text-blue-700 font-bold py-3 rounded-xl text-sm"><i class="ph-bold ph-plus"></i> Crear obra nueva</button>
+                    <p class="text-[10px] text-slate-400 px-1">La obra nueva queda asignada a ti. Usa el horario normal (L-J 7:30–17:00, V 7:30–16:30); si es distinto, avísale a SSTA.</p>`;
             } else {
                 html += `<p class="text-xs text-slate-500 px-1">Los últimos 14 días de tus obras.</p>`;
                 const fechas = [...new Set(todos.map(r => r.fecha || r.id))].sort().reverse().slice(0, 14);
@@ -6812,11 +6823,70 @@
             }
         }
 
+
+        // Supervisor (nov-2026): crear una obra (queda asignada a él) y poner la geocerca de sus obras con el GPS del celular.
+        // Las reglas solo le dejan agregar UNA obra a la vez y cambiar geocercas de sus propias obras.
+        // showConfirm cierra su ventana 200 ms después de tocar el botón: si otra confirmación se abre antes, ese cierre
+        // la ocultaría. Por eso las confirmaciones que siguen a otra se abren un momento después.
+        const confirmarDespues = (...args) => setTimeout(() => UI.showConfirm(...args), 260);
+        function supFijarGeocerca(obra) {
+            if (!navigator.geolocation) return UI.showAlert('Sin GPS', 'Este navegador no puede obtener tu ubicación.', 'error');
+            UI.showConfirm('Poner geocerca aquí', `El centro de la geocerca de "${obra}" va a quedar donde estás ahora. Hazlo parado en la obra, a cielo abierto.`, () => {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const exactitud = Math.round(pos.coords.accuracy || 0);
+                    const guardar = async () => {
+                        try {
+                            await updateDoc(doc(db, 'catalogos', 'listas'), { [`geocercas_obra.${obra}`]: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+                            await cargarCatalogos();
+                            registrarAuditoria('Geocerca de obra (supervisor)', `${obra}: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (±${exactitud} m) por ${supPerfil?.nombre || ''}`);
+                            renderSupervisor();
+                            UI.showAlert('Geocerca guardada', `Listo. Si alguien marca a más de ${catalogosCache.radio_geocerca_metros || 500} m de aquí, el día de "${obra}" queda para revisión.`, 'success');
+                        } catch (e) {
+                            console.error(e);
+                            UI.showAlert('Error', 'No se pudo guardar la geocerca.', 'error');
+                        }
+                    };
+                    if (exactitud > 100) {
+                        return confirmarDespues('Señal GPS imprecisa', `Tu ubicación tiene un margen de error de ~${exactitud} m. Sal a cielo abierto y vuelve a intentarlo. ¿Guardarla de todas formas?`, guardar, { texto: 'Guardar igual' });
+                    }
+                    guardar();
+                }, () => UI.showAlert('No se pudo obtener tu ubicación', 'Revisa que el navegador tenga permiso de ubicación y que el GPS esté prendido.', 'error'),
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+            }, { texto: 'Usar mi ubicación' });
+        }
+        async function supCrearObra() {
+            const valor = await UI.showPrompt('Crear obra nueva', 'Escribe el nombre de la obra, como la van a elegir los colaboradores al marcar.', 'Ej: PLANTA SUR');
+            const obra = (valor || '').trim().toUpperCase().replace(/\s+/g, ' ');
+            if (!obra) return;
+            if (obra.length > 60 || /[.\/\[\]*`~]/.test(obra)) return UI.showAlert('Nombre no válido', 'Usa un nombre corto, sin puntos ni barras.', 'error');
+            await cargarCatalogos().catch(() => {});
+            if ((catalogosCache.obras || []).some(o => mismaObra(o, obra))) {
+                return UI.showAlert('Esa obra ya existe', `"${obra}" ya está en la lista. Si te enviaron a esa obra, pídele a SSTA que te la asigne.`, 'error');
+            }
+            try {
+                const b = writeBatch(db);
+                b.update(doc(db, 'catalogos', 'listas'), { obras: arrayUnion(obra) });
+                b.update(doc(db, 'supervisores', auth.currentUser.uid), { obras: arrayUnion(obra) });
+                await b.commit();
+                supPerfil.obras = [...(supPerfil.obras || []), obra];
+                document.getElementById('sup-obras').textContent = `Obra${supPerfil.obras.length === 1 ? '' : 's'}: ${supPerfil.obras.join(' · ')}`;
+                await cargarCatalogos();
+                registrarAuditoria('Crear obra (supervisor)', `${obra} por ${supPerfil.nombre || ''}`);
+                escucharObrasSupervisor();
+                renderSupervisor();
+                UI.showConfirm('Obra creada', `"${obra}" ya aparece para que los colaboradores la elijan. ¿Quieres poner su geocerca ahora? Hazlo parado en la obra.`, () => setTimeout(() => supFijarGeocerca(obra), 260), { texto: 'Poner geocerca' });
+            } catch (e) {
+                console.error(e);
+                UI.showAlert('Error', 'No se pudo crear la obra.', 'error');
+            }
+        }
         document.getElementById('sup-tabs').addEventListener('click', (e) => {
             const b = e.target.closest('.sup-tab'); if (!b) return;
             supVista = b.dataset.vista; renderSupervisor();
         });
         document.getElementById('sup-contenido').addEventListener('click', (e) => {
+            const g = e.target.closest('.btn-sup-geocerca'); if (g) return supFijarGeocerca(g.dataset.obra);
+            if (e.target.closest('#btn-sup-crear-obra')) return supCrearObra();
             const b = e.target.closest('.btn-sup-vb, .btn-sup-no'); if (!b) return;
             const rutas = (b.dataset.rutas || '').split(',').filter(Boolean);
             const estado = b.classList.contains('btn-sup-vb') ? 'aprobada' : 'no_autorizada';

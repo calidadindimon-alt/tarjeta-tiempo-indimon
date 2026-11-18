@@ -325,7 +325,17 @@ service cloud.firestore {
       allow update: if esAdmin() ||
         (request.auth != null && request.auth.uid == uid &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['debe_cambiar_clave', 'clave_cambiada_en']) &&
-         request.resource.data.debe_cambiar_clave == false);
+         request.resource.data.debe_cambiar_clave == false) ||
+        // Supervisor que crea una obra nueva: se la asigna a sí mismo en el mismo lote. Solo puede sumar UNA obra, y debe
+        // ser exactamente la que se agregó al catálogo en ese lote (así no puede asignarse obras que ya existían).
+        (supervisorActivo() && request.auth.uid == uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obras']) &&
+         request.resource.data.obras is list &&
+         request.resource.data.obras.size() == resource.data.get('obras', []).size() + 1 &&
+         request.resource.data.obras.hasAll(resource.data.get('obras', [])) &&
+         request.resource.data.obras.toSet().difference(resource.data.get('obras', []).toSet()) ==
+           getAfter(/databases/$(database)/documents/catalogos/listas).data.obras.toSet().difference(
+             get(/databases/$(database)/documents/catalogos/listas).data.obras.toSet()));
     }
 
     match /admins/{uid} {
@@ -492,6 +502,22 @@ service cloud.firestore {
     match /catalogos/{doc} {
       allow read: if true;
       allow write: if esAdmin();
+      // Supervisor (nov-2026): en catalogos/listas solo puede (a) agregar UNA obra nueva a la lista, que en el mismo
+      // lote queda asignada a él (ver supervisores/{uid}), y (b) poner o cambiar la geocerca de sus propias obras.
+      allow update: if doc == 'listas' && supervisorActivo() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obras', 'geocercas_obra']) &&
+        (!('obras' in request.resource.data.diff(resource.data).affectedKeys()) ||
+          (request.resource.data.obras is list &&
+           request.resource.data.obras.size() == resource.data.obras.size() + 1 &&
+           request.resource.data.obras.hasAll(resource.data.obras) &&
+           getAfter(/databases/$(database)/documents/supervisores/$(request.auth.uid)).data.obras.toSet().hasAll(
+             request.resource.data.obras.toSet().difference(resource.data.obras.toSet())))) &&
+        (!('geocercas_obra' in request.resource.data.diff(resource.data).affectedKeys()) ||
+          (request.resource.data.geocercas_obra is map &&
+           request.resource.data.geocercas_obra.diff(resource.data.get('geocercas_obra', {})).removedKeys().size() == 0 &&
+           request.resource.data.geocercas_obra.diff(resource.data.get('geocercas_obra', {})).changedKeys()
+             .union(request.resource.data.geocercas_obra.diff(resource.data.get('geocercas_obra', {})).addedKeys())
+             .hasOnly(getAfter(/databases/$(database)/documents/supervisores/$(request.auth.uid)).data.obras)));
     }
 
     // -------------------------------------------------------------------------
