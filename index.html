@@ -10532,7 +10532,12 @@
                     </td>
                     <td class="p-2 border-b border-slate-100 text-center text-xs">
                         ${r.estado === 'completado' ?
-                            `<span class="font-bold text-slate-700">${Number(r.horas_ordinarias) || 0}h Ord.</span>
+                            // En domingo o festivo las horas "ordinarias" del día son horas de festivo (se pagan al 100 % + recargo,
+                            // ver horas_dominicales): decir "Ord." hacía pensar que el festivo no se había tenido en cuenta.
+                            (r.es_dominical_festivo
+                                ? `<span class="font-bold text-rose-700" title="Trabajo en domingo o festivo: estas horas se pagan al 100 % más el recargo dominical/festivo. Solo lo que pasa de la jornada del día es hora extra.">${Number(r.horas_ordinarias) || 0}h festivo</span>`
+                                : `<span class="font-bold text-slate-700">${Number(r.horas_ordinarias) || 0}h Ord.</span>`) +
+                            `
                              <span class="text-[10px] text-amber-700">+${Number(r.horas_extras_diurnas) || 0}ED</span>
                              <span class="text-[10px] text-indigo-700">+${Number(r.horas_extras_nocturnas) || 0}EN</span>
                              <span class="text-[10px] text-violet-700">+${Number(r.horas_recargo_nocturno) || 0}RN</span>
