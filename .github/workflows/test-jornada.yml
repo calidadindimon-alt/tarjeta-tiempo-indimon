@@ -77,6 +77,9 @@ jobs:
       - name: Probar el Excel de permisos (formatos oficiales GH-F-011 y GH-F-012) y el PDF de la constancia
         run: node tests/test-permisos-formatos.mjs
 
+      - name: Probar la hoja "Tarjeta de Tiempo" del Excel del Consolidado (una por colaborador, fórmulas y novedades)
+        run: node tests/test-excel-tarjeta.mjs
+
       - name: Verificar que el CSS de Tailwind embebido en index.html no tenga clases faltantes
         run: node scripts/regenerar-tailwind.mjs --check
 

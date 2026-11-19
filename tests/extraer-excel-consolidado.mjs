@@ -30,3 +30,21 @@ export function extraerExcelConsolidado(fuente) {
 
   return cuerpo;
 }
+
+// Hoja "Tarjeta de Tiempo" por colaborador (nov-2026): las funciones que arman el libro completo con ExcelJS.
+// getTodayStr se reemplaza por una fecha fija para que la prueba no dependa del día en que corre.
+export function extraerTarjetaTiempo(fuente, hoy = '2026-11-19') {
+  const piezas = [
+    extraerExcelConsolidado(fuente).replace(/\nmodule\.exports = .*$/s, ''),
+    `const getTodayStr = () => '${hoy}';`,
+    bloqueBalanceado(fuente, 'function timeStrToFloat(t) {'),
+    bloqueBalanceado(fuente, 'function duracionHorasEntre(desde, hasta) {'),
+    bloqueBalanceado(fuente, 'function horasDeSalidaPermiso(r, i) {'),
+    hastaPuntoYComa(fuente, 'const DIAS_SEMANA_ES = ['),
+    bloqueBalanceado(fuente, 'function datosTarjetaColaborador(rows) {'),
+    bloqueBalanceado(fuente, 'function agregarHojaTarjeta(wb, datos, nombreHoja, filtroDescripcion) {'),
+    bloqueBalanceado(fuente, 'function nombreHojaTarjeta(base, usados) {'),
+    bloqueBalanceado(fuente, 'function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion) {'),
+  ];
+  return [...piezas, 'module.exports = { datosTarjetaColaborador, construirLibroConsolidado, nombreHojaTarjeta };'].join('\n\n');
+}
