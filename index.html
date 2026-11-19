@@ -8546,9 +8546,13 @@
         document.getElementById('btn-save-manual').addEventListener('click', async () => {
             const fecha = document.getElementById('manual-fecha').value;
             const cedula = document.getElementById('manual-empleado').value;
-            const cliente = document.getElementById('manual-cliente').value.trim();
-            const obra = document.getElementById('manual-obra').value.trim();
-            const autoriza = document.getElementById('manual-autoriza').value.trim();
+            // BUG CORREGIDO (nov-2026): aquí se guardaba lo que Admin escribiera ("Mayekawa", "Ecla-Yumbo"), mientras que la
+            // lista de obras y la app del colaborador usan MAYÚSCULA. Así la misma obra quedaba escrita de dos formas, y el
+            // supervisor de "ECLA-YUMBO" no veía el día guardado como "Ecla-Yumbo" (su consulta compara el texto exacto).
+            const enMayuscula = (id) => document.getElementById(id).value.trim().replace(/\s+/g, ' ').toUpperCase();
+            const cliente = enMayuscula('manual-cliente');
+            const obra = enMayuscula('manual-obra');
+            const autoriza = enMayuscula('manual-autoriza');
             const entrada = document.getElementById('manual-entrada').value;
             const salida = document.getElementById('manual-salida').value;
             const almuerzoOmitido = document.getElementById('manual-almuerzo-omitido').checked;
@@ -11188,7 +11192,9 @@
                 const r = R0 + i;
                 const fecha = d[2] || '';
                 const obs = [d[21], d[25], d[22], d[17] && d[17] !== 'COMPLETADO' ? `Estado: ${d[17]}` : ''].filter(Boolean).join(' | ');
-                const valores = [fechaExcel(fecha), fecha ? DIAS_SEMANA_ES[new Date(fecha + 'T12:00:00').getDay()] : '', d[3], d[4], d[5],
+                // Cliente y obra siempre en mayúscula: hay días guardados como "Mayekawa" y otros como "MAYEKAWA".
+                const mayus = (t) => String(t || '').trim().replace(/\s+/g, ' ').toUpperCase();
+                const valores = [fechaExcel(fecha), fecha ? DIAS_SEMANA_ES[new Date(fecha + 'T12:00:00').getDay()] : '', d[3], mayus(d[4]), mayus(d[5]),
                     horaExcel(d[7]), horaExcel(d[8]), horaExcel(d[9]), horaExcel(d[10]), d[18],
                     d[11], d[12], d[13], d[14], d[15], `=L${r}+M${r}`, d[24] || '', d[23] || '', d[16], d[20], `=IF(T${r}="SI",0,S${r})`, obs];
                 valores.forEach((v, j) => {
