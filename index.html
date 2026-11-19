@@ -11071,57 +11071,8 @@
             });
         }
 
-        function armarHojaConsolidado(rows, filtroDescripcion) {
-            const aoa = [];
-            const merges = [];
-            const agregarTitulo = (texto, anchoColumnas) => {
-                aoa.push([texto]);
-                merges.push({ s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: anchoColumnas - 1 } });
-            };
-
-            const ANCHO_TABLA_DETALLE = 26;
-
-            aoa.push(['TARJETA DE TIEMPO INDIMON — Consolidado de Nómina']);
-            merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: ANCHO_TABLA_DETALLE - 1 } });
-            aoa.push([`Filtro: ${filtroDescripcion}`, '', '', '', `Generado: ${getTodayStr()}`]);
-            aoa.push([]);
-
-            agregarTitulo('DETALLE DE HORAS Y EXTRAS (día por día)', ANCHO_TABLA_DETALLE);
-            aoa.push(['CEDULA', 'NOMBRE', 'FECHA', 'DOM/FEST', 'CLIENTE', 'OBRA', 'AUTORIZA', 'ENTRADA', 'ALM. INICIO', 'ALM. FIN', 'SALIDA', 'HORAS ORDINARIAS', 'EXTRAS DIURNAS', 'EXTRAS NOCTURNAS', 'RECARGO NOCTURNO', 'HORAS DOMINICALES', 'MINUTOS TARDE', 'ESTADO', 'ALMUERZO OMITIDO', 'AUTORIZA ALM. OMITIDO', 'TARDANZA JUSTIFICADA', 'MOTIVO JUSTIFICACION', 'NOTA REVISION', 'EXTRAS: AUTORIZO', 'EXTRAS: ESTADO', 'EXTRAS: MOTIVO']);
-            const filasDetalle = construirFilasDetalleHoras(rows);
-            (filasDetalle.length > 0 ? filasDetalle : [['(sin días trabajados en este filtro)']]).forEach(f => aoa.push(f));
-            aoa.push([]);
-            aoa.push([]);
-
-            agregarTitulo('PERMISOS (incapacidades, citas médicas, vacaciones, etc.)', 6);
-            aoa.push(['CEDULA', 'NOMBRE', 'FECHA', 'TIPO', 'CANTIDAD', 'NOTA']);
-            const filasPermisos = construirFilasPermisos(rows);
-            (filasPermisos.length > 0 ? filasPermisos : [['(sin permisos en este filtro)']]).forEach(f => aoa.push(f));
-            aoa.push([]);
-            aoa.push([]);
-
-            agregarTitulo('AUSENCIAS (descuento del descanso dominical remunerado — Art. 173 CST)', 6);
-            aoa.push(['CEDULA', 'NOMBRE', 'FECHA', 'TIPO', 'DIAS DESCONTADOS ESA SEMANA', 'NOTA']);
-            const filasAusencias = construirFilasAusencias(rows);
-            (filasAusencias.length > 0 ? filasAusencias : [['(sin ausencias en este filtro)']]).forEach(f => aoa.push(f));
-
-            const ws = { '!merges': merges };
-            // Las columnas A-F son compartidas por las 3 tablas (cada una las usa para cosas distintas
-            // -p.ej. la columna E es CLIENTE en la tabla 1 y CANTIDAD/DIAS DESCONTADOS en las tablas 2 y
-            // 3-), así que van más anchas de lo que la tabla 1 necesitaría sola, para que el texto largo
-            // de permisos/ausencias no quede apretado. El resto (G en adelante) solo lo usa la tabla 1.
-            ws['!cols'] = [
-                { wch: 16 }, { wch: 28 }, { wch: 13 }, { wch: 22 }, { wch: 40 }, { wch: 30 },
-                { wch: 16 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
-                { wch: 16 }, { wch: 15 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 14 },
-                { wch: 26 }, { wch: 16 }, { wch: 20 }, { wch: 18 }, { wch: 26 }, { wch: 26 },
-                { wch: 16 }, { wch: 22 }, { wch: 30 }
-            ];
-            return { aoa, merges, cols: ws['!cols'] };
-        }
-
-        // Desde nov-2026 el Excel se arma con ExcelJS (antes SheetJS) para poder agregar la hoja "Tarjeta de Tiempo"
-        // con colores, fórmulas y firmas. La hoja "Consolidado" sale con las mismas tablas de siempre.
+        // Desde nov-2026 el Excel se arma con ExcelJS (antes SheetJS): una hoja "Tarjeta de Tiempo" por colaborador,
+        // con colores, fórmulas y firmas (ver construirLibroConsolidado).
         async function descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion) {
             const ExcelJS = await cargarExcelJS();
             const wb = construirLibroConsolidado(ExcelJS, rows, filtroDescripcion);
@@ -11165,6 +11116,8 @@
                 nombre: primero.empleado_nombre || '', cedula: primero.cedula || '',
                 desde: fechas[0] || '', hasta: fechas[fechas.length - 1] || '',
                 dias,
+                // Detalle de cada permiso, salida dentro del turno y ausencia (fecha, tipo, cantidad, nota o decisión de RRHH).
+                detallePermisos: [...construirFilasPermisos(rows), ...construirFilasAusencias(rows)].sort((a, b) => (a[2] || '').localeCompare(b[2] || '')),
                 novedades: {
                     permisosHoras: noAusencia.filter(r => !esTipoVariosDias(r.tipo_permiso)).reduce((a, r) => a + (Number(r.horas_permiso) || 0), 0),
                     permisosDias: noAusencia.filter(r => esTipoVariosDias(r.tipo_permiso)).reduce((a, r) => a + (Number(r.dias_vacaciones_permiso) || 0), 0),
@@ -11317,7 +11270,22 @@
                 poner(`K${r}`, t, { font }); poner(`S${r}`, f, { font, numFmt: fmt, align: { horizontal: 'right' } }); poner(`U${r}`, u, { font, align: { horizontal: 'center' } });
                 estilo(`K${r}:V${r}`, { border: CAJA, ...(hl ? { fill: hl } : {}) });
             });
-            const RN = e0 + Math.max(extras.length, novedades.length) + 1;
+            // ---- Detalle de permisos y ausencias (antes solo estaba en la hoja Consolidado) ----
+            const RP = e0 + Math.max(extras.length, novedades.length) + 1;
+            barra(`A${RP}:V${RP}`, 'PERMISOS, SALIDAS DENTRO DEL TURNO Y AUSENCIAS');
+            [['A', 'B', 'Fecha'], ['C', 'H', 'Tipo'], ['I', 'O', 'Cantidad'], ['P', 'V', 'Nota / decisión de RRHH']].forEach(([a, b, t]) => {
+                ws.mergeCells(`${a}${RP + 1}:${b}${RP + 1}`); poner(`${a}${RP + 1}`, t, cab); estilo(`${a}${RP + 1}:${b}${RP + 1}`, cab);
+            });
+            const det = datos.detallePermisos.length ? datos.detallePermisos : [[null, null, '', '(sin permisos ni ausencias en este filtro)', '', '']];
+            det.forEach((f, i) => {
+                const r = RP + 2 + i;
+                [['A', 'B', f[2] ? fechaExcel(f[2]) : '', { numFmt: 'dd/mm/yyyy', align: { horizontal: 'center' } }], ['C', 'H', f[3] || '', { align: { wrapText: true } }],
+                 ['I', 'O', f[4] || '', { align: { wrapText: true } }], ['P', 'V', f[5] || '', { align: { wrapText: true } }]].forEach(([a, b, v, st]) => {
+                    ws.mergeCells(`${a}${r}:${b}${r}`); poner(`${a}${r}`, v, { ...st, font: f[2] ? {} : { italic: true, color: { argb: C.gris } } });
+                    estilo(`${a}${r}:${b}${r}`, { border: CAJA, ...(i % 2 === 0 ? { fill: C.band } : {}) });
+                });
+            });
+            const RN = RP + 2 + det.length + 1;
             ws.mergeCells(`A${RN}:V${RN}`);
             poner(`A${RN}`, 'Valores informativos. La liquidación oficial la hace RRHH. Las horas ordinarias ya no cuentan el tiempo en que llegó tarde: la tardanza no se vuelve a descontar.', { font: { italic: true, size: 9, color: { argb: C.gris } }, align: { wrapText: true } });
             ws.getRow(RN).height = 24;
@@ -11340,21 +11308,14 @@
             return nombre;
         }
 
-        // Arma el libro completo: primero la hoja "Consolidado" (la misma tabla de siempre) y después una
-        // "Tarjeta de Tiempo" por colaborador.
+        // Arma el libro: una hoja "Tarjeta de Tiempo" por colaborador. Desde nov-2026 ya no lleva la hoja "Consolidado":
+        // la tarjeta trae el mismo registro diario y, al final, el detalle de permisos y ausencias.
         function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion) {
-            const { aoa, merges, cols } = armarHojaConsolidado(rows, filtroDescripcion);
             const wb = new ExcelJS.Workbook();
             wb.creator = 'Tarjeta de Tiempo INDIMON';
-            const ws = wb.addWorksheet('Consolidado', { views: [{ state: 'frozen', ySplit: 5 }] });
-            aoa.forEach(f => ws.addRow(f));
-            merges.forEach(m => ws.mergeCells(m.s.r + 1, m.s.c + 1, m.e.r + 1, m.e.c + 1));
-            cols.forEach((c, i) => { ws.getColumn(i + 1).width = c.wch; });
-            ws.getCell('A1').font = { bold: true, size: 14 };
-            aoa.forEach((f, i) => { if (f[0] === 'CEDULA') ws.getRow(i + 1).font = { bold: true }; else if (f.length === 1 && i > 0 && f[0] && !String(f[0]).startsWith('(')) ws.getRow(i + 1).font = { bold: true, color: { argb: 'FF1F3864' } }; });
             const porPersona = new Map();
             rows.forEach(r => { const k = r.cedula || r.empleado_nombre || '—'; if (!porPersona.has(k)) porPersona.set(k, []); porPersona.get(k).push(r); });
-            const usados = new Set(['consolidado']);
+            const usados = new Set();
             [...porPersona.values()].map(datosTarjetaColaborador).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
                 .forEach(d => agregarHojaTarjeta(wb, d, nombreHojaTarjeta(d.nombre || d.cedula, usados), filtroDescripcion));
             wb.calcProperties = { ...(wb.calcProperties || {}), fullCalcOnLoad: true };

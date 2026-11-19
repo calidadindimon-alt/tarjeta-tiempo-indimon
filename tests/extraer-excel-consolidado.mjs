@@ -40,7 +40,6 @@ export function extraerTarjetaTiempo(fuente, hoy = '2026-11-19') {
     bloqueBalanceado(fuente, 'function timeStrToFloat(t) {'),
     bloqueBalanceado(fuente, 'function duracionHorasEntre(desde, hasta) {'),
     bloqueBalanceado(fuente, 'function horasDeSalidaPermiso(r, i) {'),
-    bloqueBalanceado(fuente, 'function armarHojaConsolidado(rows, filtroDescripcion) {'),
     hastaPuntoYComa(fuente, 'const DIAS_SEMANA_ES = ['),
     bloqueBalanceado(fuente, 'function datosTarjetaColaborador(rows) {'),
     bloqueBalanceado(fuente, 'function agregarHojaTarjeta(wb, datos, nombreHoja, filtroDescripcion) {'),

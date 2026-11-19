@@ -55,7 +55,7 @@ caso('Registro diario: solo días trabajados (sin vacaciones ni ausencias)', dA.
 // ---- Libro completo ----
 const wb = construirLibroConsolidado(ExcelJS, rows, 'Mes: 2026-11');
 const nombres = wb.worksheets.map(w => w.name);
-caso('Libro: Consolidado + una hoja por colaborador', JSON.stringify(nombres) === JSON.stringify(['Consolidado', 'ANA PRUEBA', 'BETO PRUEBA']), JSON.stringify(nombres));
+caso('Libro: una hoja por colaborador, sin hoja Consolidado', JSON.stringify(nombres) === JSON.stringify(['ANA PRUEBA', 'BETO PRUEBA']), JSON.stringify(nombres));
 const ws = wb.getWorksheet('ANA PRUEBA');
 let filaTot = 0, celdas = {};
 ws.eachRow((row, r) => row.eachCell((c, k) => { const t = typeof c.value === 'object' && c.value?.formula ? '=' + c.value.formula : c.value; celdas[`${String.fromCharCode(64 + k)}${r}`] = t; if (t === 'TOTALES') filaTot = r; }));
@@ -73,15 +73,17 @@ caso('Extras a pagar = aprobadas + anteriores (igual que extrasPagables)', !!fil
 caso('No hay "Total extras + recargos" (el recargo no es una hora extra)', !Object.values(celdas).some(v => typeof v === 'string' && /extras \+ recargos/i.test(v)));
 caso('Fecha como fecha de Excel y hora como hora', celdas.A10 instanceof Date && ws.getCell('A10').numFmt === 'dd/mm/yyyy' && Math.abs(celdas.F10 - 7 / 24) < 1e-9 && ws.getCell('F10').numFmt === 'hh:mm', `${celdas.A10} ${celdas.F10}`);
 caso('Día de la semana en español', celdas.B10 === 'Miércoles', celdas.B10);
-caso('Consolidado conserva sus 3 tablas', ['DETALLE DE HORAS Y EXTRAS (día por día)', 'PERMISOS (incapacidades, citas médicas, vacaciones, etc.)'].every(t => { let hay = false; wb.getWorksheet('Consolidado').eachRow(r => { if (r.getCell(1).value === t) hay = true; }); return hay; }));
-const usados = new Set(['consolidado']);
+caso('Detalle de permisos y ausencias al final de la tarjeta (lo que antes estaba solo en el Consolidado)',
+  ['Cita médica', 'Vacaciones', 'Ausencia injustificada', 'Permiso personal (dentro del turno)'].every(tipo => Object.values(celdas).includes(tipo))
+  && Object.values(celdas).includes('RRHH: SE DESCUENTA') && Object.values(celdas).some(v => typeof v === 'string' && v.startsWith('3 día(s)')));
+const usados = new Set();
 caso('Nombres de hoja: máximo 31 caracteres, sin repetir ni caracteres prohibidos',
-  nombreHojaTarjeta('MARÍA FERNANDA DE LOS ÁNGELES RODRÍGUEZ / PÉREZ', usados).length <= 31 && nombreHojaTarjeta('ANA', usados) === 'ANA' && nombreHojaTarjeta('ana', usados) === 'ana (2)' && nombreHojaTarjeta('Consolidado', usados) === 'Consolidado (2)');
+  nombreHojaTarjeta('MARÍA FERNANDA DE LOS ÁNGELES RODRÍGUEZ / PÉREZ', usados).length <= 31 && nombreHojaTarjeta('ANA', usados) === 'ANA' && nombreHojaTarjeta('ana', usados) === 'ana (2)');
 
 const buffer = await wb.xlsx.writeBuffer();
 const vuelta = new ExcelJS.Workbook();
 await vuelta.xlsx.load(buffer);
-caso('El archivo se puede abrir otra vez sin errores', vuelta.worksheets.length === 3);
+caso('El archivo se puede abrir otra vez sin errores', vuelta.worksheets.length === 2);
 if (SALIDA) fs.writeFileSync(SALIDA, Buffer.from(buffer));
 fs.unlinkSync(RUTA_EXTRAIDO);
 console.log(`\n${res.filter(Boolean).length} / ${res.length} comprobaciones`);
