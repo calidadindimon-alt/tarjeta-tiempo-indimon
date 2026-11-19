@@ -70,6 +70,7 @@ for (const est of ['APROBADA', 'ANTERIOR A LA APROBACION', 'POR APROBAR', 'POR C
 }
 const filaPagar = buscar('EXTRAS A PAGAR (aprobadas + anteriores)');
 caso('Extras a pagar = aprobadas + anteriores (igual que extrasPagables)', !!filaPagar && /^=G\d+\+G\d+$/.test(celdas[`G${filaPagar.slice(1)}`]));
+caso('Horas de domingo/festivo sin sus extras = SUMIF de la columna K en los días marcados SI', /^=SUMIF\(\$C\$10:\$C\$\d+,"SI",\$K\$10:\$K\$\d+\)$/.test(vecina('Horas en domingo o festivo, sin las extras (100 % + recargo)', 'G') || ''), vecina('Horas en domingo o festivo, sin las extras (100 % + recargo)', 'G'));
 caso('No hay "Total extras + recargos" (el recargo no es una hora extra)', !Object.values(celdas).some(v => typeof v === 'string' && /extras \+ recargos/i.test(v)));
 caso('Fecha como fecha de Excel y hora como hora', celdas.A10 instanceof Date && ws.getCell('A10').numFmt === 'dd/mm/yyyy' && Math.abs(celdas.F10 - 7 / 24) < 1e-9 && ws.getCell('F10').numFmt === 'hh:mm', `${celdas.A10} ${celdas.F10}`);
 caso('Día de la semana en español', celdas.B10 === 'Miércoles', celdas.B10);

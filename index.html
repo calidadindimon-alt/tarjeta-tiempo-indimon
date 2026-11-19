@@ -11248,7 +11248,10 @@
                 ['Control: total − estados (debe dar 0)', `=G${e0 + 2}-SUM(G${e0 + 3}:G${e0 + 7})`, { italic: true }],
                 ['', ''],
                 ['Recargo nocturno (no es extra; ya está en las horas)', `=N${RT}`],
-                ['Horas en domingo o festivo (no son extra)', `=O${RT}`],
+                // Solo las horas de domingo/festivo DENTRO de la jornada (columna K de los días marcados SI). Antes era el total de
+                // la columna O, que en un domingo con extras también trae esas extras: se contaban dos veces.
+                ['Horas en domingo o festivo, sin las extras (100 % + recargo)', `=SUMIF($C$${R0}:$C$${RL},"SI",$K$${R0}:$K$${RL})`],
+                ['   Las extras de esos días van arriba y llevan además el recargo', '', { italic: true }],
             ];
             extras.forEach(([t, f, o = {}], i) => {
                 const r = e0 + i;
