@@ -24,7 +24,7 @@ const caso = (nombre, cond, det = '') => { res.push(!!cond); console.log(`${cond
 const base = { cliente: 'INDIMON S.A.S.', obra: 'BODEGA', autoriza: 'JLAF', estado: 'completado', horas_recargo_nocturno: 0, horas_dominicales: 0, horas_extras_nocturnas: 0 };
 const ana = (o) => ({ ...base, cedula: '111', empleado_nombre: 'ANA PRUEBA', ...o });
 const rows = [
-  ana({ fecha: '2026-11-03', entrada: '07:00', salida: '18:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', horas_ordinarias: 8.5, horas_extras_diurnas: 1.5, extras_estado: 'aprobada', extras_autoriza: 'JLAF' }),
+  ana({ cliente: 'Mayekawa', obra: ' Ecla-Yumbo ', fecha: '2026-11-03', entrada: '07:00', salida: '18:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', horas_ordinarias: 8.5, horas_extras_diurnas: 1.5, extras_estado: 'aprobada', extras_autoriza: 'JLAF' }),
   // Llega a las 9:00: la app ya le cuenta 7 h ordinarias (no 8,5). La hoja NO debe volver a restar los 90 minutos.
   ana({ fecha: '2026-11-04', entrada: '09:00', salida: '18:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', horas_ordinarias: 7, horas_extras_diurnas: 1.5, minutos_tarde: 90, extras_estado: 'por_aprobar' }),
   ana({ fecha: '2026-11-05', entrada: '07:00', salida: '19:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00', horas_ordinarias: 8.5, horas_extras_diurnas: 2, horas_extras_nocturnas: 0.5, horas_recargo_nocturno: 0.5, extras_estado: 'por_compensar' }),
@@ -73,6 +73,7 @@ caso('Extras a pagar = aprobadas + anteriores (igual que extrasPagables)', !!fil
 caso('No hay "Total extras + recargos" (el recargo no es una hora extra)', !Object.values(celdas).some(v => typeof v === 'string' && /extras \+ recargos/i.test(v)));
 caso('Fecha como fecha de Excel y hora como hora', celdas.A10 instanceof Date && ws.getCell('A10').numFmt === 'dd/mm/yyyy' && Math.abs(celdas.F10 - 7 / 24) < 1e-9 && ws.getCell('F10').numFmt === 'hh:mm', `${celdas.A10} ${celdas.F10}`);
 caso('Día de la semana en español', celdas.B10 === 'Miércoles', celdas.B10);
+caso('Cliente y obra en mayúscula aunque se hayan guardado distinto ("Mayekawa" → "MAYEKAWA")', celdas.D11 === 'MAYEKAWA' && celdas.E11 === 'ECLA-YUMBO' && celdas.D10 === 'INDIMON S.A.S.', `${celdas.D11} / ${celdas.E11}`);
 caso('Detalle de permisos y ausencias al final de la tarjeta (lo que antes estaba solo en el Consolidado)',
   ['Cita médica', 'Vacaciones', 'Ausencia injustificada', 'Permiso personal (dentro del turno)'].every(tipo => Object.values(celdas).includes(tipo))
   && Object.values(celdas).includes('RRHH: SE DESCUENTA') && Object.values(celdas).some(v => typeof v === 'string' && v.startsWith('3 día(s)')));

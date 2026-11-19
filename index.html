@@ -11188,7 +11188,9 @@
                 const r = R0 + i;
                 const fecha = d[2] || '';
                 const obs = [d[21], d[25], d[22], d[17] && d[17] !== 'COMPLETADO' ? `Estado: ${d[17]}` : ''].filter(Boolean).join(' | ');
-                const valores = [fechaExcel(fecha), fecha ? DIAS_SEMANA_ES[new Date(fecha + 'T12:00:00').getDay()] : '', d[3], d[4], d[5],
+                // Cliente y obra siempre en mayúscula: hay días guardados como "Mayekawa" y otros como "MAYEKAWA".
+                const mayus = (t) => String(t || '').trim().replace(/\s+/g, ' ').toUpperCase();
+                const valores = [fechaExcel(fecha), fecha ? DIAS_SEMANA_ES[new Date(fecha + 'T12:00:00').getDay()] : '', d[3], mayus(d[4]), mayus(d[5]),
                     horaExcel(d[7]), horaExcel(d[8]), horaExcel(d[9]), horaExcel(d[10]), d[18],
                     d[11], d[12], d[13], d[14], d[15], `=L${r}+M${r}`, d[24] || '', d[23] || '', d[16], d[20], `=IF(T${r}="SI",0,S${r})`, obs];
                 valores.forEach((v, j) => {
