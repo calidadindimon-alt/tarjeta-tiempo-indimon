@@ -11071,7 +11071,7 @@
             });
         }
 
-        function descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion) {
+        function armarHojaConsolidado(rows, filtroDescripcion) {
             const aoa = [];
             const merges = [];
             const agregarTitulo = (texto, anchoColumnas) => {
@@ -11105,8 +11105,7 @@
             const filasAusencias = construirFilasAusencias(rows);
             (filasAusencias.length > 0 ? filasAusencias : [['(sin ausencias en este filtro)']]).forEach(f => aoa.push(f));
 
-            const ws = window.XLSX.utils.aoa_to_sheet(aoa);
-            ws['!merges'] = merges;
+            const ws = { '!merges': merges };
             // Las columnas A-F son compartidas por las 3 tablas (cada una las usa para cosas distintas
             // -p.ej. la columna E es CLIENTE en la tabla 1 y CANTIDAD/DIAS DESCONTADOS en las tablas 2 y
             // 3-), así que van más anchas de lo que la tabla 1 necesitaría sola, para que el texto largo
@@ -11118,9 +11117,248 @@
                 { wch: 26 }, { wch: 16 }, { wch: 20 }, { wch: 18 }, { wch: 26 }, { wch: 26 },
                 { wch: 16 }, { wch: 22 }, { wch: 30 }
             ];
-            const wb = window.XLSX.utils.book_new();
-            window.XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
-            window.XLSX.writeFile(wb, nombreArchivo);
+            return { aoa, merges, cols: ws['!cols'] };
+        }
+
+        // Desde nov-2026 el Excel se arma con ExcelJS (antes SheetJS) para poder agregar la hoja "Tarjeta de Tiempo"
+        // con colores, fórmulas y firmas. La hoja "Consolidado" sale con las mismas tablas de siempre.
+        async function descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion) {
+            const ExcelJS = await cargarExcelJS();
+            const wb = construirLibroConsolidado(ExcelJS, rows, filtroDescripcion);
+            const buffer = await wb.xlsx.writeBuffer();
+            descargarBlobComoArchivo(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArchivo);
+        }
+
+        // ======================= Hoja "Tarjeta de Tiempo" por colaborador (nov-2026) =======================
+        // Idea de la hoja hecha con Claude en Excel, corregida para que cuadre con la app:
+        //  - una hoja por colaborador (antes mezclaba a todos con el nombre del primero);
+        //  - la tardanza queda solo como dato para RRHH: las horas ordinarias YA no cuentan el tiempo que llegó tarde
+        //    (ver calcularJornadaDiaria, caso 28 de las pruebas), así que restarla otra vez la descontaba dos veces;
+        //  - permisos y ausencias se cuentan con números reales (la tabla del Consolidado los trae como texto, y el día
+        //    del art. 173 se repite en cada ausencia de la misma semana);
+        //  - las extras se separan por TODOS sus estados, igual que extrasPagables: se pagan las aprobadas y las
+        //    anteriores al 21-oct-2026; por aprobar, por compensar y no autorizadas no se pagan como extra;
+        //  - el recargo nocturno y las horas de domingo/festivo van aparte: no son horas extra.
+        const DIAS_SEMANA_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        function datosTarjetaColaborador(rows) {
+            const dias = construirFilasDetalleHoras(rows);
+            const primero = rows.slice().sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))[0] || {};
+            const noAusencia = rows.filter(r => r.tipo_permiso && !TIPOS_AUSENCIA.includes(r.tipo_permiso));
+            const porSemana = new Map();
+            rows.filter(r => TIPOS_AUSENCIA.includes(r.tipo_permiso) && r.fecha).forEach(r => {
+                const [lunes] = getRangoSemana(r.fecha);
+                if (!porSemana.has(lunes)) porSemana.set(lunes, []);
+                porSemana.get(lunes).push(r);
+            });
+            let salidasHoras = 0, salidasDescuentan = 0, salidasSinDecidir = 0;
+            rows.forEach(r => {
+                salidasHoras += Number(r.horas_permiso_turno) || 0;
+                (r.salidas_permiso || []).forEach((p, i) => {
+                    if (!p || !p.sale || !(p.vuelve || p.sin_regreso)) return;
+                    const dec = (r.decisiones_permiso || {})[i];
+                    if (!dec?.decision) salidasSinDecidir++;
+                    else if (dec.decision === 'descuenta') salidasDescuentan += horasDeSalidaPermiso(r, i);
+                });
+            });
+            const fechas = rows.map(r => r.fecha).filter(Boolean).sort();
+            return {
+                nombre: primero.empleado_nombre || '', cedula: primero.cedula || '',
+                desde: fechas[0] || '', hasta: fechas[fechas.length - 1] || '',
+                dias,
+                novedades: {
+                    permisosHoras: noAusencia.filter(r => !esTipoVariosDias(r.tipo_permiso)).reduce((a, r) => a + (Number(r.horas_permiso) || 0), 0),
+                    permisosDias: noAusencia.filter(r => esTipoVariosDias(r.tipo_permiso)).reduce((a, r) => a + (Number(r.dias_vacaciones_permiso) || 0), 0),
+                    salidasHoras, salidasDescuentan, salidasSinDecidir,
+                    ausencias: [...porSemana.values()].reduce((a, l) => a + l.length, 0),
+                    diasArt173: [...porSemana.values()].reduce((a, l) => a + diasADescontarPorSemana(l), 0),
+                    almuerzosSinAutorizar: rows.filter(r => r.almuerzo_omitido && !r.almuerzo_omitido_autoriza).length,
+                    diasPorRevisar: rows.filter(r => r.estado === 'requiere_revision_admin').length,
+                    turnosAbiertos: rows.filter(r => r.estado === 'activo').length,
+                }
+            };
+        }
+
+        function agregarHojaTarjeta(wb, datos, nombreHoja, filtroDescripcion) {
+            const C = { navy: 'FF1F3864', light: 'FFD9E1F2', band: 'FFF2F2F2', grey: 'FFA6A6A6', white: 'FFFFFFFF',
+                ord: 'FFE2EFDA', ordTot: 'FFC6E0B4', ext: 'FFFFF2CC', extTot: 'FFFFE699', des: 'FFFCE4D6', desTot: 'FFF8CBAD', gris: 'FF7F7F7F' };
+            const NUM = '0.00;(0.00);-', INT = '0;(0);-';
+            const relleno = (c) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: c } });
+            const fino = { style: 'thin', color: { argb: C.grey } };
+            const CAJA = { top: fino, left: fino, bottom: fino, right: fino };
+            const L = (n) => String.fromCharCode(64 + n);
+            const ws = wb.addWorksheet(nombreHoja, { properties: { tabColor: { argb: C.navy } }, views: [{ state: 'frozen', ySplit: 9, showGridLines: false }] });
+            ws.columns = [11, 11, 7, 18, 22, 8, 8, 8, 8, 9, 11, 9, 10, 10, 9, 8, 18, 14, 7, 9, 10, 40].map(w => ({ width: w }));
+            const poner = (dir, v, st = {}) => {
+                const c = ws.getCell(dir);
+                c.value = typeof v === 'string' && v.startsWith('=') ? { formula: v.slice(1) } : v;
+                c.font = { name: 'Arial', size: 10, ...(st.font || {}) };
+                if (st.fill) c.fill = relleno(st.fill);
+                if (st.numFmt) c.numFmt = st.numFmt;
+                if (st.align) c.alignment = st.align;
+                if (st.border) c.border = st.border;
+                return c;
+            };
+            const estilo = (rango, st) => {
+                const [a, b] = rango.split(':'); const c1 = ws.getCell(a), c2 = ws.getCell(b || a);
+                for (let r = c1.row; r <= c2.row; r++) for (let c = c1.col; c <= c2.col; c++) {
+                    const cel = ws.getCell(r, c);
+                    if (st.fill) cel.fill = relleno(st.fill);
+                    if (st.border) cel.border = st.border;
+                    if (st.font) cel.font = { name: 'Arial', size: 10, ...(cel.font || {}), ...st.font };
+                }
+            };
+            const barra = (rango, texto) => { ws.mergeCells(rango); poner(rango.split(':')[0], texto, { font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'center' } }); estilo(rango, { fill: C.navy }); };
+            const fechaExcel = (f) => { const [y, m, d] = (f || '').split('-').map(Number); return y ? new Date(Date.UTC(y, m - 1, d)) : ''; };
+            const horaExcel = (h) => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? (Number(m[1]) * 60 + Number(m[2])) / 1440 : ''; };
+            const fechaCorta = (f) => f ? f.split('-').reverse().join('/') : '—';
+
+            ws.mergeCells('A1:V1');
+            poner('A1', 'TARJETA DE TIEMPO — INDIMON S.A.S.', { font: { bold: true, size: 16, color: { argb: C.white } }, align: { horizontal: 'center', vertical: 'middle' } });
+            estilo('A1:V1', { fill: C.navy }); ws.getRow(1).height = 28;
+            ws.mergeCells('A2:V2');
+            poner('A2', 'Horas ordinarias, horas extra y novedades del colaborador', { font: { italic: true, color: { argb: 'FF595959' } }, align: { horizontal: 'center' } });
+            [['A4', 'Colaborador:', datos.nombre], ['A5', 'Cédula:', datos.cedula], ['A6', 'Periodo:', `${fechaCorta(datos.desde)} – ${fechaCorta(datos.hasta)}`]].forEach(([d, t, v]) => {
+                poner(d, t, { font: { bold: true } }); const fila = d.slice(1);
+                ws.mergeCells(`C${fila}:H${fila}`); poner(`C${fila}`, v, { border: { bottom: fino } });
+            });
+            poner('K4', 'Generado:', { font: { bold: true } }); ws.mergeCells('M4:P4'); poner('M4', fechaCorta(getTodayStr()));
+            poner('K5', 'Filtro:', { font: { bold: true } }); ws.mergeCells('M5:V5'); poner('M5', filtroDescripcion, { font: { color: { argb: C.gris } } });
+
+            barra('A8:V8', 'REGISTRO DIARIO');
+            ['Fecha', 'Día', 'Dom/ Fest', 'Cliente', 'Obra', 'Entrada', 'Alm. inicio', 'Alm. fin', 'Salida', 'Alm. omitido', 'H. ordinarias', 'Extras diurnas',
+             'Extras nocturnas', 'Recargo nocturno', 'H. domin./ fest.', 'Total extras', 'Estado extras', 'Autorizó extras', 'Min. tarde', 'Tardanza justif.',
+             'Min. tarde sin justificar', 'Observaciones'].forEach((h, i) => poner(`${L(i + 1)}9`, h, { font: { bold: true }, fill: C.light, border: CAJA, align: { horizontal: 'center', vertical: 'middle', wrapText: true } }));
+            ws.getRow(9).height = 42;
+            const R0 = 10, n = Math.max(datos.dias.length, 1), RL = R0 + n - 1, RT = RL + 1;
+            if (!datos.dias.length) { ws.mergeCells(`A${R0}:V${R0}`); poner(`A${R0}`, '(sin días trabajados en este filtro)', { font: { italic: true, color: { argb: C.gris } }, align: { horizontal: 'center' } }); }
+            datos.dias.forEach((d, i) => {
+                const r = R0 + i;
+                const fecha = d[2] || '';
+                const obs = [d[21], d[25], d[22], d[17] && d[17] !== 'COMPLETADO' ? `Estado: ${d[17]}` : ''].filter(Boolean).join(' | ');
+                const valores = [fechaExcel(fecha), fecha ? DIAS_SEMANA_ES[new Date(fecha + 'T12:00:00').getDay()] : '', d[3], d[4], d[5],
+                    horaExcel(d[7]), horaExcel(d[8]), horaExcel(d[9]), horaExcel(d[10]), d[18],
+                    d[11], d[12], d[13], d[14], d[15], `=L${r}+M${r}`, d[24] || '', d[23] || '', d[16], d[20], `=IF(T${r}="SI",0,S${r})`, obs];
+                valores.forEach((v, j) => {
+                    const c = L(j + 1);
+                    const st = { border: CAJA, align: { vertical: 'middle' } };
+                    if (i % 2 === 0) st.fill = C.band;
+                    if (c === 'A') st.numFmt = 'dd/mm/yyyy';
+                    if ('FGHI'.includes(c)) st.numFmt = 'hh:mm';
+                    if ('KLMNOP'.includes(c)) st.numFmt = NUM;
+                    if ('SU'.includes(c)) st.numFmt = INT;
+                    if (c === 'K') st.fill = C.ord;
+                    if (c === 'P') st.fill = C.ext;
+                    if (c === 'U') st.fill = C.des;
+                    if ('ABCFGHIJQST'.includes(c)) st.align = { ...st.align, horizontal: 'center' };
+                    if ('DEQRV'.includes(c)) st.align = { ...st.align, wrapText: true };
+                    poner(`${c}${r}`, v, st);
+                });
+            });
+            ws.mergeCells(`A${RT}:J${RT}`);
+            poner(`A${RT}`, 'TOTALES', { font: { bold: true }, align: { horizontal: 'right' } });
+            estilo(`A${RT}:V${RT}`, { fill: C.light, border: CAJA, font: { bold: true } });
+            ['K', 'L', 'M', 'N', 'O', 'P', 'S', 'U'].forEach(c => poner(`${c}${RT}`, `=SUM(${c}${R0}:${c}${RL})`, { font: { bold: true }, border: CAJA, numFmt: 'SU'.includes(c) ? INT : NUM,
+                fill: c === 'K' ? C.ordTot : c === 'P' ? C.extTot : c === 'U' ? C.desTot : C.light }));
+
+            // ---- Resúmenes ----
+            const RS = RT + 2, e0 = RS + 2;
+            barra(`A${RS}:H${RS}`, 'HORAS EXTRA Y RECARGOS');
+            barra(`K${RS}:V${RS}`, 'NOVEDADES PARA NÓMINA (RRHH decide)');
+            const cab = { font: { bold: true }, fill: C.light, border: CAJA, align: { horizontal: 'center' } };
+            ws.mergeCells(`A${RS + 1}:F${RS + 1}`); poner(`A${RS + 1}`, 'Concepto', cab); ws.mergeCells(`G${RS + 1}:H${RS + 1}`); poner(`G${RS + 1}`, 'Horas', cab);
+            ws.mergeCells(`K${RS + 1}:R${RS + 1}`); poner(`K${RS + 1}`, 'Concepto', cab); ws.mergeCells(`S${RS + 1}:T${RS + 1}`); poner(`S${RS + 1}`, 'Cantidad', cab);
+            ws.mergeCells(`U${RS + 1}:V${RS + 1}`); poner(`U${RS + 1}`, 'Unidad', cab);
+            estilo(`A${RS + 1}:H${RS + 1}`, cab); estilo(`K${RS + 1}:V${RS + 1}`, cab);
+            const Q = `$Q$${R0}:$Q$${RL}`, P = `$P$${R0}:$P$${RL}`;
+            const suma = (est) => `=SUMIF(${Q},"${est}",${P})`;
+            const extras = [
+                ['Extras diurnas', `=L${RT}`],
+                ['Extras nocturnas', `=M${RT}`],
+                ['Total horas extra', `=G${e0}+G${e0 + 1}`, { bold: true }],
+                ['   Aprobadas por RRHH', suma(ESTADO_EXTRAS_LEGIBLE.aprobada)],
+                ['   Anteriores a la aprobación (21-oct-2026)', suma(ESTADO_EXTRAS_LEGIBLE.anterior)],
+                ['   Por aprobar (todavía no se pagan)', suma(ESTADO_EXTRAS_LEGIBLE.por_aprobar)],
+                ['   Por compensar (bolsa de horas, no se pagan)', suma(ESTADO_EXTRAS_LEGIBLE.por_compensar)],
+                ['   No autorizadas (no se pagan)', suma(ESTADO_EXTRAS_LEGIBLE.no_autorizada)],
+                ['EXTRAS A PAGAR (aprobadas + anteriores)', `=G${e0 + 3}+G${e0 + 4}`, { bold: true, fill: C.extTot }],
+                ['Control: total − estados (debe dar 0)', `=G${e0 + 2}-SUM(G${e0 + 3}:G${e0 + 7})`, { italic: true }],
+                ['', ''],
+                ['Recargo nocturno (no es extra; ya está en las horas)', `=N${RT}`],
+                ['Horas en domingo o festivo (no son extra)', `=O${RT}`],
+            ];
+            extras.forEach(([t, f, o = {}], i) => {
+                const r = e0 + i;
+                ws.mergeCells(`A${r}:F${r}`); ws.mergeCells(`G${r}:H${r}`);
+                const font = { bold: !!o.bold, italic: !!o.italic, color: { argb: o.italic ? C.gris : 'FF000000' } };
+                poner(`A${r}`, t, { font }); poner(`G${r}`, f, { font, numFmt: NUM, align: { horizontal: 'right' } });
+                if (t) estilo(`A${r}:H${r}`, { border: CAJA, ...(o.fill ? { fill: o.fill } : {}) });
+            });
+            const nv = datos.novedades;
+            const novedades = [
+                ['Horas ordinarias trabajadas', `=K${RT}`, 'horas', NUM, C.ordTot],
+                ['Minutos tarde (ya fuera de las horas ordinarias)', `=S${RT}`, 'min', INT],
+                ['   Justificados', `=S${e0 + 1}-S${e0 + 3}`, 'min', INT],
+                ['   Sin justificar (RRHH decide si descuenta)', `=U${RT}`, 'min', INT, C.desTot],
+                ['Permisos por horas (citas, diligencias…)', nv.permisosHoras, 'horas', NUM],
+                ['Permisos de varios días (vacaciones, incapacidad…)', nv.permisosDias, 'días', NUM],
+                ['Salidas a cita o permiso dentro del turno', nv.salidasHoras, 'horas', NUM],
+                ['   De esas, RRHH decidió descontar', nv.salidasDescuentan, 'horas', NUM, nv.salidasDescuentan ? C.desTot : null],
+                ['   Salidas sin decisión de RRHH', nv.salidasSinDecidir, 'salidas', INT],
+                ['Ausencias', nv.ausencias, 'días', INT],
+                ['Días que se pierden por ausencia (incluye domingo, art. 173 CST)', nv.diasArt173, 'días', INT, nv.diasArt173 ? C.desTot : null],
+                ['Almuerzos omitidos sin autorización', nv.almuerzosSinAutorizar, 'días', INT],
+                ['Días por revisar (horas sin confirmar)', nv.diasPorRevisar, 'días', INT],
+                ['Turnos sin cerrar', nv.turnosAbiertos, 'días', INT],
+            ];
+            novedades.forEach(([t, f, u, fmt, hl], i) => {
+                const r = e0 + i;
+                ws.mergeCells(`K${r}:R${r}`); ws.mergeCells(`S${r}:T${r}`); ws.mergeCells(`U${r}:V${r}`);
+                const font = { bold: !!hl };
+                poner(`K${r}`, t, { font }); poner(`S${r}`, f, { font, numFmt: fmt, align: { horizontal: 'right' } }); poner(`U${r}`, u, { font, align: { horizontal: 'center' } });
+                estilo(`K${r}:V${r}`, { border: CAJA, ...(hl ? { fill: hl } : {}) });
+            });
+            const RN = e0 + Math.max(extras.length, novedades.length) + 1;
+            ws.mergeCells(`A${RN}:V${RN}`);
+            poner(`A${RN}`, 'Valores informativos. La liquidación oficial la hace RRHH. Las horas ordinarias ya no cuentan el tiempo en que llegó tarde: la tardanza no se vuelve a descontar.', { font: { italic: true, size: 9, color: { argb: C.gris } }, align: { wrapText: true } });
+            ws.getRow(RN).height = 24;
+            const RF = RN + 4;
+            [['A', 'F', 'Firma colaborador'], ['H', 'N', 'Firma jefe inmediato / supervisor'], ['P', 'V', 'Recibido nómina / RR.HH.']].forEach(([a, b, t]) => {
+                ws.mergeCells(`${a}${RF}:${b}${RF}`); poner(`${a}${RF}`, t, { align: { horizontal: 'center' } });
+                estilo(`${a}${RF}:${b}${RF}`, { border: { top: { style: 'thin', color: { argb: 'FF000000' } } } });
+            });
+            ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printArea: `A1:V${RF + 1}`, paperSize: 9 };
+            ws.pageSetup.printTitlesRow = '8:9';
+            return ws;
+        }
+
+        // Nombre de pestaña de Excel: máximo 31 caracteres, sin : \ / ? * [ ] y sin repetirse.
+        function nombreHojaTarjeta(base, usados) {
+            let limpio = (base || 'Colaborador').replace(/[:\\/?*\[\]]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Colaborador';
+            let nombre = limpio, k = 2;
+            while (usados.has(nombre.toLowerCase())) { const suf = ` (${k++})`; nombre = limpio.slice(0, 31 - suf.length) + suf; }
+            usados.add(nombre.toLowerCase());
+            return nombre;
+        }
+
+        // Arma el libro completo: primero la hoja "Consolidado" (la misma tabla de siempre) y después una
+        // "Tarjeta de Tiempo" por colaborador.
+        function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion) {
+            const { aoa, merges, cols } = armarHojaConsolidado(rows, filtroDescripcion);
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'Tarjeta de Tiempo INDIMON';
+            const ws = wb.addWorksheet('Consolidado', { views: [{ state: 'frozen', ySplit: 5 }] });
+            aoa.forEach(f => ws.addRow(f));
+            merges.forEach(m => ws.mergeCells(m.s.r + 1, m.s.c + 1, m.e.r + 1, m.e.c + 1));
+            cols.forEach((c, i) => { ws.getColumn(i + 1).width = c.wch; });
+            ws.getCell('A1').font = { bold: true, size: 14 };
+            aoa.forEach((f, i) => { if (f[0] === 'CEDULA') ws.getRow(i + 1).font = { bold: true }; else if (f.length === 1 && i > 0 && f[0] && !String(f[0]).startsWith('(')) ws.getRow(i + 1).font = { bold: true, color: { argb: 'FF1F3864' } }; });
+            const porPersona = new Map();
+            rows.forEach(r => { const k = r.cedula || r.empleado_nombre || '—'; if (!porPersona.has(k)) porPersona.set(k, []); porPersona.get(k).push(r); });
+            const usados = new Set(['consolidado']);
+            [...porPersona.values()].map(datosTarjetaColaborador).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
+                .forEach(d => agregarHojaTarjeta(wb, d, nombreHojaTarjeta(d.nombre || d.cedula, usados), filtroDescripcion));
+            wb.calcProperties = { ...(wb.calcProperties || {}), fullCalcOnLoad: true };
+            return wb;
         }
 
         document.getElementById('btn-export-excel').addEventListener('click', async () => {
@@ -11189,8 +11427,7 @@
                 nombreArchivo += `_${getTodayStr()}.xlsx`;
                 const filtroDescripcion = partesFiltro.length > 0 ? partesFiltro.join(' · ') : 'Todos los colaboradores, todos los meses';
 
-                await cargarSheetJS();
-                descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion);
+                await descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion);
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudo generar el archivo de exportación.", "error");
