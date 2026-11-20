@@ -1828,6 +1828,16 @@
                 <button type="button" class="mt-alm-op mt-alm-si" data-op="si"><span class="text-3xl">🍽️</span><span><b>Sí</b><small id="hoja-almuerzo-si-detalle"></small></span></button>
                 <button type="button" class="mt-alm-op mt-alm-si" data-op="no"><span class="text-3xl">⛔</span><span><b>No</b><small>Te pide quién lo autorizó</small></span></button>
             </div>
+            <!-- Volvió (nov-2026): si almorzó a otra hora, escribe la hora real en que salió y volvió. -->
+            <button type="button" class="mt-alm-op mt-2" data-op="otra"><span class="text-2xl">🕐</span><span><b>Sí, pero a otra hora</b><small>Escribe a qué hora saliste a almorzar y a qué hora volviste</small></span></button>
+            <div id="hoja-almuerzo-horas" class="hidden mt-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label for="hoja-almuerzo-inicio" class="text-[10px] font-bold text-slate-500 uppercase">Salí a almorzar</label><input type="time" id="hoja-almuerzo-inicio" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm"></div>
+                    <div><label for="hoja-almuerzo-fin" class="text-[10px] font-bold text-slate-500 uppercase">Volví</label><input type="time" id="hoja-almuerzo-fin" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm"></div>
+                </div>
+                <p id="hoja-almuerzo-error" class="hidden text-xs font-semibold text-rose-600 mt-2"></p>
+                <button id="btn-hoja-almuerzo-guardar" type="button" class="btn-touch w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl mt-3">Guardar y terminar turno</button>
+            </div>
             <button id="btn-hoja-almuerzo-cancelar" type="button" class="btn-touch w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-3 rounded-xl text-sm mt-2">Cancelar</button>
         </div>
     </div>
@@ -2919,7 +2929,7 @@
             const hora = pidiendoAlmuerzoMT() ? horaAlmuerzoHoyMT(data.obra, data.fecha || getTodayStr()) : null;
             const texto = hora
                 ? `🍽 Ya es la hora de almuerzo de ${data.obra} (${hora12MT(hora)}). Cuando salgas a almorzar, toca "Almuerzo"; al volver, "Volver del almuerzo".`
-                : 'Llevas varias horas en turno y no has marcado el almuerzo. Si ya almorzaste, toca "Almuerzo" (aunque sea tarde). Si hoy no tomas almuerzo, toca "Sin almuerzo".';
+                : 'Llevas varias horas en turno y no has marcado el almuerzo. Si ya almorzaste y se te olvidó marcarlo, al terminar el turno elige "Sí, pero a otra hora" y escribe la hora real. Si hoy no tomas almuerzo, toca "Sin almuerzo".';
             if (aviso.textContent !== texto) aviso.textContent = texto;
             aviso.classList.toggle('hidden', !hora && horasEnTurno < AVISO_ALMUERZO_TRAS_HORAS);
         }
@@ -6165,17 +6175,45 @@
                 document.getElementById('hoja-almuerzo-si-detalle').textContent = `Se anota de ${hora12MT(h)} a ${hora12MT(hFin)}`;
                 const ops = [...hoja.querySelectorAll('.mt-alm-op')];
                 const btnCancelar = document.getElementById('btn-hoja-almuerzo-cancelar');
+                const bloqueHoras = document.getElementById('hoja-almuerzo-horas');
+                const inIni = document.getElementById('hoja-almuerzo-inicio'), inFin = document.getElementById('hoja-almuerzo-fin');
+                const btnGuardar = document.getElementById('btn-hoja-almuerzo-guardar');
+                const error = document.getElementById('hoja-almuerzo-error');
+                bloqueHoras.classList.add('hidden'); ops.forEach(b => b.classList.remove('on'));
+                inIni.value = ''; inFin.value = ''; error.classList.add('hidden');
                 let ocupado = false;
                 const terminar = (val) => {
                     hoja.classList.add('hidden');
                     ops.forEach(b => b.removeEventListener('click', onOp));
                     btnCancelar.removeEventListener('click', onCancelar);
+                    btnGuardar.removeEventListener('click', onGuardarOtra);
                     resolve(val);
+                };
+                const mostrarError = (t) => { error.textContent = t; error.classList.remove('hidden'); };
+                [inIni, inFin].forEach(c => { c.oninput = () => error.classList.add('hidden'); if (c._hora24) c._hora24.oninput = () => error.classList.add('hidden'); });
+                // "Sí, pero a otra hora": el almuerzo debe quedar dentro del turno (después de la entrada y antes de
+                // ahora, que es la salida) y durar entre 15 minutos y 4 horas, igual que al editar un día en Admin.
+                // Las horas se miden desde la entrada para que funcione también en un turno que pasa la medianoche.
+                const onGuardarOtra = () => {
+                    const ini = inIni.value, fin = inFin.value;
+                    if (!ini || !fin) return mostrarError('Escribe las dos horas: cuándo saliste a almorzar y cuándo volviste.');
+                    const desdeEntrada = (hhmm) => ((timeStrToFloat(hhmm) - timeStrToFloat(data.entrada)) % 24 + 24) % 24;
+                    const rIni = desdeEntrada(ini), rFin = desdeEntrada(fin), rAhora = desdeEntrada(getHoraActualStr());
+                    if (rIni > rAhora || rFin > rAhora) return mostrarError(`El almuerzo tiene que estar entre tu entrada (${hora12MT(data.entrada)}) y ahora.`);
+                    if (rFin <= rIni) return mostrarError('La hora en que volviste tiene que ser después de la hora en que saliste.');
+                    const duracion = rFin - rIni;
+                    if (duracion < 0.25 || duracion > 4) return mostrarError('El almuerzo tiene que durar entre 15 minutos y 4 horas.');
+                    guardar({ almuerzo_inicio: ini, almuerzo_fin: fin, almuerzo_registrado_al_salir: true, almuerzo_hora_propia: true });
                 };
                 const onCancelar = () => terminar(false);
                 const onOp = async (e) => {
                     if (ocupado) return;
                     let cambios;
+                    if (e.currentTarget.dataset.op === 'otra') {
+                        ops.forEach(b => b.classList.toggle('on', b === e.currentTarget));
+                        bloqueHoras.classList.remove('hidden');
+                        return;
+                    }
                     if (e.currentTarget.dataset.op === 'si') {
                         cambios = { almuerzo_inicio: h, almuerzo_fin: hFin, almuerzo_registrado_al_salir: true };
                     } else {
@@ -6184,6 +6222,10 @@
                         if (!autoriza || !autoriza.trim()) { hoja.classList.remove('hidden'); return; }
                         cambios = { almuerzo_omitido: true, almuerzo_omitido_autoriza: autoriza.trim(), almuerzo_omitido_marcado_en: serverTimestamp(), almuerzo_registrado_al_salir: true };
                     }
+                    guardar(cambios);
+                };
+                async function guardar(cambios) {
+                    if (ocupado) return;
                     ocupado = true;
                     try {
                         // Sin señal, setDoc no termina hasta que vuelve la conexión: se espera máximo 3 s y se sigue con
@@ -6194,9 +6236,10 @@
                         ocupado = false;
                         mostrarErrorDiagnosticado('almuerzo-al-salir', err);
                     }
-                };
+                }
                 ops.forEach(b => b.addEventListener('click', onOp));
                 btnCancelar.addEventListener('click', onCancelar);
+                btnGuardar.addEventListener('click', onGuardarOtra);
                 hoja.classList.remove('hidden');
             });
         }
@@ -10536,7 +10579,7 @@
                             ) : ''}
                             ${avisoRelojSospechoso(r, 'entrada')}
                             ${avisoRelojSospechoso(r, 'salida')}
-                            ${r.almuerzo_inicio ? `<span class="text-[9px] text-amber-600 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)}-${escHtml(r.almuerzo_fin || '...')}${r.almuerzo_registrado_al_salir ? ' · anotado al salir' : ''}</span>` : ''}
+                            ${r.almuerzo_inicio ? `<span class="text-[9px] text-amber-600 bg-amber-50 rounded px-1 py-0.5 inline-block">Alm: ${escHtml(r.almuerzo_inicio)}-${escHtml(r.almuerzo_fin || '...')}${r.almuerzo_hora_propia ? ' · hora escrita al salir' : r.almuerzo_registrado_al_salir ? ' · anotado al salir' : ''}</span>` : ''}
                             ${r.tipo_permiso ? `<span class="text-[9px] text-violet-700 bg-violet-50 border border-violet-200 rounded px-1 py-0.5 inline-block font-bold" title="${escHtml(r.nota_permiso || '')}">🩺 ${escHtml(r.tipo_permiso)} ${esTipoVariosDias(r.tipo_permiso) ? `(${r.dias_vacaciones_permiso || 0}d)` : `(${r.horas_permiso}h)`}</span>` : ''}
                             ${(r.salidas_permiso || []).filter(p => p && p.sale).map((p, i) => { const dec = r.decisiones_permiso?.[i]; return `<span class="text-[9px] text-violet-700 bg-violet-50 border border-violet-200 rounded px-1 py-0.5 inline-block font-bold" title="Salida dentro del turno${dec ? ' · RRHH: ' + escHtml(DECISIONES_PERMISO[dec.decision]?.texto || dec.decision) : ' · sin decisión de RRHH'}">${infoMotivoPermiso(p.motivo).emoji} ${escHtml(p.motivo || 'Permiso')} ${escHtml(p.sale)}–${p.sin_regreso ? 'no volvió' : escHtml(p.vuelve || '…')}${dec?.decision === 'descuenta' ? ' · se descuenta' : ''}</span>`; }).join('')}
                             ${r.almuerzo_omitido ? `<span class="text-[9px] text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1 py-0.5 inline-block font-bold" title="Jornada sin almuerzo autorizada por producción. Este día NO tiene descuento de la hora de almuerzo — valida la autorización antes de liquidar.">🍽️ Sin almuerzo (${escHtml(r.almuerzo_omitido_autoriza || '—')})</span>` : ''}
