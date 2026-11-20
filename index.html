@@ -1911,7 +1911,7 @@
         <div id="custom-alert-box" class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-200">
             <i id="ca-icon" class="ph-fill ph-info text-5xl mb-4 text-blue-500 mx-auto block text-center"></i>
             <h3 id="ca-title" class="text-xl font-bold text-center text-slate-800 mb-2">Título</h3>
-            <p id="ca-msg" class="text-sm text-center text-slate-500 mb-6 font-medium leading-relaxed">Mensaje</p>
+            <p id="ca-msg" class="text-sm text-center text-slate-500 mb-6 font-medium leading-relaxed whitespace-pre-line">Mensaje</p>
             <button id="btn-close-alert" class="btn-touch w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl transition-colors text-sm">Entendido</button>
         </div>
     </div>
@@ -10475,9 +10475,21 @@
                     if (!isoDispositivo || !tsServidor || estabaOffline) return '';
                     const msServidor = tsServidor.toMillis ? tsServidor.toMillis() : null;
                     if (msServidor === null) return '';
-                    const diffMin = Math.abs(msServidor - new Date(isoDispositivo).getTime()) / 60000;
+                    const msDispositivo = new Date(isoDispositivo).getTime();
+                    const diffMin = Math.abs(msServidor - msDispositivo) / 60000;
                     if (diffMin < UMBRAL_RELOJ_SOSPECHOSO_MIN) return '';
-                    return `<div class="text-[9px] text-rose-700 mt-1 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-block font-bold" title="El celular reportaba estar conectado, pero su reloj y el del servidor difieren en ~${Math.round(diffMin)} minutos. Puede ser el reloj del dispositivo mal configurado.">🕒 Reloj sospechoso (${Math.round(diffMin)}min)</div>`;
+                    // MEJORA (nov-2026): además de los minutos, se muestran las dos horas y la causa probable. Si la marca
+                    // LLEGÓ DESPUÉS de la hora del celular, casi siempre es que no había internet real (wifi sin internet,
+                    // datos sin saldo): la marca esperó guardada en el celular. Si el celular iba ADELANTADO respecto al
+                    // servidor, su reloj estaba mal, porque nadie puede marcar en el futuro.
+                    const llegoTarde = msServidor > msDispositivo;
+                    const etiquetaDif = diffMin >= 90 ? `${String(Number((diffMin / 60).toFixed(1))).replace('.', ',')} h` : `${Math.round(diffMin)} min`;
+                    const corto = llegoTarde ? `llegó ${etiquetaDif} tarde` : `reloj adelantado ${etiquetaDif}`;
+                    const fmt = (ms) => new Date(ms).toLocaleString('es-CO', { timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true });
+                    const marca = { entrada: 'entrada', salida: 'salida', almuerzo_inicio: 'inicio de almuerzo', almuerzo_fin: 'fin de almuerzo' }[sufijo] || sufijo;
+                    return `<button type="button" class="btn-reloj-sospechoso text-[9px] text-rose-700 mt-1 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 inline-block font-bold hover:bg-rose-100"
+                        data-marca="${escHtml(marca)}" data-celular="${escHtml(fmt(msDispositivo))}" data-servidor="${escHtml(fmt(msServidor))}" data-dif="${escHtml(etiquetaDif)}" data-tarde="${llegoTarde ? '1' : ''}"
+                        title="Celular: ${escHtml(fmt(msDispositivo))} · Llegó al servidor: ${escHtml(fmt(msServidor))} · el celular decía estar conectado. Toca para ver qué revisar.">🕒 Reloj sospechoso · ${escHtml(corto)}</button>`;
                 };
                 const fotoBtn = (foto, idBase, sufijo) => {
                     if (!foto) return '';
@@ -10575,6 +10587,17 @@
             });
             tbody.querySelectorAll('.btn-borrar-registro').forEach(btn => {
                 btn.addEventListener('click', () => borrarRegistro(btn.dataset.cedula, btn.dataset.fecha));
+            });
+            tbody.querySelectorAll('.btn-reloj-sospechoso').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const d = btn.dataset;
+                    UI.showAlert(`Reloj sospechoso en la ${d.marca}`,
+                        `Hora del celular al marcar: ${d.celular}\nLlegó al servidor: ${d.servidor}\nDiferencia: ${d.dif}, y el celular decía estar conectado a internet.\n\n` +
+                        (d.tarde
+                            ? 'Causa más probable: el celular no tenía internet real (wifi sin internet, datos sin saldo o mala señal). La marca se guardó en el celular con su hora y subió cuando volvió la conexión, así que la hora marcada suele ser la real. También puede ser un reloj atrasado.\n\nQué revisar: toca GPS para ver si estaba en la obra, y pregúntale al supervisor a qué hora salió.'
+                            : 'Causa más probable: el reloj del celular estaba adelantado (mal configurado o cambiado a mano), porque la marca dice una hora que todavía no había pasado.\n\nQué revisar: confirma la hora real con el supervisor y corrige el día con el lápiz si hace falta. Si se repite, pídele que ponga la hora automática del celular.'),
+                        'info');
+                });
             });
             tbody.querySelectorAll('.btn-justificar-tardanza').forEach(btn => {
                 btn.addEventListener('click', () => justificarTardanza(btn.dataset.cedula, btn.dataset.fecha));
