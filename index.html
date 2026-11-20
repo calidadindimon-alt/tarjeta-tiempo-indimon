@@ -11083,10 +11083,42 @@
         // Desde nov-2026 el Excel se arma con ExcelJS (antes SheetJS): una hoja "Tarjeta de Tiempo" por colaborador,
         // con colores, fórmulas y firmas (ver construirLibroConsolidado).
         async function descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion) {
-            const ExcelJS = await cargarExcelJS();
-            const wb = construirLibroConsolidado(ExcelJS, rows, filtroDescripcion);
+            const [ExcelJS, especiales] = await Promise.all([cargarExcelJS(), diasEspecialesParaTarjetas(rows)]);
+            const wb = construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especiales);
             const buffer = await wb.xlsx.writeBuffer();
             descargarBlobComoArchivo(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArchivo);
+        }
+
+        // Días de descanso remunerado y domingos perdidos de cada colaborador del Excel, con la MISMA función que pinta las
+        // filas verdes/rojas del Consolidado (calcularDiasDescansoInferidoAdmin), mes por mes. Si algo falla, la tarjeta
+        // sale igual, solo sin esas filas.
+        async function diasEspecialesParaTarjetas(rows) {
+            const mapa = new Map();
+            try {
+                const mesesPorCedula = new Map();
+                rows.forEach(r => {
+                    if (!r.cedula || !/^\d{4}-\d{2}/.test(r.fecha || '')) return;
+                    if (!mesesPorCedula.has(r.cedula)) mesesPorCedula.set(r.cedula, new Set());
+                    mesesPorCedula.get(r.cedula).add(r.fecha.slice(0, 7));
+                });
+                // Cada consulta lee todos los días de esa persona: sin filtro de mes (hasta 2000 registros de muchos meses)
+                // serían cientos de lecturas, así que ahí se omiten estas filas.
+                const consultas = [...mesesPorCedula.values()].reduce((a, ms) => a + ms.size, 0);
+                if (consultas > 150) return mapa;
+                const meses = [...new Set([...mesesPorCedula.values()].flatMap(s => [...s]))];
+                const permisosPorMes = new Map(await Promise.all(meses.map(async m => [m, await cargarPermisosPorCedulaYFecha(m)])));
+                await Promise.all([...mesesPorCedula.entries()].map(async ([cedula, ms]) => {
+                    const total = { descanso: [], sancion: [] };
+                    for (const m of ms) {
+                        const { descanso, sancion } = await calcularDiasDescansoInferidoAdmin(cedula, m, permisosPorMes.get(m));
+                        total.descanso.push(...descanso); total.sancion.push(...sancion);
+                    }
+                    mapa.set(cedula, total);
+                }));
+            } catch (e) {
+                console.warn('No se pudieron calcular los días de descanso para la Tarjeta de Tiempo:', e);
+            }
+            return mapa;
         }
 
         // ======================= Hoja "Tarjeta de Tiempo" por colaborador (nov-2026) =======================
@@ -11100,7 +11132,9 @@
         //    anteriores al 21-oct-2026; por aprobar, por compensar y no autorizadas no se pagan como extra;
         //  - el recargo nocturno y las horas de domingo/festivo van aparte: no son horas extra.
         const DIAS_SEMANA_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        function datosTarjetaColaborador(rows) {
+        // especiales (opcional): { descanso: [{ fecha, etiqueta }], sancion: [fecha] }, los mismos días que el Consolidado
+        // pinta en verde ("Descanso remunerado" / "Festivo remunerado") y en rojo (domingo perdido, art. 173).
+        function datosTarjetaColaborador(rows, especiales) {
             const dias = construirFilasDetalleHoras(rows);
             const primero = rows.slice().sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''))[0] || {};
             const noAusencia = rows.filter(r => r.tipo_permiso && !TIPOS_AUSENCIA.includes(r.tipo_permiso));
@@ -11125,6 +11159,8 @@
                 nombre: primero.empleado_nombre || '', cedula: primero.cedula || '',
                 desde: fechas[0] || '', hasta: fechas[fechas.length - 1] || '',
                 dias,
+                descansos: (especiales?.descanso || []).map(d => ({ fecha: d.fecha, etiqueta: d.etiqueta || 'Descanso remunerado' })),
+                sanciones: (especiales?.sancion || []).slice(),
                 // Detalle de cada permiso, salida dentro del turno y ausencia (fecha, tipo, cantidad, nota o decisión de RRHH).
                 detallePermisos: [...construirFilasPermisos(rows), ...construirFilasAusencias(rows)].sort((a, b) => (a[2] || '').localeCompare(b[2] || '')),
                 novedades: {
@@ -11191,11 +11227,29 @@
              'Extras nocturnas', 'Recargo nocturno', 'H. domin./ fest.', 'Total extras', 'Estado extras', 'Autorizó extras', 'Min. tarde', 'Tardanza justif.',
              'Min. tarde sin justificar', 'Observaciones'].forEach((h, i) => poner(`${L(i + 1)}9`, h, { font: { bold: true }, fill: C.light, border: CAJA, align: { horizontal: 'center', vertical: 'middle', wrapText: true } }));
             ws.getRow(9).height = 42;
-            const R0 = 10, n = Math.max(datos.dias.length, 1), RL = R0 + n - 1, RT = RL + 1;
-            if (!datos.dias.length) { ws.mergeCells(`A${R0}:V${R0}`); poner(`A${R0}`, '(sin días trabajados en este filtro)', { font: { italic: true, color: { argb: C.gris } }, align: { horizontal: 'center' } }); }
-            datos.dias.forEach((d, i) => {
+            // Días trabajados + días de descanso remunerado (verde) + domingos perdidos por ausencia (rojo), por fecha.
+            const filasDia = [
+                ...datos.dias.map(d => ({ tipo: 'dia', fecha: d[2] || '', d })),
+                ...(datos.descansos || []).map(x => ({ tipo: 'descanso', fecha: x.fecha, texto: `🌙 ${x.etiqueta}` })),
+                ...(datos.sanciones || []).map(f => ({ tipo: 'sancion', fecha: f, texto: '⚠ Descanso dominical NO remunerado — tuvo una ausencia injustificada esta semana (art. 173 CST)' })),
+            ].sort((a, b) => a.fecha.localeCompare(b.fecha));
+            const R0 = 10, n = Math.max(filasDia.length, 1), RL = R0 + n - 1, RT = RL + 1;
+            if (!filasDia.length) { ws.mergeCells(`A${R0}:V${R0}`); poner(`A${R0}`, '(sin días trabajados en este filtro)', { font: { italic: true, color: { argb: C.gris } }, align: { horizontal: 'center' } }); }
+            filasDia.forEach((fila, i) => {
                 const r = R0 + i;
-                const fecha = d[2] || '';
+                const fecha = fila.fecha;
+                if (fila.tipo !== 'dia') {
+                    const verde = fila.tipo === 'descanso';
+                    const fondo = verde ? 'FFE2F5EA' : 'FFFCE4E4', tinta = verde ? 'FF047857' : 'FFB91C1C';
+                    poner(`A${r}`, fechaExcel(fecha), { numFmt: 'dd/mm/yyyy', border: CAJA, fill: fondo, align: { horizontal: 'center' } });
+                    poner(`B${r}`, DIAS_SEMANA_ES[new Date(fecha + 'T12:00:00').getDay()], { border: CAJA, fill: fondo, align: { horizontal: 'center' } });
+                    poner(`C${r}`, '', { border: CAJA, fill: fondo });
+                    ws.mergeCells(`D${r}:V${r}`);
+                    poner(`D${r}`, fila.texto, { font: { bold: true, color: { argb: tinta } }, align: { vertical: 'middle' } });
+                    estilo(`D${r}:V${r}`, { fill: fondo, border: CAJA });
+                    return;
+                }
+                const d = fila.d;
                 const obs = [d[21], d[25], d[22], d[17] && d[17] !== 'COMPLETADO' ? `Estado: ${d[17]}` : ''].filter(Boolean).join(' | ');
                 // Cliente y obra siempre en mayúscula: hay días guardados como "Mayekawa" y otros como "MAYEKAWA".
                 const mayus = (t) => String(t || '').trim().replace(/\s+/g, ' ').toUpperCase();
@@ -11276,6 +11330,7 @@
                 ['Almuerzos omitidos sin autorización', nv.almuerzosSinAutorizar, 'días', INT],
                 ['Días por revisar (horas sin confirmar)', nv.diasPorRevisar, 'días', INT],
                 ['Turnos sin cerrar', nv.turnosAbiertos, 'días', INT],
+                ['Descansos y festivos remunerados (no trabajados)', (datos.descansos || []).length, 'días', INT],
             ];
             novedades.forEach(([t, f, u, fmt, hl], i) => {
                 const r = e0 + i;
@@ -11324,13 +11379,13 @@
 
         // Arma el libro: una hoja "Tarjeta de Tiempo" por colaborador. Desde nov-2026 ya no lleva la hoja "Consolidado":
         // la tarjeta trae el mismo registro diario y, al final, el detalle de permisos y ausencias.
-        function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion) {
+        function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especialesPorCedula) {
             const wb = new ExcelJS.Workbook();
             wb.creator = 'Tarjeta de Tiempo INDIMON';
             const porPersona = new Map();
             rows.forEach(r => { const k = r.cedula || r.empleado_nombre || '—'; if (!porPersona.has(k)) porPersona.set(k, []); porPersona.get(k).push(r); });
             const usados = new Set();
-            [...porPersona.values()].map(datosTarjetaColaborador).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
+            [...porPersona.entries()].map(([k, rs]) => datosTarjetaColaborador(rs, especialesPorCedula?.get(k))).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
                 .forEach(d => agregarHojaTarjeta(wb, d, nombreHojaTarjeta(d.nombre || d.cedula, usados), filtroDescripcion));
             wb.calcProperties = { ...(wb.calcProperties || {}), fullCalcOnLoad: true };
             return wb;

@@ -53,7 +53,8 @@ caso('Días por revisar: 1', nv.diasPorRevisar === 1);
 caso('Registro diario: solo días trabajados (sin vacaciones ni ausencias)', dA.dias.length === 8, dA.dias.length);
 
 // ---- Libro completo ----
-const wb = construirLibroConsolidado(ExcelJS, rows, 'Mes: 2026-11');
+const especiales = new Map([['111', { descanso: [{ fecha: '2026-11-08', etiqueta: 'Descanso remunerado — trabajó todos los días laborales de la semana' }, { fecha: '2026-11-16', etiqueta: 'Festivo remunerado — no se repone ni se alarga la jornada (meta de la semana: 33,5 h)' }], sancion: ['2026-11-15'] }]]);
+const wb = construirLibroConsolidado(ExcelJS, rows, 'Mes: 2026-11', especiales);
 const nombres = wb.worksheets.map(w => w.name);
 caso('Libro: una hoja por colaborador, sin hoja Consolidado', JSON.stringify(nombres) === JSON.stringify(['ANA PRUEBA', 'BETO PRUEBA']), JSON.stringify(nombres));
 const ws = wb.getWorksheet('ANA PRUEBA');
@@ -74,6 +75,15 @@ caso('Horas de domingo/festivo sin sus extras = SUMIF de la columna K en los dí
 caso('No hay "Total extras + recargos" (el recargo no es una hora extra)', !Object.values(celdas).some(v => typeof v === 'string' && /extras \+ recargos/i.test(v)));
 caso('Fecha como fecha de Excel y hora como hora', celdas.A10 instanceof Date && ws.getCell('A10').numFmt === 'dd/mm/yyyy' && Math.abs(celdas.F10 - 7 / 24) < 1e-9 && ws.getCell('F10').numFmt === 'hh:mm', `${celdas.A10} ${celdas.F10}`);
 caso('Día de la semana en español', celdas.B10 === 'Miércoles', celdas.B10);
+{
+  const filaDe = (fecha) => { let fila = 0; ws.eachRow((row, r) => { const v = row.getCell(1).value; if (v instanceof Date && v.toISOString().slice(0, 10) === fecha) fila = r; }); return fila; };
+  const fD = filaDe('2026-11-08'), fF = filaDe('2026-11-16'), fS = filaDe('2026-11-15'), f6 = filaDe('2026-11-06'), f9 = filaDe('2026-11-09');
+  caso('Días de descanso en verde, en su fecha dentro del registro diario', fD > f6 && fD < f9 && /^🌙 Descanso remunerado/.test(ws.getCell(`D${fD}`).value) && ws.getCell(`D${fD}`).fill?.fgColor?.argb === 'FFE2F5EA', `${f6} ${fD} ${f9}`);
+  caso('Festivo remunerado (no trabajado) también en verde', /^🌙 Festivo remunerado/.test(ws.getCell(`D${fF}`).value || ''));
+  caso('Domingo perdido por ausencia en rojo', /NO remunerado/.test(ws.getCell(`D${fS}`).value || '') && ws.getCell(`D${fS}`).fill?.fgColor?.argb === 'FFFCE4E4');
+  caso('Las filas de descanso no cambian los totales (siguen siendo SUM de la columna)', /^=SUM\(K10:K\d+\)$/.test(celdas[`K${filaTot}`]) && typeof ws.getCell(`K${fD}`).value !== "number");
+  caso('Novedad: 2 descansos y festivos remunerados', vecina('Descansos y festivos remunerados (no trabajados)', 'S') === 2);
+}
 caso('Cliente y obra en mayúscula aunque se hayan guardado distinto ("Mayekawa" → "MAYEKAWA")', celdas.D11 === 'MAYEKAWA' && celdas.E11 === 'ECLA-YUMBO' && celdas.D10 === 'INDIMON S.A.S.', `${celdas.D11} / ${celdas.E11}`);
 caso('Detalle de permisos y ausencias al final de la tarjeta (lo que antes estaba solo en el Consolidado)',
   ['Cita médica', 'Vacaciones', 'Ausencia injustificada', 'Permiso personal (dentro del turno)'].every(tipo => Object.values(celdas).includes(tipo))
