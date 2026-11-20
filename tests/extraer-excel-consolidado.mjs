@@ -41,10 +41,10 @@ export function extraerTarjetaTiempo(fuente, hoy = '2026-11-19') {
     bloqueBalanceado(fuente, 'function duracionHorasEntre(desde, hasta) {'),
     bloqueBalanceado(fuente, 'function horasDeSalidaPermiso(r, i) {'),
     hastaPuntoYComa(fuente, 'const DIAS_SEMANA_ES = ['),
-    bloqueBalanceado(fuente, 'function datosTarjetaColaborador(rows) {'),
+    bloqueBalanceado(fuente, 'function datosTarjetaColaborador(rows, especiales) {'),
     bloqueBalanceado(fuente, 'function agregarHojaTarjeta(wb, datos, nombreHoja, filtroDescripcion) {'),
     bloqueBalanceado(fuente, 'function nombreHojaTarjeta(base, usados) {'),
-    bloqueBalanceado(fuente, 'function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion) {'),
+    bloqueBalanceado(fuente, 'function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especialesPorCedula) {'),
   ];
   return [...piezas, 'module.exports = { datosTarjetaColaborador, construirLibroConsolidado, nombreHojaTarjeta };'].join('\n\n');
 }
