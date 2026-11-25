@@ -44,7 +44,7 @@ export function extraerTarjetaTiempo(fuente, hoy = '2026-11-19') {
     bloqueBalanceado(fuente, 'function datosTarjetaColaborador(rows, especiales) {'),
     bloqueBalanceado(fuente, 'function agregarHojaTarjeta(wb, datos, nombreHoja, filtroDescripcion) {'),
     bloqueBalanceado(fuente, 'function nombreHojaTarjeta(base, usados) {'),
-    bloqueBalanceado(fuente, 'function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especialesPorCedula) {'),
+    bloqueBalanceado(fuente, 'function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especialesPorCedula, perfiles) {'),
   ];
   return [...piezas, 'module.exports = { datosTarjetaColaborador, construirLibroConsolidado, nombreHojaTarjeta };'].join('\n\n');
 }
