@@ -1848,6 +1848,9 @@
             <div class="mt-asa"></div>
             <h3 class="text-lg font-bold text-slate-800">¿A qué sales?</h3>
             <p class="text-sm text-slate-500 mt-1">Tu turno queda en pausa. Al volver tocas <b>"Ya volví"</b> y sigue contando.</p>
+            <!-- Permiso pedido para hoy (nov-2026): si la persona tiene una solicitud de permiso por horas para este día, se
+                 muestra aquí y su motivo queda elegido (ver cargarPermisoDelDiaMT). -->
+            <div id="hoja-permiso-solicitud" class="hidden mt-3"></div>
             <div id="hoja-permiso-opciones" class="grid grid-cols-2 gap-2 mt-3"></div>
             <button id="btn-hoja-permiso-salir" type="button" disabled class="btn-touch w-full bg-violet-600 hover:bg-violet-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold py-3.5 rounded-xl text-sm mt-3">Marcar mi salida</button>
             <button id="btn-hoja-permiso-cancelar" type="button" class="btn-touch w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-3 rounded-xl text-sm mt-2">Cancelar</button>
@@ -5595,7 +5598,10 @@
                 else if (action === 'permiso_sale') {
                     data.salidas_permiso = [...(Array.isArray(data.salidas_permiso) ? data.salidas_permiso : []), {
                         motivo: motivoSalidaPermiso || 'Permiso personal', sale: tTime, vuelve: null,
-                        loc_sale: loc, gps_motivo_sale: gpsMotivo, foto_sale: selfieUrl, sale_iso: ahoraDispositivo.toISOString()
+                        loc_sale: loc, gps_motivo_sale: gpsMotivo, foto_sale: selfieUrl, sale_iso: ahoraDispositivo.toISOString(),
+                        // Si salió con el motivo de su solicitud de permiso de hoy, queda enlazada para RRHH.
+                        ...(solicitudPermisoSalida && motivoSalidaDeTipoPermiso(solicitudPermisoSalida.tipo) === motivoSalidaPermiso
+                            ? { solicitud_id: solicitudPermisoSalida.id, solicitud_tipo: solicitudPermisoSalida.tipo, solicitud_estado: solicitudPermisoSalida.estado } : {})
                     }];
                 }
                 else if (action === 'permiso_vuelve') {
@@ -6496,6 +6502,48 @@
             document.getElementById('btn-salir-permiso').classList.toggle('hidden', !!esTurnoDeAyer);
         }
         let motivoSalidaPermiso = null;
+        // Motivo de la salida que corresponde al tipo de la solicitud de permiso (PERMISOS_CATALOGO).
+        function motivoSalidaDeTipoPermiso(tipo) {
+            const t = (tipo || '').toLowerCase();
+            if (t.startsWith('cita médica')) return 'Cita médica';
+            if (t.startsWith('calamidad')) return 'Calamidad doméstica';
+            if (t.startsWith('diligencia')) return 'Diligencia';
+            if (t.startsWith('obligación escolar')) return 'Obligación escolar';
+            return 'Permiso personal';
+        }
+        let solicitudPermisoSalida = null;
+        // Busca la solicitud de permiso por horas de esta persona para hoy (la aprobada primero) y la muestra arriba de
+        // los motivos, con el motivo ya elegido. Si no hay, la hoja queda como antes. Sin conexión, simplemente no aparece.
+        async function cargarPermisoDelDiaMT() {
+            const caja = document.getElementById('hoja-permiso-solicitud');
+            solicitudPermisoSalida = null;
+            caja.classList.add('hidden'); caja.innerHTML = '';
+            const fecha = fechaRegistroActivo || getTodayStr();
+            let lista = [];
+            try {
+                const snap = await Promise.race([getDocs(query(collection(db, 'permisos'), where('trabajador_cedula', '==', currentUserId), where('fecha', '==', fecha))),
+                    new Promise((_, no) => setTimeout(() => no(new Error('tiempo')), 6000))]);
+                lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            } catch (e) { console.warn('No se pudo leer el permiso del día:', e); return; }
+            const delDia = lista.filter(x => !esTipoVariosDias(x.tipo) && !['rechazado', 'anulado'].includes(x.estado))
+                .sort((a, b) => (b.estado === 'aprobado') - (a.estado === 'aprobado'));
+            const p = delDia[0];
+            if (!p || document.getElementById('hoja-permiso').classList.contains('hidden')) return;
+            solicitudPermisoSalida = { id: p.id, tipo: p.tipo, estado: p.estado || 'pendiente' };
+            const aprobado = p.estado === 'aprobado';
+            const horario = (p.hora_salida || p.hora_entrada) ? `Sales ${p.hora_salida ? hora12MT(p.hora_salida) : '—'} · regresas ${p.hora_entrada ? hora12MT(p.hora_entrada) : '—'}` : '';
+            const horas = p.horas ? `${String(p.horas).replace('.', ',')} h` : '';
+            caja.innerHTML = `<div class="rounded-2xl border ${aprobado ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'} p-3">
+                <p class="text-[11px] font-bold uppercase ${aprobado ? 'text-emerald-700' : 'text-amber-700'}">📄 Tu permiso de hoy · ${aprobado ? '✔ Aprobado' : '⏳ Pendiente de firmas'}</p>
+                <p class="text-sm font-bold text-slate-800 mt-0.5">${escHtml(p.tipo)}</p>
+                ${horario || horas ? `<p class="text-xs text-slate-600">${escHtml([horario, horas].filter(Boolean).join(' · '))}</p>` : ''}
+                ${aprobado ? '' : '<p class="text-[11px] text-amber-800 mt-1">Todavía le faltan firmas. Puedes salir igual si tu jefe lo autorizó.</p>'}
+            </div>`;
+            caja.classList.remove('hidden');
+            const motivo = motivoSalidaDeTipoPermiso(p.tipo);
+            const b = document.querySelector(`#hoja-permiso-opciones [data-motivo="${CSS.escape(motivo)}"]`);
+            if (b && !motivoSalidaPermiso) b.click();
+        }
         function abrirHojaPermisoMT() {
             motivoSalidaPermiso = null;
             const cont = document.getElementById('hoja-permiso-opciones');
@@ -6507,6 +6555,7 @@
             }));
             document.getElementById('btn-hoja-permiso-salir').disabled = true;
             document.getElementById('hoja-permiso').classList.remove('hidden');
+            cargarPermisoDelDiaMT();
         }
         function cerrarHojaPermisoMT() { document.getElementById('hoja-permiso').classList.add('hidden'); }
         document.getElementById('btn-salir-permiso').addEventListener('click', abrirHojaPermisoMT);
@@ -11149,8 +11198,9 @@
         // Desde nov-2026 el Excel se arma con ExcelJS (antes SheetJS): una hoja "Tarjeta de Tiempo" por colaborador,
         // con colores, fórmulas y firmas (ver construirLibroConsolidado).
         async function descargarExcelConsolidado(rows, nombreArchivo, filtroDescripcion) {
-            const [ExcelJS, especiales] = await Promise.all([cargarExcelJS(), diasEspecialesParaTarjetas(rows)]);
-            const wb = construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especiales);
+            const [ExcelJS, especiales, perfiles] = await Promise.all([cargarExcelJS(), diasEspecialesParaTarjetas(rows),
+                obtenerPerfilesEmpleados().catch(e => { console.warn('No se pudieron leer los cargos para la Tarjeta de Tiempo:', e); return new Map(); })]);
+            const wb = construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especiales, perfiles);
             const buffer = await wb.xlsx.writeBuffer();
             descargarBlobComoArchivo(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArchivo);
         }
@@ -11281,7 +11331,8 @@
             estilo('A1:V1', { fill: C.navy }); ws.getRow(1).height = 28;
             ws.mergeCells('A2:V2');
             poner('A2', 'Horas ordinarias, horas extra y novedades del colaborador', { font: { italic: true, color: { argb: 'FF595959' } }, align: { horizontal: 'center' } });
-            [['A4', 'Colaborador:', datos.nombre], ['A5', 'Cédula:', datos.cedula], ['A6', 'Periodo:', `${fechaCorta(datos.desde)} – ${fechaCorta(datos.hasta)}`]].forEach(([d, t, v]) => {
+            [['A4', 'Colaborador:', datos.nombre], ['A5', 'Cédula:', datos.cedula], ['A6', 'Periodo:', `${fechaCorta(datos.desde)} – ${fechaCorta(datos.hasta)}`],
+             ['A7', 'Cargo:', (datos.cargo || '—').toString().trim().toUpperCase()]].forEach(([d, t, v]) => {
                 poner(d, t, { font: { bold: true } }); const fila = d.slice(1);
                 ws.mergeCells(`C${fila}:H${fila}`); poner(`C${fila}`, v, { border: { bottom: fino } });
             });
@@ -11445,13 +11496,14 @@
 
         // Arma el libro: una hoja "Tarjeta de Tiempo" por colaborador. Desde nov-2026 ya no lleva la hoja "Consolidado":
         // la tarjeta trae el mismo registro diario y, al final, el detalle de permisos y ausencias.
-        function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especialesPorCedula) {
+        // perfiles (opcional): Map cedula -> ficha de empleados/{cedula}, de donde sale el cargo de cada tarjeta.
+        function construirLibroConsolidado(ExcelJS, rows, filtroDescripcion, especialesPorCedula, perfiles) {
             const wb = new ExcelJS.Workbook();
             wb.creator = 'Tarjeta de Tiempo INDIMON';
             const porPersona = new Map();
             rows.forEach(r => { const k = r.cedula || r.empleado_nombre || '—'; if (!porPersona.has(k)) porPersona.set(k, []); porPersona.get(k).push(r); });
             const usados = new Set();
-            [...porPersona.entries()].map(([k, rs]) => datosTarjetaColaborador(rs, especialesPorCedula?.get(k))).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
+            [...porPersona.entries()].map(([k, rs]) => ({ ...datosTarjetaColaborador(rs, especialesPorCedula?.get(k)), cargo: perfiles?.get(k)?.cargo || rs.find(r => r.cargo)?.cargo || '' })).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
                 .forEach(d => agregarHojaTarjeta(wb, d, nombreHojaTarjeta(d.nombre || d.cedula, usados), filtroDescripcion));
             wb.calcProperties = { ...(wb.calcProperties || {}), fullCalcOnLoad: true };
             return wb;

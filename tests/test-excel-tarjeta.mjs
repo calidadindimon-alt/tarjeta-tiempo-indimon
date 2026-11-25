@@ -54,7 +54,7 @@ caso('Registro diario: solo días trabajados (sin vacaciones ni ausencias)', dA.
 
 // ---- Libro completo ----
 const especiales = new Map([['111', { descanso: [{ fecha: '2026-11-08', etiqueta: 'Descanso remunerado — trabajó todos los días laborales de la semana' }, { fecha: '2026-11-16', etiqueta: 'Festivo remunerado — no se repone ni se alarga la jornada (meta de la semana: 33,5 h)' }], sancion: ['2026-11-15'] }]]);
-const wb = construirLibroConsolidado(ExcelJS, rows, 'Mes: 2026-11', especiales);
+const wb = construirLibroConsolidado(ExcelJS, rows, 'Mes: 2026-11', especiales, new Map([['111', { cargo: 'Soldador' }]]));
 const nombres = wb.worksheets.map(w => w.name);
 caso('Libro: una hoja por colaborador, sin hoja Consolidado', JSON.stringify(nombres) === JSON.stringify(['ANA PRUEBA', 'BETO PRUEBA']), JSON.stringify(nombres));
 const ws = wb.getWorksheet('ANA PRUEBA');
@@ -63,6 +63,8 @@ ws.eachRow((row, r) => row.eachCell((c, k) => { const t = typeof c.value === 'ob
 const buscar = (texto) => Object.entries(celdas).find(([, v]) => v === texto)?.[0];
 const vecina = (texto, col) => { const d = buscar(texto); return d ? celdas[`${col}${d.slice(1)}`] : undefined; };
 caso('Hoja con el nombre y la cédula reales (no los del primero de la lista)', celdas.C4 === 'ANA PRUEBA' && celdas.C5 === '111');
+caso('Cargo debajo del periodo, desde la ficha del colaborador', celdas.A7 === 'Cargo:' && celdas.C7 === 'SOLDADOR', `${celdas.A7} ${celdas.C7}`);
+caso('Sin ficha, el cargo queda con raya', wb.getWorksheet('BETO PRUEBA').getCell('C7').value === '—');
 caso('Totales con fórmula SUM', filaTot > 0 && /^=SUM\(K10:K\d+\)$/.test(celdas[`K${filaTot}`]), celdas[`K${filaTot}`]);
 caso('La tardanza NO se resta de las horas ordinarias', vecina('Horas ordinarias trabajadas', 'S') === `=K${filaTot}` && !Object.values(celdas).some(v => typeof v === 'string' && /NETAS/.test(v)));
 caso('Minutos sin justificar = fórmula, solo como dato', vecina('   Sin justificar (RRHH decide si descuenta)', 'S') === `=U${filaTot}`);
