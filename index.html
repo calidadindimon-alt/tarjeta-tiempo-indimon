@@ -3990,7 +3990,16 @@
                 const [y, m, d] = reg.fecha.split('-').map(Number);
                 return new Date(y, m - 1, d).getDay() === 6;
             })());
-            const horaEsperadaObra = esSabadoPactado ? jornadaObra.sabado.entrada : getHoraEsperadaObra(reg.obra);
+            // DÍAS LIBRES DE HORARIO (nov-2026, decisión de INDIMON): el horario de la obra rige de lunes a viernes (y el sábado
+            // solo si la obra lo tiene pactado). El sábado sin horario, el domingo y el festivo son libres de horario: las
+            // horas cuentan desde la entrada REAL (no se recorta la llegada antes de la hora oficial) y no hay tardanza.
+            const diaConHorario = (() => {
+                if (!reg.fecha) return true;
+                const [y, m, d] = reg.fecha.split('-').map(Number);
+                const dow = new Date(y, m - 1, d).getDay();
+                return ((dow >= 1 && dow <= 5) || esSabadoPactado) && !esDominicalOFestivo(reg.fecha);
+            })();
+            const horaEsperadaObra = !diaConHorario ? null : (esSabadoPactado ? jornadaObra.sabado.entrada : getHoraEsperadaObra(reg.obra));
             let minutosTarde = 0;
             if (horaEsperadaObra) {
                 const horaEsperadaFloat = timeStrToFloat(horaEsperadaObra);

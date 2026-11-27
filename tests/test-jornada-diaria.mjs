@@ -298,6 +298,25 @@ casoSemana('20. Obra con sábado: lun-vie 8,5 h + sábado 7:00-14:00 (6 h netas)
   { ord: 42, ext: 6.5 });
 
 console.log('\n========== RESUMEN ==========');
+// Días libres de horario (nov-2026): el horario de la obra rige de lunes a viernes (y el sábado solo si está pactado). El
+// sábado sin horario, el domingo y el festivo cuentan desde la entrada REAL y no tienen tardanza.
+const CORRUGADOS = { horarios_obra: { CORR: '07:30' }, jornadas_obra: { CORR: { entrada: '07:30', salida_lj: '17:00', salida_v: '16:30', hora_almuerzo: '12:30', almuerzo: true, sabado: null } } };
+caso('53. Sábado sin horario 7:00–15:00 -> cuenta desde las 7:00: 8 h extra (antes 7,5)', {
+  catalogos: CORRUGADOS, reg: { fecha: '2026-11-21', obra: 'CORR', entrada: '07:00', salida: '15:00' }, tope: 42,
+}, { ord: 0, extD: 8, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('54. Sábado sin horario, entra 7:45 -> no es tardanza (no hay horario ese día)', {
+  catalogos: CORRUGADOS, reg: { fecha: '2026-11-21', obra: 'CORR', entrada: '07:45', salida: '13:00' }, tope: 42,
+}, { ord: 0, extD: 5.25, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('55. Festivo (16/11) 6:52–16:39 con almuerzo -> cuenta desde las 6:52: 8,78 h de festivo', {
+  catalogos: CORRUGADOS, reg: { fecha: '2026-11-16', obra: 'CORR', entrada: '06:52', salida: '16:39', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 8.78, extD: 0, extN: 0, recNoct: 0, dominical: true, horas_dominicales: 8.78, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('56. Lunes a viernes no cambia: martes 7:00–17:00 sigue contando desde las 7:30', {
+  catalogos: CORRUGADOS, reg: { fecha: '2026-11-24', obra: 'CORR', entrada: '07:00', salida: '17:00', almuerzo_inicio: '12:30', almuerzo_fin: '13:30' }, tope: 42,
+}, { ord: 8.5, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('57. Sábado PACTADO no cambia: entra 7:30 con horario 7:00 -> sigue siendo tardanza', {
+  catalogos: POSTOBON, reg: { fecha: '2026-11-21', obra: 'POSTOBON', entrada: '07:30', salida: '09:00' }, tope: 42,
+}, { ord: 1.5, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 30, horasDescontadasTardanza: 0.5 });
+
 const fails = results.filter((r) => !r.ok);
 console.log(`${results.length - fails.length} / ${results.length} casos correctos`);
 if (fails.length > 0) {
