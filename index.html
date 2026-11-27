@@ -6917,10 +6917,14 @@
                     const fijados = Object.values(horariosDiaCache).filter(h => (h.obra || '').trim().toUpperCase() === obra.trim().toUpperCase() && h.fecha >= fechaHoy.slice(0, 8) + '01').sort((a, b) => a.fecha.localeCompare(b.fecha));
                     html += tarjeta(`<p class="font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-clock text-blue-600"></i>${escapeHtml(obra)}</p>
                         <p class="text-[12px] mt-0.5 text-slate-600">Hoy entra a las <b>${escapeHtml(delDia ? delDia.entrada : (deObra || '—'))}</b> ${delDia ? `<span class="text-emerald-700 font-bold">(fijada por ${escapeHtml(delDia.por_nombre || 'el supervisor')})</span>` : '<span class="text-slate-400">(horario de la obra)</span>'}</p>
-                        <div class="flex flex-wrap items-end gap-2 mt-2" data-form-hora="${escapeHtml(obra)}">
-                            <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Día</label><input type="date" class="sup-hd-fecha border border-slate-300 rounded-lg p-2 text-sm" value="${fechaHoy}"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Entra a las</label><input type="text" inputmode="numeric" maxlength="5" placeholder="07:00" class="sup-hd-hora border border-slate-300 rounded-lg p-2 text-sm w-24"></div>
-                            <button type="button" class="btn-sup-hd-guardar btn-touch bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Fijar hora</button>
+                        <div class="mt-2" data-form-hora="${escapeHtml(obra)}">
+                            <div class="flex flex-wrap items-end gap-2">
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Desde</label><input type="date" class="sup-hd-fecha border border-slate-300 rounded-lg p-2 text-sm" value="${fechaHoy}"></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Hasta <span class="normal-case font-normal">(opcional)</span></label><input type="date" class="sup-hd-hasta border border-slate-300 rounded-lg p-2 text-sm"></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Entra a las</label><input type="text" inputmode="numeric" maxlength="5" placeholder="07:00" class="sup-hd-hora border border-slate-300 rounded-lg p-2 text-sm w-24"></div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-1 mt-2"><span class="text-[10px] font-bold text-slate-500 uppercase mr-1">Días</span>${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => `<label class="text-[11px] font-bold border border-slate-300 rounded-lg px-2 py-1 flex items-center gap-1"><input type="checkbox" class="sup-hd-dia" value="${(i + 1) % 7}" checked>${d}</label>`).join('')}</div>
+                            <button type="button" class="btn-sup-hd-guardar btn-touch mt-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Fijar hora</button>
                         </div>
                         ${fijados.length ? `<div class="mt-2 flex flex-col gap-1">${fijados.map(h => `<div class="flex items-center justify-between text-[11px] bg-slate-50 rounded-lg px-2 py-1"><span>${escapeHtml(diaCortoEs(h.fecha))}: entra a las <b>${escapeHtml(h.entrada)}</b> · ${escapeHtml(h.por_nombre || '')}</span><button type="button" class="btn-sup-hd-quitar text-rose-600 font-bold px-1" data-id="${escapeHtml(h.id)}" data-obra="${escapeHtml(obra)}" data-fecha="${escapeHtml(h.fecha)}" aria-label="Quitar">✕</button></div>`).join('')}</div>` : ''}`);
                 });
@@ -7004,26 +7008,40 @@
         // de esa obra (o a Admin). Los días que ya se cerraron se actualizan cuando Admin usa "Corregir… del mes" o
         // "Recalcular semana".
         const idHorarioDia = (obra, fecha) => `${fecha}__${(obra || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]+/g, '_').slice(0, 120)}`;
+        // Un solo día, o un rango "desde–hasta" con los días de la semana marcados (L a D). Máximo 31 días por vez.
         async function supFijarHoraDia(form) {
             const obra = form.dataset.formHora;
-            const fecha = form.querySelector('.sup-hd-fecha').value;
+            const desde = form.querySelector('.sup-hd-fecha').value;
+            const hasta = form.querySelector('.sup-hd-hasta').value || desde;
             const entrada = normalizarHora24(form.querySelector('.sup-hd-hora').value);
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return UI.showAlert('Falta el día', 'Elige el día.', 'error');
+            const diasSemana = new Set([...form.querySelectorAll('.sup-hd-dia:checked')].map(c => Number(c.value)));
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return UI.showAlert('Falta el día', 'Elige el día (o el primer día del rango).', 'error');
+            if (hasta < desde) return UI.showAlert('Rango al revés', 'El día "Hasta" tiene que ser después del día "Desde".', 'error');
             if (!entrada) return UI.showAlert('Hora no válida', 'Escribe la hora en formato de 24 horas, por ejemplo 07:00 o 06:30.', 'error');
             const hoy = getTodayStr();
             const lim = (n) => new Date(Date.now() + n * 86400000).toLocaleDateString('en-CA');
-            if (fecha < lim(-15) || fecha > lim(30)) return UI.showAlert('Día fuera de rango', 'Puedes fijar la hora desde 15 días atrás hasta 30 días adelante.', 'error');
+            if (desde < lim(-15) || hasta > lim(30)) return UI.showAlert('Día fuera de rango', 'Puedes fijar la hora desde 15 días atrás hasta 30 días adelante.', 'error');
+            const fechas = [];
+            for (let d = new Date(desde + 'T12:00:00'); d.toLocaleDateString('en-CA') <= hasta; d.setDate(d.getDate() + 1)) {
+                if (desde === hasta || diasSemana.has(d.getDay())) fechas.push(d.toLocaleDateString('en-CA'));
+            }
+            if (!fechas.length) return UI.showAlert('Sin días', 'En ese rango no queda ningún día con los días de la semana que marcaste.', 'error');
+            if (fechas.length > 31) return UI.showAlert('Demasiados días', 'Fija máximo 31 días de una vez.', 'error');
             const aplicar = async () => {
                 try {
-                    await setDoc(doc(db, 'horarios_dia', idHorarioDia(obra, fecha)), { obra, fecha, entrada, por_uid: auth.currentUser.uid, por_nombre: supPerfil.nombre || '', en: new Date().toISOString() });
-                    registrarAuditoria('Hora de entrada del día (supervisor)', `${obra} · ${fecha}: entra a las ${entrada} · ${supPerfil.nombre || ''}`);
-                    UI.showAlert('Hora fijada', `${diaCortoEs(fecha)}: la gente de ${obra} entra a las ${entrada}. Desde esa hora se pagan las horas y se mide la tardanza.${fecha < hoy ? '\n\nEs un día pasado: avísale a SSTA para que actualice las horas de los días ya cerrados.' : ''}`, 'success');
+                    const batch = writeBatch(db);
+                    const en = new Date().toISOString();
+                    fechas.forEach(f => batch.set(doc(db, 'horarios_dia', idHorarioDia(obra, f)), { obra, fecha: f, entrada, por_uid: auth.currentUser.uid, por_nombre: supPerfil.nombre || '', en }));
+                    await batch.commit();
+                    registrarAuditoria('Hora de entrada del día (supervisor)', `${obra} · ${fechas.join(', ')}: entra a las ${entrada} · ${supPerfil.nombre || ''}`);
+                    UI.showAlert('Hora fijada', `${fechas.length === 1 ? diaCortoEs(fechas[0]) : `${fechas.length} días (${diaCortoEs(fechas[0])} a ${diaCortoEs(fechas[fechas.length - 1])})`}: la gente de ${obra} entra a las ${entrada}. Desde esa hora se pagan las horas y se mide la tardanza.${fechas[0] < hoy ? '\n\nIncluye días pasados: avísale a SSTA para que actualice las horas de los días ya cerrados.' : ''}`, 'success');
                 } catch (err) {
                     console.error(err);
                     UI.showAlert('Error', 'No se pudo guardar la hora del día.', 'error');
                 }
             };
-            UI.showConfirm('¿Fijar la hora de entrada?', `${diaCortoEs(fecha)} · ${obra}\nToda la gente de esta obra entra a las ${entrada}. Quien llegue después marca tardanza, y quien llegue antes cobra desde las ${entrada}.`, aplicar, { texto: 'Sí, fijar', azul: true });
+            const lista = fechas.length <= 8 ? fechas.map(diaCortoEs).join(' · ') : `${fechas.length} días, del ${diaCortoEs(fechas[0])} al ${diaCortoEs(fechas[fechas.length - 1])}`;
+            UI.showConfirm('¿Fijar la hora de entrada?', `${obra}\n${lista}\nToda la gente de esta obra entra a las ${entrada}. Quien llegue después marca tardanza, y quien llegue antes cobra desde las ${entrada}.`, aplicar, { texto: fechas.length === 1 ? 'Sí, fijar' : `Sí, fijar ${fechas.length} días`, azul: true });
         }
         async function supQuitarHoraDia({ id, obra, fecha }) {
             UI.showConfirm('Quitar hora del día', `${diaCortoEs(fecha)} · ${obra}\nVuelve al horario normal de la obra.`, async () => {
