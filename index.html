@@ -1206,6 +1206,20 @@
                     </div>
                     <button id="btn-recalcular-semana" class="btn-touch w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-6 rounded-xl shadow-sm text-sm transition-all">Recalcular esta Semana</button>
                 </div>
+
+                <!-- Nov-2026: los sábados sin horario, domingos y festivos pasaron a ser libres de horario (cuentan desde la entrada
+                     real). Esto recalcula de una vez esos días ya guardados del mes, con vista previa antes de guardar. -->
+                <div class="bg-emerald-50/50 p-4 rounded-2xl shadow-sm border border-emerald-200 mt-4 mb-2">
+                    <h3 class="font-bold text-emerald-900 mb-1 flex items-center gap-2 text-sm">
+                        <i class="ph-fill ph-calendar-check text-emerald-600 text-lg"></i> Corregir sábados, domingos y festivos del mes
+                    </h3>
+                    <p class="text-[11px] text-emerald-800 mb-3">Desde nov-2026 esos días son <b>libres de horario</b>: las horas cuentan desde la hora real en que marcaron y no hay tardanza. Esto vuelve a calcular, para todos los colaboradores, solo esos días ya guardados del mes. Primero muestra qué cambia; no guarda nada hasta que confirmes.</p>
+                    <div class="flex flex-wrap items-end gap-3">
+                        <div><label for="corr-libres-mes" class="text-[10px] font-bold text-emerald-700 uppercase">Mes</label>
+                            <input type="month" id="corr-libres-mes" class="block border border-emerald-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none"></div>
+                        <button id="btn-corr-libres" type="button" class="btn-touch bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl shadow-sm text-sm transition-all">Ver qué cambia</button>
+                    </div>
+                </div>
                 </section>
 
                 <section class="ad-sec" data-sec="obras">
@@ -9057,6 +9071,82 @@
                 btn.innerHTML = originalHTML;
             }
         }
+        // ---- Corregir sábados sin horario, domingos y festivos de un mes (todos los colaboradores) ----
+        // Usa calcularRecalculoSemana (la misma liquidación de "Recalcular semana", con la meta semanal), semana por semana,
+        // y se queda solo con los días libres de horario. Las extras que cambien vuelven a "por aprobar", como siempre.
+        function esDiaLibreDeHorario(fecha, obra) {
+            const [y, m, d] = fecha.split('-').map(Number);
+            const dow = new Date(y, m - 1, d).getDay();
+            if (esDominicalOFestivo(fecha)) return true;
+            return dow === 6 && !getJornadaObra(obra)?.sabado;
+        }
+        async function previsualizarDiasLibresMes(mes) {
+            const btn = document.getElementById('btn-corr-libres');
+            const original = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i> Calculando…';
+            try {
+                const [y, m] = mes.split('-').map(Number);
+                const ultimo = new Date(y, m, 0).getDate();
+                const hoy = getTodayStr();
+                // Un día de cada semana que toca el mes (con algún sábado, domingo o festivo dentro del mes, hasta ayer).
+                const semanas = new Map();
+                for (let d = 1; d <= ultimo; d++) {
+                    const f = `${mes}-${String(d).padStart(2, '0')}`;
+                    if (f >= hoy) break;
+                    const dow = new Date(y, m - 1, d).getDay();
+                    if (dow === 0 || dow === 6 || esDominicalOFestivo(f)) semanas.set(getRangoSemana(f)[0], f);
+                }
+                const snap = await getDocs(collection(db, 'empleados'));
+                const empleados = [];
+                snap.forEach(d => empleados.push({ cedula: d.id, nombre: d.data().nombre || d.id }));
+                const porEmpleado = [];
+                let revisados = 0;
+                await Promise.all(empleados.map(async e => {
+                    const items = [];
+                    for (const f of semanas.values()) {
+                        const { items: its } = await calcularRecalculoSemana(e.cedula, f);
+                        its.filter(it => it.id.startsWith(mes) && it.id < hoy && esDiaLibreDeHorario(it.id, it.antes.obra)).forEach(it => { revisados++; if (it.cambia || it.extrasVuelvenAPorAprobar) items.push(it); });
+                    }
+                    if (items.length) porEmpleado.push({ cedula: e.cedula, nombre: e.nombre, items: items.sort((a, b) => a.id.localeCompare(b.id)) });
+                }));
+                porEmpleado.sort((a, b) => a.nombre.localeCompare(b.nombre));
+                const lunes = `${mes}-01`, domingo = `${mes}-${String(ultimo).padStart(2, '0')}`;
+                recalculoTodosPendiente = { lunes, domingo, porEmpleado, etiqueta: 'Corregir sábados, domingos y festivos del mes (Admin)', texto: `mes ${mes}` };
+                const total = porEmpleado.reduce((a, r) => a + r.items.length, 0);
+                const vuelven = porEmpleado.reduce((a, r) => a + r.items.filter(it => it.extrasVuelvenAPorAprobar).length, 0);
+                document.getElementById('recalc-todos-titulo').textContent = `Sábados sin horario, domingos y festivos · ${mes}`;
+                document.getElementById('recalc-todos-resumen').innerHTML = total
+                    ? `Se revisaron <b>${revisados} días</b> libres de horario. <b>Cambian ${total}</b> de ${porEmpleado.length} colaborador${porEmpleado.length === 1 ? '' : 'es'}; los demás ya estaban bien. Los días por revisar y los turnos abiertos no se tocan.`
+                    : `Se revisaron <b>${revisados} días</b> libres de horario. <b>Ninguno cambia</b>: ya están calculados con la regla nueva.`;
+                const aviso = document.getElementById('recalc-todos-aviso');
+                aviso.classList.toggle('hidden', vuelven === 0);
+                aviso.textContent = vuelven ? `⚠ ${vuelven} día${vuelven === 1 ? '' : 's'} con horas extra ya aprobadas por RRHH cambia${vuelven === 1 ? '' : 'n'}: volverá${vuelven === 1 ? '' : 'n'} a "por aprobar" para que RRHH apruebe la cifra nueva.` : '';
+                const filas = [];
+                porEmpleado.forEach(r => r.items.forEach(it => filas.push(`<tr class="border-b border-slate-100">
+                    <td class="p-1.5 font-semibold">${escapeHtml(r.nombre)}</td><td class="p-1.5">${escapeHtml(diaCortoEs(it.id))}<span class="block text-[10px] text-slate-400">${escapeHtml(it.antes.obra || '')} · ${escapeHtml(it.antes.entrada || '')}–${escapeHtml(it.antes.salida || '')}</span></td>
+                    <td class="p-1.5 text-rose-700">${textoHorasDia(it.antes)}${(it.antes.minutos_tarde || 0) !== (it.nuevo.minutos_tarde || 0) && it.antes.minutos_tarde ? ` · tarde ${it.antes.minutos_tarde} min` : ''}</td>
+                    <td class="p-1.5 text-emerald-700 font-bold">${textoHorasDia(it.nuevo)}${(it.antes.minutos_tarde || 0) !== (it.nuevo.minutos_tarde || 0) && !it.nuevo.minutos_tarde ? ' · sin tardanza' : ''}${it.extrasVuelvenAPorAprobar ? ' <span class="text-amber-700 font-bold">· extras vuelven a por aprobar</span>' : ''}</td></tr>`)));
+                document.getElementById('recalc-todos-tabla').innerHTML = filas.length
+                    ? `<table class="w-full text-xs"><thead><tr class="text-[10px] uppercase text-slate-500 border-b-2 border-slate-200 text-left"><th class="p-1.5">Colaborador</th><th class="p-1.5">Día</th><th class="p-1.5">Antes</th><th class="p-1.5">Después</th></tr></thead><tbody>${filas.join('')}</tbody></table>` : '';
+                const btnAplicar = document.getElementById('btn-recalc-todos-aplicar');
+                btnAplicar.classList.toggle('hidden', total === 0);
+                btnAplicar.textContent = `✔ Aplicar los ${total} cambio${total === 1 ? '' : 's'}`;
+                const mo = document.getElementById('modal-recalc-todos'), bo = document.getElementById('modal-recalc-todos-box');
+                mo.classList.remove('hidden'); mo.classList.add('flex');
+                setTimeout(() => { mo.classList.remove('opacity-0'); bo.classList.remove('scale-95'); }, 10);
+            } catch (e) {
+                console.error(e);
+                UI.showAlert('Error', 'No se pudo calcular la vista previa.', 'error');
+            } finally {
+                btn.disabled = false; btn.innerHTML = original;
+            }
+        }
+        document.getElementById('btn-corr-libres').addEventListener('click', () => {
+            const mes = document.getElementById('corr-libres-mes').value;
+            if (!mes) return UI.showAlert('Falta el mes', 'Elige el mes que quieres corregir.', 'error');
+            previsualizarDiasLibresMes(mes);
+        });
+        { const c = document.getElementById('corr-libres-mes'); if (c && !c.value) c.value = getTodayStr().slice(0, 7); }
         function cerrarRecalculoTodos() {
             const m = document.getElementById('modal-recalc-todos');
             const b = document.getElementById('modal-recalc-todos-box');
@@ -9068,7 +9158,7 @@
             if (!recalculoTodosPendiente) return;
             const btn = document.getElementById('btn-recalc-todos-aplicar');
             btn.disabled = true;
-            const { lunes, domingo, porEmpleado } = recalculoTodosPendiente;
+            const { lunes, domingo, porEmpleado, etiqueta, texto } = recalculoTodosPendiente;
             try {
                 // Un lote por colaborador: cada semana se guarda completa o no se guarda (igual que recalcularSemana).
                 for (const r of porEmpleado) {
@@ -9077,12 +9167,12 @@
                     await batch.commit();
                 }
                 const dias = porEmpleado.reduce((a, r) => a + r.items.length, 0);
-                registrarAuditoria('Recalcular semana de todos (Admin)', `Semana ${lunes} a ${domingo}: ${dias} día(s) de ${porEmpleado.length} colaborador(es) — ` +
+                registrarAuditoria(etiqueta || 'Recalcular semana de todos (Admin)', `${texto || `Semana ${lunes} a ${domingo}`}: ${dias} día(s) de ${porEmpleado.length} colaborador(es) — ` +
                     porEmpleado.map(r => `${r.nombre}: ${r.items.map(it => it.id).join(', ')}`).join(' | '));
                 recalculoTodosPendiente = null;
                 cerrarRecalculoTodos();
                 if (currentUserId) { await calculateMonthlyAccumulated(); await checkTodayState(); }
-                UI.showAlert("Listo", `Se actualizaron ${dias} día(s) de ${porEmpleado.length} colaborador(es) (semana del ${lunes} al ${domingo}). Quedó registrado en la Auditoría.`, "success");
+                UI.showAlert("Listo", `Se actualizaron ${dias} día(s) de ${porEmpleado.length} colaborador(es) (${texto || `semana del ${lunes} al ${domingo}`}). Quedó registrado en la Auditoría.`, "success");
             } catch (e) {
                 console.error(e);
                 UI.showAlert("Error", "No se pudieron guardar todos los cambios. Vuelve a abrir la vista previa: mostrará lo que falte.", "error");
