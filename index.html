@@ -6921,7 +6921,7 @@
                             <div class="flex flex-wrap items-end gap-2">
                                 <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Desde</label><input type="date" class="sup-hd-fecha border border-slate-300 rounded-lg p-2 text-sm" value="${fechaHoy}"></div>
                                 <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Hasta <span class="normal-case font-normal">(opcional)</span></label><input type="date" class="sup-hd-hasta border border-slate-300 rounded-lg p-2 text-sm"></div>
-                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Entra a las</label><input type="text" inputmode="numeric" maxlength="5" placeholder="07:00" class="sup-hd-hora border border-slate-300 rounded-lg p-2 text-sm w-24"></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block">Entra a las</label><input type="text" inputmode="numeric" maxlength="5" placeholder="07:00" class="sup-hd-hora hora24-texto border border-slate-300 rounded-lg p-2 text-sm w-24"></div>
                             </div>
                             <div class="flex flex-wrap items-center gap-1 mt-2"><span class="text-[10px] font-bold text-slate-500 uppercase mr-1">Días</span>${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => `<label class="text-[11px] font-bold border border-slate-300 rounded-lg px-2 py-1 flex items-center gap-1"><input type="checkbox" class="sup-hd-dia" value="${(i + 1) % 7}" checked>${d}</label>`).join('')}</div>
                             <button type="button" class="btn-sup-hd-guardar btn-touch mt-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Fijar hora</button>
