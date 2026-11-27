@@ -338,6 +338,21 @@ service cloud.firestore {
              get(/databases/$(database)/documents/catalogos/listas).data.obras.toSet()));
     }
 
+    // HORA DE ENTRADA DEL DÍA (nov-2026): el supervisor de una obra fija a qué hora entra la gente un día concreto.
+    // Todos la leen (el cálculo de horas del celular la necesita; no tiene datos personales). Solo la escribe o la quita
+    // Admin o un supervisor ACTIVO de esa obra, firmando con su propio uid, con fecha AAAA-MM-DD y hora HH:MM.
+    match /horarios_dia/{id} {
+      allow read: if true;
+      allow create, update: if esAdmin() ||
+        (esSupervisorDeObra(request.resource.data.obra) &&
+         (resource == null || esSupervisorDeObra(resource.data.obra)) &&
+         request.resource.data.por_uid == request.auth.uid &&
+         request.resource.data.keys().hasOnly(['obra', 'fecha', 'entrada', 'por_uid', 'por_nombre', 'en']) &&
+         request.resource.data.fecha is string && request.resource.data.fecha.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+         request.resource.data.entrada is string && request.resource.data.entrada.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'));
+      allow delete: if esAdmin() || esSupervisorDeObra(resource.data.obra);
+    }
+
     match /admins/{uid} {
       allow read: if request.auth != null;
       allow write: if false;

@@ -32,6 +32,7 @@ const linea = (marcador) => {
 };
 const codigo = [
   'let catalogosCache = { horarios_obra: {}, jornadas_obra: {}, festivos: [] };',
+  'let horariosDiaCache = {};',
   bloque('const LEY = {') + ';',
   bloque('function recargoDominicalFestivoPorFecha('),
   bloque('const FESTIVOS_COLOMBIA = [') + ';',
@@ -46,7 +47,7 @@ const codigo = [
   bloque('function metaSemanalOrdinaria('),
   linea('const FECHA_INICIO_APROBACION_EXTRAS ='),
   bloque('function estadoExtras('), bloque('function extrasPagables('),
-  bloque('function getHoraEsperadaObra('), bloque('function getJornadaObra('), bloque('function horasPactadasJornadaObra('),
+  bloque('function claveHorarioDia('), bloque('function getHorarioDiaObra('), bloque('function getHoraEsperadaObra('), bloque('function getJornadaObra('), bloque('function horasPactadasJornadaObra('),
   bloque('function fechaSiguiente('),
   bloque('function calcularJornadaDiaria('),
   bloque('const ESTADO_LEGIBLE_EXCEL = {') + ';', bloque('const ESTADO_EXTRAS_LEGIBLE = {') + ';',

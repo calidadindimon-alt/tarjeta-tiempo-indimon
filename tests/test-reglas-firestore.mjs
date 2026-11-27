@@ -11,7 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, setDoc, updateDoc, collection, collectionGroup, query, where, writeBatch, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, collectionGroup, query, where, writeBatch, arrayUnion } from 'firebase/firestore';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080').split(':');
@@ -240,6 +240,19 @@ await caso(S, 'NO pone la geocerca de otra obra', NO, () => updateDoc(doc(sup, '
 await caso(S, 'NO cambia otros ajustes del catálogo', NO, () => updateDoc(doc(sup, 'catalogos/listas'), { email_rrhh: 'yo@x.com' }));
 await caso(S, 'desactivado: NO pone geocercas', NO, () => updateDoc(doc(supOff, 'catalogos/listas'), { 'geocercas_obra.BODEGA': { lat: 1, lng: 1 } }));
 await caso(C, 'colaborador: NO pone geocercas', NO, () => updateDoc(doc(ana, 'catalogos/listas'), { 'geocercas_obra.BODEGA': { lat: 1, lng: 1 } }));
+// Hora de entrada del día (nov-2026)
+const hd = (obra, uid, extra = {}) => ({ obra, fecha: '2026-11-29', entrada: '07:00', por_uid: uid, por_nombre: 'SUPER UNO', en: '2026-11-27T10:00:00Z', ...extra });
+await caso(S, 'sí fija la hora de entrada de un día en SU obra', SI, () => setDoc(doc(sup, 'horarios_dia/2026-11-29__BODEGA'), hd('BODEGA', 'sup1')));
+await caso(S, 'sí la cambia otra vez', SI, () => setDoc(doc(sup, 'horarios_dia/2026-11-29__BODEGA'), hd('BODEGA', 'sup1', { entrada: '06:30' })));
+await caso(S, 'NO fija la hora en otra obra', NO, () => setDoc(doc(sup, 'horarios_dia/2026-11-29__PLANTA'), hd('PLANTA NORTE', 'sup1')));
+await caso(S, 'NO firma a nombre de otro', NO, () => setDoc(doc(sup, 'horarios_dia/2026-11-30__BODEGA'), hd('BODEGA', 'otro')));
+await caso(S, 'NO guarda una hora mal escrita', NO, () => setDoc(doc(sup, 'horarios_dia/2026-11-30__BODEGA'), hd('BODEGA', 'sup1', { entrada: '7am' })));
+await caso(S, 'NO agrega campos de más', NO, () => setDoc(doc(sup, 'horarios_dia/2026-11-30__BODEGA'), hd('BODEGA', 'sup1', { horas_extra: 5 })));
+await caso(S, 'desactivado: NO fija horas', NO, () => setDoc(doc(supOff, 'horarios_dia/2026-11-30__BODEGA'), hd('BODEGA', 'sup2')));
+await caso(C, 'colaborador: NO fija la hora de su obra', NO, () => setDoc(doc(ana, 'horarios_dia/2026-11-30__BODEGA'), hd('BODEGA', 'u111')));
+await caso(C, 'cualquiera lee las horas del día (el cálculo las necesita)', SI, () => getDoc(doc(anon, 'horarios_dia/2026-11-29__BODEGA')));
+await caso(S, 'sí quita la hora de su obra', SI, () => deleteDoc(doc(sup, 'horarios_dia/2026-11-29__BODEGA')));
+await caso(A, 'Admin sí fija la hora de cualquier obra', SI, () => setDoc(doc(admin, 'horarios_dia/2026-11-29__PLANTA'), hd('PLANTA NORTE', 'adm1')));
 await caso(A, 'sí crea un supervisor y le cambia la obra', SI, async () => { await setDoc(doc(admin, 'supervisores/sup3'), { nombre: 'TRES', obras: ['BODEGA'], activo: true }); await updateDoc(doc(admin, 'supervisores/sup3'), { obras: ['PLANTA NORTE'] }); });
 await caso(C, 'NO se pone el visto bueno del supervisor en su propio día', NO, () => updateDoc(doc(ana, 'empleados/111/registros/2026-10-21'), vb('u111')));
 

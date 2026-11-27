@@ -18,13 +18,14 @@ const fuente = leerFuente(RUTA_INDEX);
 fs.writeFileSync(RUTA_EXTRAIDO, extraerCalculadora(fuente));
 const require = createRequire(import.meta.url);
 delete require.cache[RUTA_EXTRAIDO];
-const { calcularJornadaDiaria, setCatalogosCache } = require('./_extraido.cjs');
+const { calcularJornadaDiaria, setCatalogosCache, setHorariosDiaCache } = require('./_extraido.cjs');
 
 const results = [];
 function aprox(a, b, eps = 0.01) { return Math.abs(a - b) <= eps; }
 
-function caso(nombre, { catalogos = {}, reg, tope = 8 }, esperado) {
+function caso(nombre, { catalogos = {}, reg, tope = 8, horariosDia = {} }, esperado) {
   setCatalogosCache({ horarios_obra: {}, festivos: [], ...catalogos });
+  setHorariosDiaCache(horariosDia);
   const r = calcularJornadaDiaria(reg, tope);
   const campos = ['ord', 'extD', 'extN', 'recNoct', 'dominical', 'horas_dominicales', 'minutosTarde', 'horasDescontadasTardanza'];
   const diffs = [];
@@ -298,24 +299,37 @@ casoSemana('20. Obra con sábado: lun-vie 8,5 h + sábado 7:00-14:00 (6 h netas)
   { ord: 42, ext: 6.5 });
 
 console.log('\n========== RESUMEN ==========');
-// Días libres de horario (nov-2026): el horario de la obra rige de lunes a viernes (y el sábado solo si está pactado). El
-// sábado sin horario, el domingo y el festivo cuentan desde la entrada REAL y no tienen tardanza.
+// Hora de entrada del día (nov-2026): el horario de la obra rige TODOS los días (también sábado, domingo y festivo), salvo
+// que el supervisor fije para ese día otra hora de entrada (horarios_dia): ahí se paga desde esa hora y la tardanza se mide
+// contra ella.
 const CORRUGADOS = { horarios_obra: { CORR: '07:30' }, jornadas_obra: { CORR: { entrada: '07:30', salida_lj: '17:00', salida_v: '16:30', hora_almuerzo: '12:30', almuerzo: true, sabado: null } } };
-caso('53. Sábado sin horario 7:00–15:00 -> cuenta desde las 7:00: 8 h extra (antes 7,5)', {
+const HD = (fecha, entrada) => ({ [`${fecha}|CORR`]: { obra: 'CORR', fecha, entrada, por_nombre: 'SUPERVISOR' } });
+const t0 = { recNoct: 0, dominical: false, horas_dominicales: 0 };
+caso('53. Sábado sin hora del supervisor, 7:00–15:00 -> cuenta desde las 7:30 de la obra: 7,5 h extra', {
   catalogos: CORRUGADOS, reg: { fecha: '2026-11-21', obra: 'CORR', entrada: '07:00', salida: '15:00' }, tope: 42,
-}, { ord: 0, extD: 8, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
-caso('54. Sábado sin horario, entra 7:45 -> no es tardanza (no hay horario ese día)', {
-  catalogos: CORRUGADOS, reg: { fecha: '2026-11-21', obra: 'CORR', entrada: '07:45', salida: '13:00' }, tope: 42,
-}, { ord: 0, extD: 5.25, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
-caso('55. Festivo (16/11) 6:52–16:39 con almuerzo -> cuenta desde las 6:52: 8,78 h de festivo', {
-  catalogos: CORRUGADOS, reg: { fecha: '2026-11-16', obra: 'CORR', entrada: '06:52', salida: '16:39', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
-}, { ord: 8.78, extD: 0, extN: 0, recNoct: 0, dominical: true, horas_dominicales: 8.78, minutosTarde: 0, horasDescontadasTardanza: 0 });
-caso('56. Lunes a viernes no cambia: martes 7:00–17:00 sigue contando desde las 7:30', {
+}, { ord: 0, extD: 7.5, extN: 0, ...t0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('54. Sábado con hora del supervisor 7:00, entra 7:00–15:00 -> cuenta desde las 7:00: 8 h extra', {
+  catalogos: CORRUGADOS, horariosDia: HD('2026-11-21', '07:00'), reg: { fecha: '2026-11-21', obra: 'CORR', entrada: '07:00', salida: '15:00' }, tope: 42,
+}, { ord: 0, extD: 8, extN: 0, ...t0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('55. Sábado con hora del supervisor 7:00, llega 7:20 -> tardanza de 20 min (contra las 7:00, no las 7:30)', {
+  catalogos: CORRUGADOS, horariosDia: HD('2026-11-21', '07:00'), reg: { fecha: '2026-11-21', obra: 'CORR', entrada: '07:20', salida: '13:00' }, tope: 42,
+}, { ord: 0, extD: 5.67, extN: 0, ...t0, minutosTarde: 20, horasDescontadasTardanza: 0.33 });
+caso('56. Sábado sin hora del supervisor, llega 7:50 -> tardanza de 20 min contra las 7:30 de la obra', {
+  catalogos: CORRUGADOS, reg: { fecha: '2026-11-21', obra: 'CORR', entrada: '07:50', salida: '13:00' }, tope: 42,
+}, { ord: 0, extD: 5.17, extN: 0, ...t0, minutosTarde: 20, horasDescontadasTardanza: 0.33 });
+caso('57. Martes con hora del supervisor 6:00: entra 6:00–15:30 -> 8,5 ordinarias, la salida pactada se corre a las 15:30', {
+  catalogos: CORRUGADOS, horariosDia: HD('2026-11-24', '06:00'), reg: { fecha: '2026-11-24', obra: 'CORR', entrada: '06:00', salida: '15:30', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 8.5, extD: 0, extN: 0, ...t0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('58. Martes sin hora del supervisor no cambia: 7:00–17:00 sigue contando desde las 7:30', {
   catalogos: CORRUGADOS, reg: { fecha: '2026-11-24', obra: 'CORR', entrada: '07:00', salida: '17:00', almuerzo_inicio: '12:30', almuerzo_fin: '13:30' }, tope: 42,
-}, { ord: 8.5, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 0, horasDescontadasTardanza: 0 });
-caso('57. Sábado PACTADO no cambia: entra 7:30 con horario 7:00 -> sigue siendo tardanza', {
-  catalogos: POSTOBON, reg: { fecha: '2026-11-21', obra: 'POSTOBON', entrada: '07:30', salida: '09:00' }, tope: 42,
-}, { ord: 1.5, extD: 0, extN: 0, recNoct: 0, dominical: false, horas_dominicales: 0, minutosTarde: 30, horasDescontadasTardanza: 0.5 });
+}, { ord: 8.5, extD: 0, extN: 0, ...t0, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('59. Festivo con hora del supervisor 6:50: 6:52–16:39 -> cuenta desde las 6:52 (8,78 h de festivo)', {
+  catalogos: CORRUGADOS, horariosDia: HD('2026-11-16', '06:50'), reg: { fecha: '2026-11-16', obra: 'CORR', entrada: '06:52', salida: '16:39', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' }, tope: 42,
+}, { ord: 8.78, extD: 0, extN: 0, recNoct: 0, dominical: true, horas_dominicales: 8.78, minutosTarde: 0, horasDescontadasTardanza: 0 });
+caso('60. La hora del supervisor es solo de SU obra: otra obra el mismo día sigue con su horario', {
+  catalogos: { ...CORRUGADOS, horarios_obra: { CORR: '07:30', OTRA: '07:30' }, jornadas_obra: { ...CORRUGADOS.jornadas_obra, OTRA: CORRUGADOS.jornadas_obra.CORR } }, horariosDia: HD('2026-11-21', '07:00'),
+  reg: { fecha: '2026-11-21', obra: 'OTRA', entrada: '07:00', salida: '15:00' }, tope: 42,
+}, { ord: 0, extD: 7.5, extN: 0, ...t0, minutosTarde: 0, horasDescontadasTardanza: 0 });
 
 const fails = results.filter((r) => !r.ok);
 console.log(`${results.length - fails.length} / ${results.length} casos correctos`);
